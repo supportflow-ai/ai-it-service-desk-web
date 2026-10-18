@@ -32,6 +32,8 @@ hợp đồng đã ghim, không tự phát hiện thay đổi mới trong repo b
 
 ## Docker
 
+[Frontend CI](.github/workflows/ci.yml) dùng GitHub Actions để chạy npm ci, lint, build, test và build Docker image trên PR hoặc push vào main/dev/codex/feature. Có thể chạy thủ công từ tab Actions sau khi workflow có trên nhánh mặc định. Job `frontend` chỉ cần quyền đọc mã nguồn; không cần Jenkins, không push image hay tự deploy production. Smoke toàn hệ thống nằm trong repo supportflow-ai-infra và ghim SHA frontend/backend.
+
 ```sh
 docker build -t service-desk-web .
 docker run --rm -p 8080:80 service-desk-web
