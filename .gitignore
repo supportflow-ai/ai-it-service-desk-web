@@ -75,6 +75,8 @@ docker-compose.override.local.yml
 # ==========================================
 TestResults/
 coverage/
+playwright-report/
+test-results/
 *.trx
 
 # ==========================================

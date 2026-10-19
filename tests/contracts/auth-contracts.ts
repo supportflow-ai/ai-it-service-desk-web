@@ -3,7 +3,7 @@ import type {
   LoginCredentials,
   RegisterCredentials,
   User,
-} from '../../src/features/auth/types';
+} from '../../src/features/auth';
 
 // Backend UserInfo.FullName is nullable for login and /auth/me.
 const restoredUser: User = {

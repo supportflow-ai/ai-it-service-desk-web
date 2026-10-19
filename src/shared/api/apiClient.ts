@@ -1,41 +1,46 @@
 import axios from 'axios';
-import config from '@/app/config';
+import { normalizeError } from './httpError';
 
-/**
- * Centralized Axios instance.
- * Base URL is read from environment config — never hardcoded.
- */
-const apiClient = axios.create({
-  baseURL: config.apiBaseUrl,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor — attach auth token when available
-apiClient.interceptors.request.use((requestConfig) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    requestConfig.headers.Authorization = `Bearer ${token}`;
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    authMode?: 'anonymous' | 'session';
+    requestSession?: { token: string; version: number };
   }
-  return requestConfig;
+}
+
+interface ApiConfiguration {
+  baseURL: string;
+  getAccessToken: () => string | null;
+  getSessionVersion: () => number;
+  onUnauthorized: (token: string, version: number) => void;
+}
+
+let configuration: ApiConfiguration | undefined;
+export const apiClient = axios.create({ headers: { 'Content-Type': 'application/json' } });
+
+/** Called by App bootstrap, or by an isolated test, before requests are made. */
+export function configureApiClient(options: ApiConfiguration) {
+  configuration = options;
+  apiClient.defaults.baseURL = options.baseURL;
+}
+
+apiClient.interceptors.request.use((request) => {
+  if (!configuration) throw new Error('HTTP client must be configured before use.');
+  const token = request.authMode === 'anonymous' ? null : configuration.getAccessToken();
+  if (token) {
+    request.headers.Authorization = `Bearer ${token}`;
+    request.requestSession = { token, version: configuration.getSessionVersion() };
+  }
+  return request;
 });
 
-// Response interceptor — handle common errors
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Xử lý tập trung lỗi 401 (Unauthorized / Expired Token)
-    if (error.response && error.response.status === 401) {
-      // Không bắn sự kiện đăng xuất nếu đang cố gắng gọi API đăng nhập
-      if (!error.config?.url?.includes('/auth/login')) {
-        localStorage.removeItem('token');
-        // Phát sự kiện để AuthContext lắng nghe và cập nhật state React
-        window.dispatchEvent(new Event('auth:unauthorized'));
-      }
+  (error: unknown) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401 && error.config?.requestSession) {
+      const { token, version } = error.config.requestSession;
+      configuration?.onUnauthorized(token, version);
     }
-    return Promise.reject(error);
+    return Promise.reject(normalizeError(error));
   },
 );
-
-export default apiClient;

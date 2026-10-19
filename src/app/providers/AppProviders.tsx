@@ -1,15 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ConfigProvider } from 'antd';
+import { App as AntApp, ConfigProvider } from 'antd';
 import type { ReactNode } from 'react';
-import { AuthProvider } from '@/features/auth/context/AuthContext';
+import { AuthProvider } from '@/features/auth';
+import { shouldRetryQuery } from '@/shared/api/httpError';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      retry: shouldRetryQuery,
       staleTime: 5 * 60 * 1000, // 5 minutes
       refetchOnWindowFocus: false,
     },
+    mutations: { retry: false },
   },
 });
 
@@ -27,9 +29,9 @@ export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ConfigProvider>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
+        <AntApp><AuthProvider>
           {children}
-        </AuthProvider>
+        </AuthProvider></AntApp>
       </QueryClientProvider>
     </ConfigProvider>
   );

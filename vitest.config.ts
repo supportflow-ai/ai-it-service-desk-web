@@ -1,0 +1,15 @@
+import { defineConfig, mergeConfig } from 'vitest/config';
+import viteConfig from './vite.config';
+
+export default mergeConfig(viteConfig, defineConfig({
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./tests/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}', 'tests/**/*.test.{ts,tsx}'],
+    clearMocks: true,
+    restoreMocks: true,
+    testTimeout: 15000,
+    pool: 'forks',
+    maxWorkers: 2,
+  },
+}));

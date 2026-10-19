@@ -1,7 +1,7 @@
 import { Alert, Card, Tag, Typography, Space, Empty } from 'antd';
 import { WarningOutlined, RobotOutlined } from '@ant-design/icons';
-import type { RequesterTriageView } from '../types';
-import { TriageOutcome } from '../types';
+import type { RequesterTriageView } from '../model/ai.types';
+import { TriageOutcome } from '../model/ai.types';
 import { ConfidenceTag } from './ConfidenceTag';
 
 const { Text } = Typography;
@@ -29,7 +29,7 @@ export function RequesterAIPanel({ result, loading }: Props) {
     return (
       <Card size="small" title={<><RobotOutlined /> AI Assistance</>}>
         <Empty
-          description="Click 'Analyze' to get AI category suggestions. This is optional — you can submit without AI assistance."
+          description="AI assistance is not enabled. You can submit without AI assistance."
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       </Card>
@@ -44,7 +44,6 @@ export function RequesterAIPanel({ result, loading }: Props) {
           type="info"
           showIcon
           message="AI assistance is currently unavailable. You can continue submitting the request."
-          description={result.failureReason ?? undefined}
         />
       </Card>
     );

@@ -1,5 +1,5 @@
 import { Tag, Tooltip } from 'antd';
-import type { ConfidenceBand } from '../types';
+import type { ConfidenceBand } from '../model/ai.types';
 
 /**
  * Displays a confidence band tag with tooltip explaining the score semantics.

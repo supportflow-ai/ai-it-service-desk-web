@@ -21,14 +21,26 @@ backend cần cho phép origin của frontend nếu gọi khác origin.
 
 ```sh
 npm run lint
+npm run typecheck
 npm run build
 npm test
+npx playwright install chromium
+npm run test:e2e
 ```
 
 Test chạy độc lập với checkout backend. `tests/contracts/ticket-status.json`
 là bản chụp enum backend tại commit `f6a0adae01bd642753f02d2beae10abff6f410e3`;
 cần cập nhật có phối hợp khi hợp đồng API thay đổi. Các test này kiểm tra
 hợp đồng đã ghim, không tự phát hiện thay đổi mới trong repo backend.
+
+Quy chuẩn kiến trúc và workflow coding agent nằm trong [AGENTS.md](AGENTS.md).
+Nguồn contract, các endpoint được hỗ trợ và giới hạn kiểm thử được ghi tại
+[API baseline](docs/architecture/api-baseline.md).
+Unit/component/hook tests dùng Vitest và MSW. Browser smoke dùng Playwright Chromium
+với API fixture trên production preview (cần chạy build trước), không thay thế nghiệm thu
+backend thật. CI dùng Node 22 và chạy cả hai nhóm kiểm thử.
+Jenkins agent cần có Node 22, Docker và quyền cài Chromium cùng các thư viện hệ thống
+cho browser smoke; pipeline kiểm tra phiên bản Node trước khi cài dependencies.
 
 ## Docker
 
