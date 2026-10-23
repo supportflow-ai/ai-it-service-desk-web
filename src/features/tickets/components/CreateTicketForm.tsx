@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, Col, Form, Input, Row, Select } from 'antd';
 import { CloseOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons';
 import type { FormInstance } from 'antd';
-import type { CreateTicketPayload, TicketCategory } from '../model/ticket.types';
+import type { CreateTicketPayload } from '../model/ticket.types';
 import { ticketCategoryLabels } from '../model/ticketCategories';
 import { createTicketRules } from '../validation/createTicketRules';
 
@@ -58,15 +58,10 @@ export function CreateTicketForm({ form, pending, onSubmit, onCancel }: CreateTi
       layout="vertical"
       onFinish={onSubmit}
       disabled={pending}
-      initialValues={{
-        title: 'VPN báo lỗi sau khi đổi mật khẩu',
-        categoryId: 'VPN' as TicketCategory,
-        description: 'Sau khi đổi mật khẩu sáng nay, FortiClient báo lỗi xác thực khi kết nối VPN. Mạng Wi-Fi tại nhà vẫn bình thường.',
-      }}
     >
       <Form.Item
         name="title"
-        label={<span style={{ fontWeight: 600 }}>Tiêu đề <span className="meta">(bắt buộc)</span></span>}
+        label={<span style={{ fontWeight: 600 }}>Tiêu đề yêu cầu <span className="meta">(bắt buộc)</span></span>}
         rules={createTicketRules.title}
         style={{ marginBottom: 16 }}
       >
@@ -77,7 +72,7 @@ export function CreateTicketForm({ form, pending, onSubmit, onCancel }: CreateTi
         <Col xs={24} sm={12}>
           <Form.Item
             name="categoryId"
-            label={<span style={{ fontWeight: 600 }}>Danh mục</span>}
+            label={<span style={{ fontWeight: 600 }}>Danh mục sự cố</span>}
             rules={createTicketRules.categoryId}
             style={{ marginBottom: 16 }}
           >
