@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button, Card, Checkbox, Input, Select, Space, Typography } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { UnsupportedState } from '@/shared/ui/UnsupportedState';
 import { useTickets } from '../hooks/useTickets';
 import { TicketStatusTag } from '../components/TicketStatusTag';
 import { TicketStatus } from '../model/ticket.types';
@@ -182,6 +183,10 @@ export function AgentQueuePage() {
 
   return (
     <div style={{ maxWidth: 1300, margin: '0 auto' }}>
+      <div style={{ marginBottom: 16 }}>
+        <UnsupportedState feature="Agent Workspace" />
+      </div>
+
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
         <Title level={2} style={{ margin: 0, fontWeight: 700 }}>
