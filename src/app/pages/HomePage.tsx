@@ -1,5 +1,5 @@
-import { Typography } from 'antd';
+import { RequesterDashboard } from '@/features/tickets';
 
 export function HomePage() {
-  return <><Typography.Title>Trang chủ</Typography.Title><p>Internal IT Service Request Management System</p></>;
+  return <RequesterDashboard />;
 }

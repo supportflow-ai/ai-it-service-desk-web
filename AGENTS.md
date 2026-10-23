@@ -59,15 +59,22 @@ Chỉ tạo thư mục có trách nhiệm thực sự.
 - validation: validation nghiệp vụ dùng lại; lib: logic nội bộ còn lại.
 
 Model phải thuần: không HTTP, browser storage, React, Ant Design hoặc router.
+Quy tắc này áp dụng cả khi dependency đi qua public API hoặc helper trung gian.
+`lib/`, `api/`, `model/`, `validation/` không chứa JSX; UI ở components/pages,
+provider thuộc feature có thể ở hooks khi điều phối context/session của feature.
 Component dùng PascalCase.tsx, hook dùng useX.ts, hàm dùng camelCase.ts,
 types dùng <feature>.types.ts. Ưu tiên @/ qua module; relative trong cùng feature.
 
 ## 5. Public feature API
 
-index.ts là hợp đồng công khai; export có chủ đích pages/components/hooks/types.
+index.ts là hợp đồng công khai; chỉ named re-export và export type có chủ đích
+pages/components/hooks/types từ chính feature. Không khai báo logic/khởi tạo ở index.
 Dùng named export và export type, không export *, không barrel ở mọi thư mục,
 không re-export nội bộ feature khác, không side effect khi import.
-HTTP adapter mặc định là nội bộ. Thay public API phải cập nhật caller và tests.
+HTTP adapter là nội bộ api/hooks; không đưa runtime API adapter qua public index
+hoặc helper trung gian. Có thể public type wire từ api khi caller thực sự cần.
+Nếu DTO và frontend model cùng representation, dùng một type chuẩn duy nhất;
+không tạo type/mapper sao chép chỉ để đủ thư mục. Thay public API phải cập nhật caller và tests.
 
 ## 6. Thin pages và component decomposition
 
@@ -86,7 +93,10 @@ TanStack Query là nguồn remote state duy nhất.
 - Truyền AbortSignal xuống HTTP; không hiển thị dữ liệu ID cũ dưới ID mới.
 - Mutation thành công cập nhật/invalidate cache liên quan; mặc định không tự retry.
 - Không retry lỗi quyền hoặc request không hợp lệ.
-- Logout/đổi phiên phải hủy request và xóa cache riêng tư.
+- Logout/đổi phiên phải hủy query đang chạy và xóa cache riêng tư.
+- Mutation đang gửi có thể đã ghi dữ liệu ở server: abort phía client không hoàn tác
+  write. Kiểm tra identity/version trước khi áp dụng response, invalidate hoặc điều
+  hướng. Chỉ thêm abort/idempotency theo contract đã xác nhận, không tự retry write.
 
 Context dành cho session metadata/composition. Chưa thêm Redux/Zustand nếu chưa cần.
 
@@ -95,6 +105,9 @@ Context dành cho session metadata/composition. Chưa thêm Redux/Zustand nếu 
 `Page/Component → Hook → Feature API → Shared HTTP client`.
 Axios chỉ được khởi tạo trong Shared API; feature adapter dùng client chung.
 Không gọi axios/fetch trong Page, Component hoặc model.
+Chỉ Feature API/Shared API được dùng HTTP transport; App bootstrap được cấu hình
+client. Hooks gọi feature adapter, không bỏ qua adapter để gọi transport. Shared
+error types/helpers được dùng trực tiếp từ UI; không cấm cả thư mục shared/api.
 App truyền cấu hình xuống Shared khi bootstrap. Shared không import App,
 không biết khóa lưu token, endpoint hay nghiệp vụ Auth.
 
@@ -142,6 +155,8 @@ Chuẩn hóa unknown error thành AppError; UI không phụ thuộc AxiosError.
 - Response cũ không vô hiệu hóa phiên mới. 403 giữ phiên.
 - 404 theo tài nguyên; 409 giữ input, giải thích xung đột, cho tải lại, không tự mutation retry.
 - Network/5xx giữ phiên và cho thử lại; cancellation không hiện như lỗi người dùng.
+- Refetch tài nguyên trả 403/404: giữ phiên nhưng ẩn dữ liệu cũ của tài nguyên,
+  kể cả khi Query còn cache. Network/5xx có thể giữ stale data kèm lỗi và thử lại.
 
 Không nuốt lỗi thành dữ liệu rỗng/thành công. Không lộ stack/token/database trong UI/log.
 
@@ -179,6 +194,16 @@ Page/Component, model phụ thuộc UI/I/O, cycle, production import tests/mock.
 Áp dụng cho import, import type, re-export, dynamic import, alias và relative.
 Architecture tests phải có positive/negative examples; không chỉ tìm chuỗi import.
 Không tắt rule hoặc ngoại lệ rộng để vượt kiến trúc.
+Dependency registry chuẩn ở `tools/architecture.mjs`; ESLint dùng cùng registry.
+AST/module graph kiểm tra import/re-export/dynamic import; model value imports
+được truy về declaration và helper dependencies bằng TypeScript symbol resolution.
+Public index chỉ named re-export, không side effect; production không import
+tests/mocks/fixtures hoặc thư viện mock. Test cả một feature mới hợp lệ và feature
+chưa đăng ký/import sai. Chạy đầy đủ `npm run lint`, không chỉ script graph.
+
+Tooling chỉ kiểm tra những invariant có test, không chứng minh mọi business rule,
+tính thuần toán học hoặc SOLID. Reviewer vẫn kiểm tra trách nhiệm, mapping lỗi,
+mọi tham số Query key, invalidation, side effect của mock và trạng thái async/UI.
 
 ## 17. Chống over-engineering và anti-patterns
 
@@ -198,6 +223,22 @@ refactor làm thay đổi nghiệp vụ/API ngoài yêu cầu.
 3. Xác định ownership, public API và permissions bị ảnh hưởng.
 4. Với thay đổi đáng kể, nêu kế hoạch/tiêu chí kiểm chứng.
 5. Ghi rõ contract gap, giữ baseline, tiếp tục việc không phụ thuộc quyết định thiếu.
+
+### Khi thêm feature/module
+1. Xác định phạm vi sở hữu, public API và callers; chỉ tạo thư mục cần dùng.
+2. Đăng ký feature trong dependency registry, mặc định không phụ thuộc feature khác.
+   Edge mới phải có lý do, tài liệu và test; có thể composition tại App bằng props.
+3. Với remote state: ghim contract/endpoint, xác định key và session scope,
+   cancellation, cache invalidation, lỗi và mutation side effects.
+4. Cập nhật route/menu/permission cùng nhau nếu có màn hình hoặc quyền mới.
+5. Thêm test hành vi phù hợp và negative architecture case cho boundary mới.
+6. Theo [checklist feature mới](docs/architecture/new-feature-checklist.md).
+
+### Khi triển khai từ Figma
+Đọc đúng frame/design context và screenshot, tái sử dụng Ant Design/components,
+tokens và hooks có sẵn. Kiểm tra responsive, keyboard/focus và các UI states;
+đối chiếu giao diện chạy thực tế với thiết kế. Thiết kế không tự xác nhận endpoint,
+quyền hay nghiệp vụ mới. Asset dùng local, không lưu URL tạm của Figma vào production.
 
 ### Trong khi sửa
 1. Thay theo responsibility và dependency một chiều.
