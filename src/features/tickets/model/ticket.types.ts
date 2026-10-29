@@ -62,3 +62,25 @@ export interface PagedTicketResult {
   pageSize: number;
   totalCount: number;
 }
+
+
+export interface TimelineItemDto {
+  id: string;
+  ticketId: string;
+  authorId: string;
+  authorName: string;
+  authorRole: string;
+  content: string;
+  isInternal: boolean;
+  createdAt: string;
+}
+
+export interface AddCommentPayload {
+  ticketId: string;
+  content: string;
+}
+
+export interface AddInternalNotePayload {
+  ticketId: string;
+  content: string;
+}

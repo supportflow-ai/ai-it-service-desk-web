@@ -1,71 +1,80 @@
-import { Card, Space } from 'antd';
-import { UnsupportedState } from '@/shared/ui/UnsupportedState';
+import { Alert, Card, Empty, Skeleton, Space } from 'antd';
+import { useTicketTimeline } from '../hooks/useTicketTimeline';
 
-export function TicketTimeline() {
+interface TicketTimelineProps {
+  ticketId: string;
+}
+
+export function TicketTimeline({ ticketId }: TicketTimelineProps) {
+  const { data: timelineItems, isPending, error } = useTicketTimeline(ticketId);
+
+  const formatDate = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      return `${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${date.toLocaleDateString('vi-VN')}`;
+    } catch {
+      return isoString;
+    }
+  };
+
   return (
     <Card
       title="Hoạt động &amp; Trao đổi"
-      bordered
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
-      <div style={{ marginBottom: 16 }}>
-        <UnsupportedState feature="Lịch sử xử lý" />
-      </div>
+      {error && (
+        <Alert
+          type="error"
+          showIcon
+          message="Không thể tải lịch sử trao đổi."
+          style={{ marginBottom: 12 }}
+        />
+      )}
 
-      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>
-        Tiến trình xử lý
-      </div>
+      {isPending && <Skeleton active paragraph={{ rows: 3 }} />}
 
-      <ul className="activity-tl">
-        <li>
-          <span style={{ fontWeight: 600 }}>Nguyễn Văn An</span> tạo ticket
-          <div className="meta">14:05</div>
-        </li>
-        <li>
-          Hệ thống phân loại vào <span style={{ fontWeight: 600 }}>Mạng &amp; VPN</span> · nhóm Hạ tầng
-          <div className="meta">14:06</div>
-        </li>
-        <li>
-          <span style={{ fontWeight: 600 }}>Trần Minh Quân</span> chuyển sang Đang xử lý
-          <div className="meta">15:40</div>
-        </li>
-      </ul>
+      {!isPending && !error && (!timelineItems || timelineItems.length === 0) && (
+        <Empty
+          description="Chưa có trao đổi nào cho ticket này."
+          image={Empty.PRESENTED_IMAGE_SIMPLE}
+        />
+      )}
 
-      <div style={{ fontWeight: 600, fontSize: 13, margin: '20px 0 12px' }}>
-        Trao đổi gần đây
-      </div>
+      {!isPending && timelineItems && timelineItems.length > 0 && (
+        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+          {timelineItems.map((item) => {
+            if (item.isInternal) {
+              return (
+                <div className="msg-card note" key={item.id}>
+                  <header>
+                    <span style={{ fontWeight: 600, color: '#85590E' }}>
+                      Ghi chú nội bộ · {item.authorName} ({item.authorRole})
+                    </span>
+                    <span className="meta">{formatDate(item.createdAt)}</span>
+                  </header>
+                  <div style={{ fontSize: 13, color: '#5C3E08', marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                    {item.content}
+                  </div>
+                </div>
+              );
+            }
 
-      <Space direction="vertical" style={{ width: '100%' }} size={10}>
-        <div className="msg-card">
-          <header>
-            <span style={{ fontWeight: 600 }}>Trần Minh Quân · Phản hồi công khai</span>
-            <span className="meta">15:42</span>
-          </header>
-          <div style={{ fontSize: 13, color: 'var(--tx)', marginTop: 4 }}>
-            Chào anh An, anh vui lòng gửi giúp phiên bản FortiClient đang dùng nhé.
-          </div>
-        </div>
-
-        <div className="msg-card">
-          <header>
-            <span style={{ fontWeight: 600 }}>Nguyễn Văn An · Người yêu cầu</span>
-            <span className="meta">16:28</span>
-          </header>
-          <div style={{ fontSize: 13, color: 'var(--tx)', marginTop: 4 }}>
-            Phiên bản 7.2.4, mã lỗi -12 khi nhập mật khẩu mới.
-          </div>
-        </div>
-
-        <div className="msg-card note">
-          <header>
-            <span style={{ fontWeight: 600, color: '#85590E' }}>Ghi chú nội bộ · Trần Minh Quân</span>
-            <span className="meta">16:31</span>
-          </header>
-          <div style={{ fontSize: 13, color: '#5C3E08', marginTop: 4 }}>
-            Nghi ngờ tài khoản chưa đồng bộ sang FortiAuthenticator. Cần kiểm tra thủ công.
-          </div>
-        </div>
-      </Space>
+            return (
+              <div className="msg-card" key={item.id}>
+                <header>
+                  <span style={{ fontWeight: 600 }}>
+                    {item.authorName} · {item.authorRole}
+                  </span>
+                  <span className="meta">{formatDate(item.createdAt)}</span>
+                </header>
+                <div style={{ fontSize: 13, color: 'var(--tx)', marginTop: 4, whiteSpace: 'pre-wrap' }}>
+                  {item.content}
+                </div>
+              </div>
+            );
+          })}
+        </Space>
+      )}
     </Card>
   );
 }

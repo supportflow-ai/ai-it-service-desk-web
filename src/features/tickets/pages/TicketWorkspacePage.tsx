@@ -70,9 +70,9 @@ export function TicketWorkspacePage() {
 
             <TicketCommandPanel commands={commands} />
 
-            <TicketTimeline />
+            <TicketTimeline ticketId={ticket.data.id} />
 
-            <TicketCommentComposer />
+            <TicketCommentComposer ticketId={ticket.data.id} />
           </Space>
         </Col>
 
