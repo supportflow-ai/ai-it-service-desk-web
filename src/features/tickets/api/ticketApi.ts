@@ -16,6 +16,26 @@ export const ticketApi = {
     const response = await apiClient.post<unknown>('/tickets', payload);
     return readTicket(response.data);
   },
+  async claimTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/claim`);
+    return readTicket(response.data);
+  },
+  async resolveTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/resolve`);
+    return readTicket(response.data);
+  },
+  async closeTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/close`);
+    return readTicket(response.data);
+  },
+  async reopenTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/reopen`);
+    return readTicket(response.data);
+  },
+  async cancelTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/cancel`);
+    return readTicket(response.data);
+  },
   async getTicketTimeline(ticketId: string, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>(`/tickets/${encodeURIComponent(ticketId)}/timeline`, { signal });
     return readTimeline(response.data);

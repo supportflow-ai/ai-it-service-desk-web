@@ -68,7 +68,7 @@ export function TicketWorkspacePage() {
               </div>
             </Card>
 
-            <TicketCommandPanel commands={commands} />
+            <TicketCommandPanel ticket={ticket.data} commands={commands} />
 
             <TicketTimeline ticketId={ticket.data.id} />
 

@@ -31,6 +31,7 @@ it('renders workspace with real ticket data and dynamic timeline', async () => {
   );
   expect(await screen.findByRole('heading', { name: ticketA.title })).toBeInTheDocument();
   expect(await screen.findByText(timelineItemA.content)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Nhận xử lý/i })).toBeEnabled();
   expect(screen.getByRole('button', { name: /Gửi bình luận/i })).toBeDisabled();
   expect(requests).toEqual([`/api/tickets/${ticketA.id}`, `/api/tickets/${ticketA.id}/timeline`]);
 });
