@@ -78,15 +78,14 @@ for (const [role, path, allowed] of [
   });
 }
 
-test('Admin workspace preserves UI with disabled commands and no fake history', async ({ page, api }) => {
+test('Admin workspace preserves UI with commands and live timeline', async ({ page, api }) => {
   api.roles = ['Admin'];
   await page.addInitScript(() => localStorage.setItem('token', 'restored'));
   await page.goto(`/agent-workspace/tickets/${ticketA.id}`);
   await expect(page.getByRole('heading', { name: ticketA.title })).toBeVisible();
-  await expect(page.getByText('Lịch sử xử lý chưa được hỗ trợ.')).toBeVisible();
-  for (const name of ['Nhận xử lý', 'Bắt đầu xử lý', 'Giải quyết', 'Gửi bình luận']) {
-    await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
-  }
+  await expect(page.getByText('Chưa có trao đổi nào cho ticket này.')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Nhận xử lý/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Gửi bình luận', exact: true })).toBeDisabled();
   await expect(page.getByText('Ticket được tạo mới')).toHaveCount(0);
-  expect(api.requests).toEqual(['GET /api/auth/me', `GET /api/tickets/${ticketA.id}`]);
+  expect(api.requests).toEqual(['GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, `GET /api/tickets/${ticketA.id}/timeline`]);
 });

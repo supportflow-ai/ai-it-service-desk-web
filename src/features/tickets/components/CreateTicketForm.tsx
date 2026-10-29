@@ -25,28 +25,7 @@ interface CreateTicketFormProps {
 }
 
 export function CreateTicketForm({ form, pending, onSubmit, onCancel }: CreateTicketFormProps) {
-  const [attachments, setAttachments] = useState<AttachmentItem[]>([
-    {
-      id: 'att-1',
-      name: 'forticlient-loi.png',
-      sizeInfo: 'PNG · 412 KB · Đã tải lên',
-      status: 'uploaded',
-    },
-    {
-      id: 'att-2',
-      name: 'vpn-log.txt',
-      sizeInfo: 'TXT · 1,8 MB · Đang tải lên 62%',
-      status: 'uploading',
-      progress: 62,
-    },
-    {
-      id: 'att-3',
-      name: 'man-hinh.mov',
-      sizeInfo: 'MOV · 48 MB · Tải lên thất bại: vượt quá 25 MB',
-      status: 'error',
-      errorMessage: 'Vượt quá dung lượng 25 MB cho phép',
-    },
-  ]);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
 
   const removeAttachment = (id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
@@ -111,61 +90,63 @@ export function CreateTicketForm({ form, pending, onSubmit, onCancel }: CreateTi
       </div>
 
       {/* Attachment Section */}
-      <div style={{ marginBottom: 24 }}>
-        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
-          Tệp đính kèm
-        </div>
+      {attachments.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+            Tệp đính kèm
+          </div>
 
-        <div style={{ background: 'var(--sf)', border: '1px solid var(--bd)', borderRadius: 8, padding: '0 12px' }}>
-          {attachments.map((att) => (
-            <div key={att.id} className="att-row">
-              <div className="att-grow">
-                <div style={{ fontWeight: 500, color: 'var(--tx)' }}>{att.name}</div>
-                <div style={{ fontSize: 12, color: att.status === 'error' ? 'var(--er)' : 'var(--tx3)' }}>
-                  {att.sizeInfo}
-                </div>
-                {att.status === 'uploading' && (
-                  <div className="att-prog">
-                    <i style={{ width: `${att.progress ?? 50}%` }} />
+          <div style={{ background: 'var(--sf)', border: '1px solid var(--bd)', borderRadius: 8, padding: '0 12px' }}>
+            {attachments.map((att) => (
+              <div key={att.id} className="att-row">
+                <div className="att-grow">
+                  <div style={{ fontWeight: 500, color: 'var(--tx)' }}>{att.name}</div>
+                  <div style={{ fontSize: 12, color: att.status === 'error' ? 'var(--er)' : 'var(--tx3)' }}>
+                    {att.sizeInfo}
                   </div>
+                  {att.status === 'uploading' && (
+                    <div className="att-prog">
+                      <i style={{ width: `${att.progress ?? 50}%` }} />
+                    </div>
+                  )}
+                </div>
+
+                {att.status === 'error' && (
+                  <Button
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    onClick={() => {}}
+                    style={{ borderRadius: 4 }}
+                  >
+                    Thử lại
+                  </Button>
+                )}
+                {att.status === 'uploading' ? (
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CloseOutlined />}
+                    onClick={() => removeAttachment(att.id)}
+                    style={{ color: 'var(--tx2)' }}
+                  >
+                    Hủy
+                  </Button>
+                ) : (
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    onClick={() => removeAttachment(att.id)}
+                    style={{ color: 'var(--tx2)' }}
+                  >
+                    Xóa
+                  </Button>
                 )}
               </div>
-
-              {att.status === 'error' && (
-                <Button
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  onClick={() => {}}
-                  style={{ borderRadius: 4 }}
-                >
-                  Thử lại
-                </Button>
-              )}
-              {att.status === 'uploading' ? (
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<CloseOutlined />}
-                  onClick={() => removeAttachment(att.id)}
-                  style={{ color: 'var(--tx2)' }}
-                >
-                  Hủy
-                </Button>
-              ) : (
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  onClick={() => removeAttachment(att.id)}
-                  style={{ color: 'var(--tx2)' }}
-                >
-                  Xóa
-                </Button>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }}>
         <Button onClick={onCancel} style={{ borderRadius: 6 }}>

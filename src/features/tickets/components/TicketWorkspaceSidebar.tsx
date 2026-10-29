@@ -27,12 +27,12 @@ export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
       <dl style={{ margin: 0 }}>
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Người yêu cầu</dt>
         <dd style={{ margin: 0, fontWeight: 500, color: 'var(--tx)' }}>
-          {ticket.requesterName ?? 'Nguyễn Văn An'}
+          {ticket.requesterName ?? '—'}
         </dd>
 
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Phòng ban</dt>
         <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          {ticket.departmentName ?? 'Phòng Công nghệ / Hà Nội'}
+          {ticket.departmentName ?? '—'}
         </dd>
 
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Danh mục</dt>
@@ -45,14 +45,9 @@ export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
           <span className={priorityClass}>{priorityLabel}</span>
         </dd>
 
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Nhóm hỗ trợ</dt>
-        <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          Hạ tầng
-        </dd>
-
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Phụ trách</dt>
         <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          {ticket.assignedToName ?? 'Trần Minh Quân'}
+          {ticket.assignedToName ?? 'Chưa phân công'}
         </dd>
 
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Tạo lúc</dt>
@@ -62,10 +57,14 @@ export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
           })}
         </dd>
 
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Thiết bị</dt>
-        <dd className="mono" style={{ margin: 0, color: 'var(--tx)' }}>
-          {ticket.deviceCode ?? 'LT-HN-0457'}
-        </dd>
+        {ticket.deviceCode && (
+          <>
+            <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Thiết bị</dt>
+            <dd className="mono" style={{ margin: 0, color: 'var(--tx)' }}>
+              {ticket.deviceCode}
+            </dd>
+          </>
+        )}
       </dl>
     </div>
   );

@@ -37,6 +37,42 @@ export const test = base.extend<{ api: ApiFixture }>({
       }
       const detail = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}`);
       if (detail) return route.fulfill({ status: api.detailStatus, ...(api.detailStatus === 200 ? { json: detail } : {}) });
+      const timelineTicket = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}/timeline`);
+      if (timelineTicket) return route.fulfill({ status: 200, json: [] });
+      const commentTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/comments`);
+      if (commentTicket) {
+        const body = request.postDataJSON() as { content: string };
+        return route.fulfill({
+          status: 201,
+          json: {
+            id: '20000000-0000-0000-0000-000000000001',
+            ticketId: commentTicket.id,
+            authorId: user.userId,
+            authorName: 'User',
+            authorRole: api.roles[0] ?? 'Requester',
+            content: body.content,
+            isInternal: false,
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
+      const noteTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/internal-notes`);
+      if (noteTicket) {
+        const body = request.postDataJSON() as { content: string };
+        return route.fulfill({
+          status: 201,
+          json: {
+            id: '20000000-0000-0000-0000-000000000002',
+            ticketId: noteTicket.id,
+            authorId: user.userId,
+            authorName: 'Agent User',
+            authorRole: api.roles[0] ?? 'Agent',
+            content: body.content,
+            isInternal: true,
+            createdAt: new Date().toISOString(),
+          },
+        });
+      }
       unexpected.push(key);
       return route.fulfill({ status: 501 });
     });

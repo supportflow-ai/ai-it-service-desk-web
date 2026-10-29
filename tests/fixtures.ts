@@ -5,3 +5,13 @@ export const ticketA = {
   createdAt: '2026-10-19T00:00:00Z', requesterDepartmentId: null,
 };
 export const ticketB = { ...ticketA, id: '10000000-0000-0000-0000-000000000002', ticketNumber: 'IT-2026-0002', title: 'Ticket B' };
+export const timelineItemA = {
+  id: '20000000-0000-0000-0000-000000000001',
+  ticketId: ticketA.id,
+  authorId: user.userId,
+  authorName: 'Nguyễn Văn An',
+  authorRole: 'Requester',
+  content: 'Nội dung phản hồi mẫu.',
+  isInternal: false,
+  createdAt: '2026-10-20T10:00:00Z',
+};

@@ -1,5 +1,5 @@
 import { Button, Card, Col, Result, Row, Space, Typography } from 'antd';
-import { ArrowLeftOutlined, PaperClipOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useParams } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
@@ -11,6 +11,7 @@ import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
 import { TicketTimeline } from '../components/TicketTimeline';
 import { TicketCommentComposer } from '../components/TicketCommentComposer';
 import { TicketCommandPanel } from '../components/TicketCommandPanel';
+import { TicketAttachmentSection } from '../components/TicketAttachmentSection';
 
 const { Title, Paragraph } = Typography;
 
@@ -59,20 +60,18 @@ export function TicketWorkspacePage() {
                 </Title>
               </div>
 
-              <Paragraph style={{ margin: '14px 0', color: 'var(--tx2)', fontSize: 14, lineHeight: 1.6 }}>
+              <Paragraph style={{ margin: '14px 0 0 0', color: 'var(--tx2)', fontSize: 14, lineHeight: 1.6 }}>
                 {ticket.data.description}
               </Paragraph>
-
-              <div className="meta" style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 8, borderTop: '1px solid var(--bd)' }}>
-                <PaperClipOutlined /> Tệp đính kèm: <b>forticlient-loi.png</b> (412 KB)
-              </div>
             </Card>
 
-            <TicketCommandPanel commands={commands} />
+            <TicketCommandPanel ticket={ticket.data} commands={commands} />
 
-            <TicketTimeline />
+            <TicketAttachmentSection ticketId={ticket.data.id} />
 
-            <TicketCommentComposer />
+            <TicketTimeline ticketId={ticket.data.id} />
+
+            <TicketCommentComposer ticketId={ticket.data.id} />
           </Space>
         </Col>
 
