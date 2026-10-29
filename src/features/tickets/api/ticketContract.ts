@@ -1,7 +1,13 @@
 import { AppError } from '@/shared/api/httpError';
 import { isRecord } from '@/shared/lib/guards';
 import { TicketCategory, TicketStatus } from '../model/ticket.types';
-import type { PagedTicketResult, TicketDto, TimelineItemDto } from '../model/ticket.types';
+import type {
+  DownloadUrlResult,
+  PagedTicketResult,
+  TicketDto,
+  TimelineItemDto,
+  UploadUrlResult,
+} from '../model/ticket.types';
 
 function isTicket(value: unknown): value is TicketDto {
   return isRecord(value) && typeof value.id === 'string' && typeof value.ticketNumber === 'string'
@@ -22,7 +28,7 @@ export function readTicketPage(value: unknown): PagedTicketResult {
     || typeof value.page !== 'number' || !Number.isInteger(value.page) || value.page < 1
     || typeof value.pageSize !== 'number' || !Number.isInteger(value.pageSize) || value.pageSize < 1
     || typeof value.totalCount !== 'number' || !Number.isInteger(value.totalCount) || value.totalCount < 0) {
-  throw new AppError('Phản hồi danh sách ticket không hợp lệ.', 'invalid-response');
+    throw new AppError('Phản hồi danh sách ticket không hợp lệ.', 'invalid-response');
   }
   return { items: value.items, page: value.page, pageSize: value.pageSize, totalCount: value.totalCount };
 }
@@ -48,5 +54,26 @@ export function readTimeline(value: unknown): TimelineItemDto[] {
   if (!Array.isArray(value) || !value.every(isTimelineItem)) {
     throw new AppError('Phản hồi danh sách timeline không hợp lệ.', 'invalid-response');
   }
+  return value;
+}
+
+function isUploadUrlResult(value: unknown): value is UploadUrlResult {
+  return isRecord(value)
+    && typeof value.uploadUrl === 'string'
+    && typeof value.storageKey === 'string'
+    && typeof value.expirySeconds === 'number';
+}
+
+export function readUploadUrlResult(value: unknown): UploadUrlResult {
+  if (!isUploadUrlResult(value)) throw new AppError('Phản hồi upload URL không hợp lệ.', 'invalid-response');
+  return value;
+}
+
+function isDownloadUrlResult(value: unknown): value is DownloadUrlResult {
+  return isRecord(value) && typeof value.downloadUrl === 'string';
+}
+
+export function readDownloadUrlResult(value: unknown): DownloadUrlResult {
+  if (!isDownloadUrlResult(value)) throw new AppError('Phản hồi download URL không hợp lệ.', 'invalid-response');
   return value;
 }

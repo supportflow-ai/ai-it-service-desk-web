@@ -27,105 +27,6 @@ interface QueueTicketItem {
   updatedText: string;
 }
 
-const mockQueueItems: QueueTicketItem[] = [
-  {
-    id: 'f6a0adae-01bd-4892-0000-000000000001',
-    ticketNumber: 'INC-2026-4892',
-    title: 'Không thể kết nối VPN để truy cập tài nguyên nội bộ từ xa',
-    snippet: 'FortiClient báo lỗi xác thực sau khi đổi mật khẩu…',
-    requesterName: 'Nguyễn Văn An',
-    department: 'Phòng Công nghệ',
-    category: 'Mạng & VPN',
-    priority: 'P2',
-    priorityLabel: 'P2 — Cao',
-    status: TicketStatus.InProgress,
-    assignee: 'Trần Minh Quân',
-    slaText: 'Còn 1 giờ 20',
-    slaType: 'warning',
-    updatedText: '10 phút',
-  },
-  {
-    id: 'f6a0adae-01bd-4895-0000-000000000002',
-    ticketNumber: 'INC-2026-4895',
-    title: 'Không truy cập được Jira nội bộ',
-    snippet: 'Trang báo 502 Bad Gateway từ 15:10…',
-    requesterName: 'Lê Thu Hà',
-    department: 'Phòng Kinh doanh',
-    category: 'Ứng dụng',
-    priority: 'P1',
-    priorityLabel: 'P1 — Khẩn',
-    status: TicketStatus.Submitted,
-    assignee: '—',
-    slaText: 'Quá hạn 12 phút',
-    slaType: 'danger',
-    updatedText: '25 phút',
-  },
-  {
-    id: 'f6a0adae-01bd-4871-0000-000000000003',
-    ticketNumber: 'INC-2026-4871',
-    title: 'Không nhận được mã OTP Microsoft 365',
-    snippet: 'Đã thử đổi số điện thoại nhưng chưa có mã…',
-    requesterName: 'Phạm Quốc Bảo',
-    department: 'Phòng Tài chính',
-    category: 'Tài khoản',
-    priority: 'P2',
-    priorityLabel: 'P2 — Cao',
-    status: TicketStatus.PendingUser,
-    assignee: 'Trần Minh Quân',
-    slaText: 'Tạm dừng',
-    slaType: 'info',
-    updatedText: '2 giờ',
-  },
-  {
-    id: 'f6a0adae-01bd-4850-0000-000000000004',
-    ticketNumber: 'INC-2026-4850',
-    title: 'Yêu cầu cấp quyền GitLab cho dự án Payments',
-    snippet: 'Cần quyền Maintainer, đã có phê duyệt của trưởng nhóm…',
-    requesterName: 'Đỗ Khánh Linh',
-    department: 'Phòng Công nghệ',
-    category: 'Quyền truy cập',
-    priority: 'P3',
-    priorityLabel: 'P3 — Trung bình',
-    status: TicketStatus.Assigned,
-    assignee: 'Vũ Hải Nam',
-    slaText: 'Còn 1 ngày',
-    slaType: 'normal',
-    updatedText: 'Hôm qua',
-  },
-  {
-    id: 'f6a0adae-01bd-4887-0000-000000000005',
-    ticketNumber: 'INC-2026-4887',
-    title: 'Màn hình Dell chớp liên tục',
-    snippet: 'Xuất hiện sau khi cập nhật driver card đồ họa…',
-    requesterName: 'Hoàng Gia Huy',
-    department: 'Phòng Thiết kế',
-    category: 'Thiết bị',
-    priority: 'P3',
-    priorityLabel: 'P3 — Trung bình',
-    status: TicketStatus.Triaged,
-    assignee: '—',
-    slaText: 'Còn 2 ngày',
-    slaType: 'normal',
-    updatedText: '3 giờ',
-  },
-  {
-    id: 'f6a0adae-01bd-4879-0000-000000000006',
-    ticketNumber: 'INC-2026-4879',
-    title: 'Máy in tầng 4 báo offline',
-    snippet: 'Đã khởi động lại nhưng vẫn không in được…',
-    requesterName: 'Ngô Thị Mai',
-    department: 'Hành chính',
-    category: 'Thiết bị',
-    priority: 'P3',
-    priorityLabel: 'P3 — Trung bình',
-    status: TicketStatus.InProgress,
-    assignee: 'Vũ Hải Nam',
-    slaText: 'Còn 6 giờ',
-    slaType: 'normal',
-    updatedText: '5 giờ',
-  },
-];
-
 export function AgentQueuePage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'my' | 'team' | 'unassigned'>('my');
@@ -136,25 +37,22 @@ export function AgentQueuePage() {
   const ticketsQuery = useTickets(page, 10);
   const realTickets = ticketsQuery.data?.items ?? [];
 
-  // Ghép real tickets nếu có, hoặc dùng mockQueueItems
-  const queueItems: QueueTicketItem[] = realTickets.length > 0
-    ? realTickets.map((t, idx) => ({
-        id: t.id,
-        ticketNumber: t.ticketNumber,
-        title: t.title,
-        snippet: t.description.slice(0, 50) + (t.description.length > 50 ? '…' : ''),
-        requesterName: t.requesterName ?? 'Nguyễn Văn An',
-        department: t.departmentName ?? 'Phòng Công nghệ',
-        category: t.categoryId,
-        priority: t.priority ?? (idx % 3 === 0 ? 'P1' : idx % 3 === 1 ? 'P2' : 'P3'),
-        priorityLabel: t.priority === 'P1' ? 'P1 — Khẩn' : t.priority === 'P2' ? 'P2 — Cao' : 'P3 — Trung bình',
-        status: t.status,
-        assignee: t.assignedToName ?? (t.status === TicketStatus.Assigned ? 'Trần Minh Quân' : '—'),
-        slaText: t.slaText ?? 'Còn 1 giờ 20',
-        slaType: t.priority === 'P1' ? 'danger' : 'warning',
-        updatedText: '10 phút',
-      }))
-    : mockQueueItems;
+  const queueItems: QueueTicketItem[] = realTickets.map((t, idx) => ({
+    id: t.id,
+    ticketNumber: t.ticketNumber,
+    title: t.title,
+    snippet: t.description.slice(0, 50) + (t.description.length > 50 ? '…' : ''),
+    requesterName: t.requesterName ?? '—',
+    department: t.departmentName ?? '—',
+    category: t.categoryId,
+    priority: t.priority ?? (idx % 3 === 0 ? 'P1' : idx % 3 === 1 ? 'P2' : 'P3'),
+    priorityLabel: t.priority === 'P1' ? 'P1 — Khẩn' : t.priority === 'P2' ? 'P2 — Cao' : 'P3 — Trung bình',
+    status: t.status,
+    assignee: t.assignedToName ?? '—',
+    slaText: t.slaText ?? '—',
+    slaType: t.priority === 'P1' ? 'danger' : 'warning',
+    updatedText: '—',
+  }));
 
   const handleSelectAll = (checked: boolean) => {
     setSelectedIds(checked ? queueItems.map((i) => i.id) : []);

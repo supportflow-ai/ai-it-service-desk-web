@@ -44,5 +44,5 @@ export const ticketCapabilities = {
   close: true,
   reopen: true,
   cancel: true,
-  attachments: false,
+  attachments: true,
 } as const;

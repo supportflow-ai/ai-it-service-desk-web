@@ -63,7 +63,6 @@ export interface PagedTicketResult {
   totalCount: number;
 }
 
-
 export interface TimelineItemDto {
   id: string;
   ticketId: string;
@@ -83,4 +82,20 @@ export interface AddCommentPayload {
 export interface AddInternalNotePayload {
   ticketId: string;
   content: string;
+}
+
+export interface GenerateUploadUrlPayload {
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+}
+
+export interface UploadUrlResult {
+  uploadUrl: string;
+  storageKey: string;
+  expirySeconds: number;
+}
+
+export interface DownloadUrlResult {
+  downloadUrl: string;
 }

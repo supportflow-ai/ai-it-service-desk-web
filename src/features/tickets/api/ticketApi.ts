@@ -1,6 +1,19 @@
 import { apiClient } from '@/shared/api/apiClient';
-import type { AddCommentPayload, AddInternalNotePayload, CreateTicketPayload } from '../model/ticket.types';
-import { readTicket, readTicketPage, readTimeline, readTimelineItem } from './ticketContract';
+import { uploadToPresignedUrl } from '@/shared/api/uploadClient';
+import type {
+  AddCommentPayload,
+  AddInternalNotePayload,
+  CreateTicketPayload,
+  GenerateUploadUrlPayload,
+} from '../model/ticket.types';
+import {
+  readDownloadUrlResult,
+  readTicket,
+  readTicketPage,
+  readTimeline,
+  readTimelineItem,
+  readUploadUrlResult,
+} from './ticketContract';
 
 /** Only endpoints implemented at the pinned backend baseline are callable. */
 export const ticketApi = {
@@ -51,5 +64,19 @@ export const ticketApi = {
       content: payload.content,
     });
     return readTimelineItem(response.data);
+  },
+  async generateAttachmentUploadUrl(ticketId: string, payload: GenerateUploadUrlPayload) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/attachments/upload-url`, payload);
+    return readUploadUrlResult(response.data);
+  },
+  async getAttachmentDownloadUrl(ticketId: string, storageKey: string) {
+    const response = await apiClient.get<unknown>(
+      `/tickets/${encodeURIComponent(ticketId)}/attachments/download-url`,
+      { params: { storageKey } },
+    );
+    return readDownloadUrlResult(response.data);
+  },
+  async uploadFileToPresignedUrl(uploadUrl: string, file: File) {
+    await uploadToPresignedUrl(uploadUrl, file, file.type || 'application/octet-stream');
   },
 };
