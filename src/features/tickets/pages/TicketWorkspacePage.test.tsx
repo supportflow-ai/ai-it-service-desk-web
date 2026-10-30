@@ -119,3 +119,58 @@ it('runs the whole agent flow on one screen: self-assign, claim, comment, resolv
   await waitFor(() => expect(sidebarField('Trạng thái')).toHaveTextContent('Đã giải quyết'));
   expect(screen.getByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
 });
+
+it('shows a not-found page with a way back when the ticket does not exist', async () => {
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => new HttpResponse(null, { status: 404 })));
+  renderAt(ticketA.id);
+  expect(await screen.findByText('Không tìm thấy ticket')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Quay lại hàng đợi/ })).toHaveAttribute('href', '/agent-workspace');
+});
+
+it('shows a forbidden page and keeps the session when the ticket is out of scope', async () => {
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => new HttpResponse(null, { status: 403 })));
+  renderAt(ticketA.id);
+  expect(await screen.findByText('Bạn không có quyền xem ticket này')).toBeInTheDocument();
+  expect(sessionStore.getSnapshot().token).toBe('agent');
+});
+
+it('reloads the ticket when a write finds it gone, and hides the stale copy', async () => {
+  let gone = false;
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => (gone ? new HttpResponse(null, { status: 404 }) : HttpResponse.json(ticketA))),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => { gone = true; return new HttpResponse(null, { status: 404 }); }),
+  );
+  renderAt(ticketA.id);
+  await userEvent.click(await screen.findByRole('button', { name: /Nhận xử lý/ }));
+  expect(await screen.findByText('Không tìm thấy ticket')).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: ticketA.title })).not.toBeInTheDocument();
+});
+
+it('blocks every other status or assignment action while one is in flight', async () => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  let status = TicketStatus.Submitted;
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, status })),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, async () => {
+      await gate;
+      status = TicketStatus.InProgress;
+      return HttpResponse.json({ ...ticketA, status });
+    }),
+  );
+  renderAt(ticketA.id);
+  const selfAssign = await screen.findByRole('button', { name: /Nhận về tôi/ });
+  await userEvent.click(screen.getByRole('button', { name: /Nhận xử lý/ }));
+  await waitFor(() => expect(selfAssign).toBeDisabled());
+  release();
+  await waitFor(() => expect(screen.queryByRole('button', { name: /Nhận về tôi/ })).not.toBeInTheDocument(), { timeout: 5000 });
+});
+
+it('says a closed ticket has no further actions', async () => {
+  renderWorkspace({ ...ticketA, status: TicketStatus.Closed });
+  expect(await screen.findByText(/Ticket đã kết thúc/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Nhận xử lý|Giải quyết|Đóng vé|Mở lại vé|Hủy vé|Nhận về tôi|Hủy phân công/ }))
+    .not.toBeInTheDocument();
+});

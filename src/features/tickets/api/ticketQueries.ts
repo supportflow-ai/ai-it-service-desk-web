@@ -5,6 +5,9 @@ const mine = (version: number) => ['tickets', version, 'mine'] as const;
 const queueAll = (version: number) => ['tickets', version, 'queue'] as const;
 const writes = (version: number, ticketId: string) => ['tickets', version, 'write', ticketId] as const;
 
+/** What a successful write changed, and therefore which cached reads are stale. */
+export type TicketChange = 'state' | 'conversation';
+
 export const ticketKeys = {
   session: (version: number) => ['tickets', version] as const,
   mine,
@@ -15,11 +18,11 @@ export const ticketKeys = {
   timeline: (version: number, id: string) => ['tickets', version, 'timeline', id] as const,
   /** Prefix shared by every write to one ticket, so pending writes can be found per ticket. */
   writes,
-  write: (version: number, ticketId: string, action: string) => [...writes(version, ticketId), action] as const,
+  /** Prefix of the writes that change status or assignment, which must not overlap. */
+  stateWrites: (version: number, ticketId: string) => [...writes(version, ticketId), 'state'] as const,
+  write: (version: number, ticketId: string, change: TicketChange, action: string) =>
+    [...writes(version, ticketId), change, action] as const,
 };
-
-/** What a successful write changed, and therefore which cached reads are stale. */
-export type TicketChange = 'state' | 'conversation';
 
 export const ticketInvalidation = {
   /** A new ticket shows up in the requester's list and the agent queue. */

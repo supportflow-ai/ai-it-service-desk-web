@@ -1,13 +1,16 @@
-import { Col, Result, Row, Space } from 'antd';
+import { Alert, Col, Row, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useLocation, useParams } from 'react-router-dom';
+import { normalizeError } from '@/shared/api/httpError';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
 import { queueReturnPath } from '../lib/agentQueueSearch';
 import { isTicketId } from '../model/ticketId';
+import { isTerminalStatus } from '../model/ticketStatus';
 import { TicketWorkspaceHeader } from '../components/TicketWorkspaceHeader';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
+import { TicketWorkspaceErrorState } from '../components/TicketWorkspaceErrorState';
 import { TicketAssignmentPanel } from '../components/TicketAssignmentPanel';
 import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
 import { TicketTimeline } from '../components/TicketTimeline';
@@ -19,17 +22,22 @@ export function TicketWorkspacePage() {
   const { id } = useParams();
   const location = useLocation();
   const ticket = useTicket(id ?? '');
-
-  if (!isTicketId(id)) return <Result status="404" title="Không tìm thấy ticket" />;
-  if (ticket.isPending) return <PageLoader />;
-  if (!ticket.data) return <ErrorState error={ticket.error} onRetry={() => { void ticket.refetch(); }} />;
+  const backPath = queueReturnPath(location.state);
   const reload = () => { void ticket.refetch(); };
+
+  if (!isTicketId(id)) return <TicketWorkspaceErrorState error={null} backPath={backPath} onRetry={reload} />;
+  if (ticket.isPending) return <PageLoader />;
+  // 403/404 means the ticket is no longer ours to show, even if an older copy is cached.
+  const errorStatus = ticket.error ? normalizeError(ticket.error).status : undefined;
+  if (!ticket.data || errorStatus === 403 || errorStatus === 404) {
+    return <TicketWorkspaceErrorState error={ticket.error} backPath={backPath} onRetry={reload} />;
+  }
 
   return (
     <div style={{ maxWidth: 1380, margin: '0 auto' }}>
       <div style={{ marginBottom: 16 }}>
         {/* Returns to the queue with the filters the agent left it with. */}
-        <Link to={queueReturnPath(location.state)} style={{ fontWeight: 500 }}>
+        <Link to={backPath} style={{ fontWeight: 500 }}>
           <ArrowLeftOutlined /> Quay lại hàng đợi
         </Link>
       </div>
@@ -38,6 +46,15 @@ export function TicketWorkspacePage() {
         <div style={{ marginBottom: 16 }}>
           <ErrorState error={ticket.error} onRetry={reload} />
         </div>
+      )}
+
+      {isTerminalStatus(ticket.data.status) && (
+        <Alert
+          type="info"
+          showIcon
+          message="Ticket đã kết thúc: không còn thao tác chuyển trạng thái hay phân công."
+          style={{ marginBottom: 16 }}
+        />
       )}
 
       <Row gutter={[20, 20]} align="top">

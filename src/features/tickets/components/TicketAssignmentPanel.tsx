@@ -6,6 +6,7 @@ import { assignmentView } from '../model/assignment';
 import { canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
 import { useAssignTicket } from '../hooks/useAssignTicket';
 import { useUnassignTicket } from '../hooks/useUnassignTicket';
+import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
 import { describeTicketError } from '../lib/ticketErrorMessage';
 
 interface TicketAssignmentPanelProps {
@@ -21,7 +22,8 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
   const { user } = useAuth();
   const assignMutation = useAssignTicket(ticket.id);
   const unassignMutation = useUnassignTicket(ticket.id);
-  const isPending = assignMutation.isPending || unassignMutation.isPending;
+  // Also covers status writes from the other panel, so two state changes never overlap.
+  const isPending = useTicketStateWritePending(ticket.id);
   const failedError = assignMutation.isError ? assignMutation.error : unassignMutation.isError ? unassignMutation.error : null;
   const failure = failedError ? describeTicketError(failedError, assignmentMessages) : null;
 

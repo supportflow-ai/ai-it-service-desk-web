@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { sessionStore, useAuth } from '@/features/auth';
-import { AppError } from '@/shared/api/httpError';
+import { AppError, normalizeError } from '@/shared/api/httpError';
 import { invalidateTicketQueries, ticketInvalidation, ticketKeys } from '../api/ticketQueries';
 import type { TicketChange } from '../api/ticketQueries';
 
@@ -14,12 +14,13 @@ interface TicketWriteOptions<TResult, TVariables> {
 /**
  * The one write path for an existing ticket: never retried, a response from an ended
  * session is discarded, and success invalidates exactly the reads the change affects.
+ * A 404 means the ticket is gone or out of scope, so its reads are refreshed to show that.
  */
 export function useTicketWrite<TResult, TVariables = void>({ ticketId, action, write, change }: TicketWriteOptions<TResult, TVariables>) {
   const { sessionVersion } = useAuth();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationKey: ticketKeys.write(sessionVersion, ticketId, action),
+    mutationKey: ticketKeys.write(sessionVersion, ticketId, change, action),
     mutationFn: async (variables: TVariables) => {
       const result = await write(variables);
       if (sessionStore.getSnapshot().version !== sessionVersion) {
@@ -29,5 +30,9 @@ export function useTicketWrite<TResult, TVariables = void>({ ticketId, action, w
     },
     retry: false,
     onSuccess: () => invalidateTicketQueries(queryClient, ticketInvalidation[change](sessionVersion, ticketId)),
+    onError: (error) => {
+      if (normalizeError(error).status !== 404) return;
+      void invalidateTicketQueries(queryClient, ticketInvalidation.state(sessionVersion, ticketId));
+    },
   });
 }
