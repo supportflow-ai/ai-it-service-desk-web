@@ -9,4 +9,5 @@ export { useTickets } from './hooks/useTickets';
 export { useTicket } from './hooks/useTicket';
 export { useCreateTicket } from './hooks/useCreateTicket';
 export { TicketCategory } from './model/ticket.types';
+export { ticketCategoryLabels } from './model/ticketCategories';
 export type { TicketDto, CreateTicketPayload, TicketStatus } from './model/ticket.types';

@@ -3,7 +3,7 @@ import { sessionStore, useAuth } from '@/features/auth';
 import { AppError } from '@/shared/api/httpError';
 import type { CreateTicketPayload } from '../model/ticket.types';
 import { ticketApi } from '../api/ticketApi';
-import { ticketKeys } from '../api/ticketQueries';
+import { invalidateTicketQueries, ticketInvalidation } from '../api/ticketQueries';
 
 export function useCreateTicket() {
   const { sessionVersion } = useAuth();
@@ -16,6 +16,6 @@ export function useCreateTicket() {
       return ticket;
     },
     retry: false,
-    onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ticketKeys.session(sessionVersion) }); },
+    onSuccess: () => invalidateTicketQueries(queryClient, ticketInvalidation.created(sessionVersion)),
   });
 }

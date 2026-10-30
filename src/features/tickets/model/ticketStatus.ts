@@ -12,3 +12,8 @@ export const ticketStatusMeta = {
   [TicketStatus.Assigned]: { label: 'Đã phân công', color: 'blue' },
   [TicketStatus.PendingExternal]: { label: 'Chờ đối tác', color: 'warning' },
 } satisfies Record<TicketStatus, { label: string; color: string }>;
+
+/** Closed and Cancelled end the lifecycle: no transition or assignment command accepts them. */
+export function isTerminalStatus(status: TicketStatus) {
+  return status === TicketStatus.Closed || status === TicketStatus.Cancelled;
+}

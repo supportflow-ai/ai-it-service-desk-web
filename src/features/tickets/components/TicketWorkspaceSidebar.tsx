@@ -1,72 +1,41 @@
+import type { ReactNode } from 'react';
+import { Card, Typography } from 'antd';
 import type { TicketDto } from '../model/ticket.types';
-import { TicketStatusTag } from './TicketStatusTag';
+import { assignmentView } from '../model/assignment';
 import { ticketCategoryLabels } from '../model/ticketCategories';
+import { TicketStatusTag } from './TicketStatusTag';
 
-export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
-  // The backend TicketDto has no priority yet; show nothing rather than a made-up value.
-  const priority = ticket.priority;
-  const priorityClass = priority === 'P1' ? 'pri p1' : priority === 'P2' ? 'pri p2' : 'pri p3';
-  const priorityLabel = priority === 'P1' ? 'P1 — Khẩn' : priority === 'P2' ? 'P2 — Cao' : 'P3 — Trung bình';
+function formatCreatedAt(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
 
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div
-      style={{
-        background: 'var(--sf)',
-        border: '1px solid var(--bd)',
-        borderRadius: 8,
-        padding: 16,
-        fontSize: 13,
-      }}
-    >
-      <div className="mono" style={{ fontWeight: 600, fontSize: 13 }}>
-        {ticket.ticketNumber}
-      </div>
-      <div style={{ marginTop: 8, marginBottom: 16 }}>
-        <TicketStatusTag status={ticket.status} />
-      </div>
+    <>
+      <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>{label}</dt>
+      <dd style={{ margin: 0, color: 'var(--tx)' }}>{children}</dd>
+    </>
+  );
+}
 
+const unavailable = <Typography.Text type="secondary">Chưa có thông tin</Typography.Text>;
+
+/** Only fields the backend TicketDto actually returns are shown as values. */
+export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
+  const assignment = assignmentView(ticket.status);
+  return (
+    <Card title="Thông tin ticket" size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)', fontSize: 13 }}>
       <dl style={{ margin: 0 }}>
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Người yêu cầu</dt>
-        <dd style={{ margin: 0, fontWeight: 500, color: 'var(--tx)' }}>
-          {ticket.requesterName ?? '—'}
-        </dd>
-
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Phòng ban</dt>
-        <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          {ticket.departmentName ?? '—'}
-        </dd>
-
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Danh mục</dt>
-        <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          {ticketCategoryLabels[ticket.categoryId] ?? ticket.categoryId}
-        </dd>
-
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Ưu tiên</dt>
-        <dd style={{ margin: 0 }}>
-          {priority ? <span className={priorityClass}>{priorityLabel}</span> : <span style={{ color: 'var(--tx)' }}>—</span>}
-        </dd>
-
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Phụ trách</dt>
-        <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          {ticket.assignedToName ?? 'Chưa phân công'}
-        </dd>
-
-        <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Tạo lúc</dt>
-        <dd style={{ margin: 0, color: 'var(--tx)' }}>
-          {new Date(ticket.createdAt).toLocaleString('vi-VN', {
-            day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-          })}
-        </dd>
-
-        {ticket.deviceCode && (
-          <>
-            <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Thiết bị</dt>
-            <dd className="mono" style={{ margin: 0, color: 'var(--tx)' }}>
-              {ticket.deviceCode}
-            </dd>
-          </>
-        )}
+        <Field label="Mã ticket"><span className="mono">{ticket.ticketNumber}</span></Field>
+        <Field label="Trạng thái"><TicketStatusTag status={ticket.status} /></Field>
+        <Field label="Danh mục">{ticketCategoryLabels[ticket.categoryId]}</Field>
+        <Field label="Người yêu cầu">{unavailable}</Field>
+        <Field label="Phụ trách">{assignment.known ? assignment.label : unavailable}</Field>
+        <Field label="Tạo lúc">{formatCreatedAt(ticket.createdAt)}</Field>
       </dl>
-    </div>
+    </Card>
   );
 }

@@ -38,10 +38,13 @@ can replace this mechanism later; do not silently switch to another document's w
 
 Pinned to backend `dev` commit `8fe5c43a6832dd22908d8162b94fab6e3bee4735` (PR #31, 2026-10-28),
 source `src/backend/ServiceDesk.Api/Endpoints/TicketEndpoints.cs` and the matching
-`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-302, TC-306 and TC-310.
+`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-291, TC-297, TC-302, TC-306 and TC-310.
 
 | Method/path | Request | Success response | Who may call (use case check) |
 | --- | --- | --- | --- |
+| GET /tickets/queue | page, pageSize (1–100), optional status, category, scope (`unassigned`/`my`) | items, page, pageSize, totalCount; newest first | Agent or Admin |
+| POST /tickets/{id}/assign | agentId (GUID) | TicketDto | Agent or Admin; not Closed/Cancelled; Submitted → Assigned |
+| POST /tickets/{id}/unassign | None | TicketDto | Agent or Admin; not Closed/Cancelled; Assigned → Submitted |
 | POST /tickets/{id}/claim | None | TicketDto | Agent role only; Submitted/Assigned → InProgress |
 | POST /tickets/{id}/resolve | None | TicketDto | Agent or Admin; InProgress → Resolved |
 | POST /tickets/{id}/close | None | TicketDto | Owner or Admin; Resolved → Closed |
@@ -69,10 +72,26 @@ Known backend gaps at this commit, reflected in the UI rather than papered over:
   the UI shows a role label instead of an id. Status transitions are not recorded as
   timeline events.
 - Claim by an Admin-only account is rejected with 401, so the UI hides claim for Admin.
+- Queue scopes are status-based: `unassigned` returns Submitted tickets and `my` returns every
+  InProgress ticket, not only the caller's. The "Của tôi" tab says so. There is no priority
+  field, priority filter or sort parameter, so the priority filter stays locked and the order
+  is fixed to newest first.
+- TicketDto has no assignee id or name and there is no agent directory endpoint. The UI only
+  offers self-assign (agentId = the signed-in Agent's userId) on Submitted tickets and
+  unassign on Assigned tickets, reads "assigned/unassigned" from those two statuses, and keeps
+  "assign to another agent" locked. The server does not validate agentId, any staff member can
+  unassign, Claim does not record an assignee, and no assignment audit event exists. The
+  historical TC-294 policy (team membership, revision, 409) is not implemented.
 
 ## Not enabled
 
-Assignment, the agent queue endpoint and AI HTTP endpoints are not used yet. Their UI remains
+AI HTTP endpoints are not used yet: backend dev 8fe5c43 exposes no triage result or review
+decision endpoint, persists no AIAnalysis/AISuggestion, and its classifier is a NoOp (TC-277
+records "dev integration BLOCKED"). The workspace AI slot (`WorkspaceTriagePanel`, injected by
+the App) therefore shows the not-enabled state. Review decisions (accept, override with a
+required reason, reject) are built against an injected handler and stay locked with a stated
+reason until a review endpoint and a ticket revision exist; `reason` has no backend field yet
+(`AISuggestion.Override` takes only the final value). Their UI remains
 visibly unsupported/disabled. There is no production mock, endpoint probing, guessed `If-Match`,
 self-assignment identity or default ticket revision. AI panels remain available as presentation
 components with async callbacks for a later reviewed integration. Missing revision, stale and
@@ -87,6 +106,13 @@ as retry-safe. A future idempotency change needs stable per-intent keys and dedi
 Read the root AGENTS.md for ownership and agent workflow. App bootstrap injects HTTP config
 and Auth callbacks; Shared never imports App or accesses session storage. Query keys include a
 monotonic session version, never the token. Session transitions cancel and clear private queries.
+Writes to an existing ticket go through `useTicketWrite` (never retried, mutation key
+`['tickets', version, 'write', ticketId, change, action]`; while any `state` write for a ticket
+is pending, every status and assignment control for it is disabled; a 404 reloads the ticket so
+the workspace shows not-found instead of stale data) and invalidate per `ticketInvalidation` in
+`api/ticketQueries.ts`: a status or assignment change refreshes the ticket, its timeline, the
+requester list and the agent queue; a comment or internal note refreshes only the timeline;
+a new ticket refreshes the two lists.
 
 Feature dependency allowlist: tickets → auth; ai-assistance → tickets. External consumers
 use feature-root index.ts. ESLint Boundaries and TypeScript AST/resolved-module graph checks

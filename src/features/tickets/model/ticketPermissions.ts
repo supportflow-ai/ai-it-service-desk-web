@@ -49,3 +49,17 @@ export function canReopenTicket(user: User | null, status: TicketStatus) {
 export function canCancelTicket(user: User | null, status: TicketStatus) {
   return isOwnerOrAdmin(user) && status === TicketStatus.Submitted;
 }
+
+/**
+ * Self-assign only takes a ticket nobody holds (Submitted). An Assigned ticket already has
+ * an assignee the UI cannot see, so taking it over is not offered. Admin-only accounts are
+ * excluded because they could not claim the ticket afterwards.
+ */
+export function canSelfAssignTicket(user: User | null, status: TicketStatus) {
+  return !!user && hasAnyRole(user.roles, ['Agent']) && status === TicketStatus.Submitted;
+}
+
+/** UnassignTicketUseCase accepts any Agent or Admin; Assigned is the only status known to have an assignee. */
+export function canUnassignTicket(user: User | null, status: TicketStatus) {
+  return isStaff(user) && status === TicketStatus.Assigned;
+}

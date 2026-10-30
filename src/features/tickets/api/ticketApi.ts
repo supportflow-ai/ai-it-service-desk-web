@@ -4,6 +4,7 @@ import type { PresignedUploadOptions } from '@/shared/api/uploadClient';
 import type {
   AddCommentPayload,
   AddInternalNotePayload,
+  AgentQueueFilters,
   CreateTicketPayload,
   GenerateUploadUrlPayload,
 } from '../model/ticket.types';
@@ -16,10 +17,24 @@ import {
   readUploadUrlResult,
 } from './ticketContract';
 
+function agentQueueParams({ scope, status, category, page, pageSize }: AgentQueueFilters) {
+  return {
+    page,
+    pageSize,
+    ...(scope === 'all' ? {} : { scope }),
+    ...(status === null ? {} : { status }),
+    ...(category === null ? {} : { category }),
+  };
+}
+
 /** Only endpoints implemented at the pinned backend baseline are callable. */
 export const ticketApi = {
   async getMyTickets(page = 1, pageSize = 10, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>('/tickets/me', { params: { page, pageSize }, signal });
+    return readTicketPage(response.data);
+  },
+  async getAgentQueue(filters: AgentQueueFilters, signal?: AbortSignal) {
+    const response = await apiClient.get<unknown>('/tickets/queue', { params: agentQueueParams(filters), signal });
     return readTicketPage(response.data);
   },
   async getTicketById(id: string, signal?: AbortSignal) {
@@ -28,6 +43,14 @@ export const ticketApi = {
   },
   async createTicket(payload: CreateTicketPayload) {
     const response = await apiClient.post<unknown>('/tickets', payload);
+    return readTicket(response.data);
+  },
+  async assignTicket(ticketId: string, agentId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/assign`, { agentId });
+    return readTicket(response.data);
+  },
+  async unassignTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/unassign`);
     return readTicket(response.data);
   },
   async claimTicket(ticketId: string) {

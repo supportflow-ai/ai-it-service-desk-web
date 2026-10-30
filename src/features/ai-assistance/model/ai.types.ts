@@ -89,5 +89,7 @@ export interface SuggestionDto {
 export interface SuggestionDecisionRequest {
   decision: 'Accepted' | 'Overridden' | 'Rejected';
   finalValue?: string;
+  /** Why the agent overrode the suggestion. AISuggestion.Override has no reason field yet. */
+  reason?: string;
   ticketRevision: number;
 }

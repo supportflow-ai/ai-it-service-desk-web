@@ -15,6 +15,7 @@ import { useClaimTicket } from '../hooks/useClaimTicket';
 import { useCloseTicket } from '../hooks/useCloseTicket';
 import { useReopenTicket } from '../hooks/useReopenTicket';
 import { useResolveTicket } from '../hooks/useResolveTicket';
+import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
 import { describeTicketError } from '../lib/ticketErrorMessage';
 import { TicketResolveDialog } from './TicketResolveDialog';
 
@@ -38,7 +39,8 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   const cancelMutation = useCancelTicket(ticket.id);
   const mutations = [claimMutation, resolveMutation, closeMutation, reopenMutation, cancelMutation];
 
-  const isPending = mutations.some((mutation) => mutation.isPending);
+  // Also covers assignment writes from the other panel, so two state changes never overlap.
+  const isPending = useTicketStateWritePending(ticket.id);
   const failed = mutations.find((mutation) => mutation.isError);
   const failure = failed ? describeTicketError(failed.error, transitionMessages) : null;
 

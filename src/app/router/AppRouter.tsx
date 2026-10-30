@@ -16,6 +16,7 @@ const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) 
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
 const TicketWorkspacePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketWorkspacePage })));
 const AgentQueuePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.AgentQueuePage })));
+const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceTriagePanel })));
 
 export function AppRouter() {
   const protectedPages = [
@@ -24,7 +25,13 @@ export function AppRouter() {
     { ...routes.ticket, element: <TicketDetailPage /> },
     { ...routes.create, element: <CreateTicketPage /> },
     { ...routes.workspace, element: <AgentQueuePage /> },
-    { ...routes.workspaceTicket, element: <TicketWorkspacePage /> },
+    {
+      ...routes.workspaceTicket,
+      // The workspace hosts the AI panel without depending on the ai-assistance feature.
+      element: <TicketWorkspacePage aiPanel={({ ticket, reload }) => (
+        <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} onTicketChanged={reload} /></Suspense>
+      )} />,
+    },
     { ...routes.admin, element: <UnavailablePage title="Admin Panel" /> },
   ];
   return (

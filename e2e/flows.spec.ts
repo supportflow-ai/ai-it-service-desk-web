@@ -73,8 +73,9 @@ for (const [role, path, allowed] of [
     await page.addInitScript(() => localStorage.setItem('token', 'restored'));
     await page.goto(path);
     await expect(page).toHaveURL(allowed ? path : '/403');
-    if (allowed) await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
-    else await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
+    if (!allowed) await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
+    else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
+    else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });
 }
 
@@ -89,5 +90,7 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
   await expect(page.getByRole('button', { name: /Nhận xử lý/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Gửi bình luận', exact: true })).toBeDisabled();
   await expect(page.getByText('Ticket được tạo mới')).toHaveCount(0);
+  await expect(page.getByText('Gợi ý AI chưa được bật cho ticket này.')).toBeVisible();
+  await expect(page.getByText(/92%/)).toHaveCount(0);
   expect(api.requests).toEqual(['GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, `GET /api/tickets/${ticketA.id}/timeline`]);
 });

@@ -26,15 +26,13 @@ export enum TicketStatus {
   PendingExternal = 9,
 }
 
-export type TicketPriority = 'P1' | 'P2' | 'P3' | 'P4';
-
 export interface CreateTicketPayload {
   title: string;
   categoryId: TicketCategory;
   description: string;
 }
 
-/** The pinned wire DTO already suits the UI, with optional display fields for richer workspace views */
+/** The pinned backend TicketDto; the UI never adds fields the server does not send. */
 export interface TicketDto {
   id: string;
   ticketNumber: string;
@@ -44,16 +42,6 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
-  // Optional metadata fields for workspace and queue displays
-  priority?: TicketPriority;
-  requesterName?: string;
-  departmentName?: string;
-  assignedToName?: string;
-  slaText?: string;
-  slaStatus?: 'ok' | 'warning' | 'danger';
-  updatedAt?: string;
-  deviceCode?: string;
-  revision?: number;
 }
 
 export interface PagedTicketResult {
@@ -61,6 +49,17 @@ export interface PagedTicketResult {
   page: number;
   pageSize: number;
   totalCount: number;
+}
+
+/** `all` is sent as no scope; the backend only knows `unassigned` and `my`. */
+export type AgentQueueScope = 'unassigned' | 'my' | 'all';
+
+export interface AgentQueueFilters {
+  scope: AgentQueueScope;
+  status: TicketStatus | null;
+  category: TicketCategory | null;
+  page: number;
+  pageSize: number;
 }
 
 export interface TimelineItemDto {
