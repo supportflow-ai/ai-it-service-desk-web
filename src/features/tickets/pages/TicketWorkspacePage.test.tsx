@@ -9,10 +9,10 @@ import { sessionStore } from '@/features/auth';
 import { TicketWorkspacePage } from './TicketWorkspacePage';
 
 it('renders workspace with real ticket data and dynamic timeline', async () => {
-  sessionStore.setToken('admin');
+  sessionStore.setToken('agent');
   const requests: string[] = [];
   server.use(
-    http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Admin'] })),
+    http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Agent'] })),
     http.get(`http://localhost/api/tickets/${ticketA.id}`, ({ request }) => {
       requests.push(new URL(request.url).pathname);
       return HttpResponse.json(ticketA);

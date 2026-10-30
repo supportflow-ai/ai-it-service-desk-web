@@ -34,14 +34,49 @@ MSW response fixtures are handwritten checks against this baseline, not generate
 Keep the source SHA with any coordinated contract update. An approved, versioned OpenAPI
 can replace this mechanism later; do not silently switch to another document's wire shape.
 
+## Sprint 2 ticket collaboration endpoints
+
+Pinned to backend `dev` commit `8fe5c43a6832dd22908d8162b94fab6e3bee4735` (PR #31, 2026-10-28),
+source `src/backend/ServiceDesk.Api/Endpoints/TicketEndpoints.cs` and the matching
+`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-302, TC-306 and TC-310.
+
+| Method/path | Request | Success response | Who may call (use case check) |
+| --- | --- | --- | --- |
+| POST /tickets/{id}/claim | None | TicketDto | Agent role only; Submitted/Assigned → InProgress |
+| POST /tickets/{id}/resolve | None | TicketDto | Agent or Admin; InProgress → Resolved |
+| POST /tickets/{id}/close | None | TicketDto | Owner or Admin; Resolved → Closed |
+| POST /tickets/{id}/reopen | None | TicketDto | Owner or Admin; Resolved → InProgress |
+| POST /tickets/{id}/cancel | None | TicketDto | Owner or Admin; Submitted → Cancelled |
+| GET /tickets/{id}/timeline | None | TimelineItemDto[] | All three roles; internal notes only for Agent/Admin |
+| POST /tickets/{id}/comments | content (2–4000 chars) | TimelineItemDto, 201 | All three roles |
+| POST /tickets/{id}/internal-notes | content (2–4000 chars) | TimelineItemDto, 201 | Agent or Admin |
+| POST /tickets/{id}/attachments/upload-url | fileName, fileSizeBytes, contentType | uploadUrl, storageKey, expirySeconds | All three roles; PDF/PNG/JPG/DOCX/TXT/ZIP, ≤ 10 MB |
+| GET /tickets/{id}/attachments/download-url | storageKey query | downloadUrl | All three roles |
+
+TimelineItemDto contains id, ticketId, authorId, authorName, authorRole, content, isInternal
+and createdAt. Presigned URLs must be absolute http(s); uploads go straight to storage with
+a separate HTTP client so the API bearer token is never sent there.
+
+Rejected lifecycle transitions return 400, permission failures 401/403 and out-of-scope
+tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
+TicketDto has no requester id, so close/reopen/cancel are shown only to Admin and to Requester
+accounts without a staff role, whose ticket reads the server scopes to their own tickets.
+
+Known backend gaps at this commit, reflected in the UI rather than papered over:
+- No attachment list/metadata endpoint: the UI lists only files uploaded in the current
+  session and says so.
+- Timeline entries are kept in memory on the server and carry the user id as `authorName`;
+  the UI shows a role label instead of an id. Status transitions are not recorded as
+  timeline events.
+- Claim by an Admin-only account is rejected with 401, so the UI hides claim for Admin.
+
 ## Not enabled
 
-Timeline, comments/internal notes, assignment, lifecycle commands, attachments and AI HTTP
-endpoints are not confirmed in this baseline. Their UI remains visibly unsupported/disabled.
-There is no production mock, endpoint probing, guessed `If-Match`, self-assignment identity
-or default ticket revision. AI panels remain available as presentation components with async
-callbacks for a later reviewed integration. Missing revision, stale and manual-only suggestions
-cannot be applied.
+Assignment, the agent queue endpoint and AI HTTP endpoints are not used yet. Their UI remains
+visibly unsupported/disabled. There is no production mock, endpoint probing, guessed `If-Match`,
+self-assignment identity or default ticket revision. AI panels remain available as presentation
+components with async callbacks for a later reviewed integration. Missing revision, stale and
+manual-only suggestions cannot be applied.
 
 The existing create endpoint supports optional Idempotency-Key, but this refactor preserves
 the existing request behavior and disables automatic write retries. Create is not advertised

@@ -8,11 +8,12 @@ interface ApiFixture {
   tickets: typeof ticketA[];
   requests: string[];
   createdPayload: unknown;
+  presign: { uploadUrl: string; storageKey: string; expirySeconds: number } | null;
 }
 
 export const test = base.extend<{ api: ApiFixture }>({
   api: async ({ page }, provide) => {
-    const api: ApiFixture = { roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null };
+    const api: ApiFixture = { roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null, presign: null };
     const unexpected: string[] = [];
     await page.route('**/api/**', async (route) => {
       const request = route.request();
@@ -72,6 +73,13 @@ export const test = base.extend<{ api: ApiFixture }>({
             createdAt: new Date().toISOString(),
           },
         });
+      }
+      const uploadTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/attachments/upload-url`);
+      if (uploadTicket && api.presign) return route.fulfill({ status: 200, json: api.presign });
+      const downloadTicket = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}/attachments/download-url`);
+      if (downloadTicket && api.presign) {
+        const storageKey = url.searchParams.get('storageKey') ?? '';
+        return route.fulfill({ status: 200, json: { downloadUrl: `${new URL(api.presign.uploadUrl).origin}/servicedesk/${storageKey}?signed=1` } });
       }
       unexpected.push(key);
       return route.fulfill({ status: 501 });
