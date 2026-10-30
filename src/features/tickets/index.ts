@@ -10,11 +10,6 @@ export { useTickets } from './hooks/useTickets';
 export { useTicket } from './hooks/useTicket';
 export { useCreateTicket } from './hooks/useCreateTicket';
 export { useUploadAttachment } from './hooks/useUploadAttachment';
-export { useClaimTicket } from './hooks/useClaimTicket';
-export { useResolveTicket } from './hooks/useResolveTicket';
-export { useCloseTicket } from './hooks/useCloseTicket';
-export { useReopenTicket } from './hooks/useReopenTicket';
-export { useCancelTicket } from './hooks/useCancelTicket';
 export { TicketCategory } from './model/ticket.types';
 export type {
   CreateTicketPayload,

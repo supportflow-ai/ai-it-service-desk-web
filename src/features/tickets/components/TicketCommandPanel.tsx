@@ -1,61 +1,61 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Popconfirm, Space } from 'antd';
-import { CheckOutlined, CloseOutlined, RollbackOutlined, UserAddOutlined } from '@ant-design/icons';
-import type { useTicketCommands } from '../hooks/useTicketCommands';
+import { Alert, Button, Card, Popconfirm, Space, Typography } from 'antd';
+import { CheckOutlined, CloseOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
+import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
 import {
+  canCancelTicket,
   canClaimTicket,
   canCloseTicket,
   canReopenTicket,
   canResolveTicket,
 } from '../model/ticketPermissions';
+import { useCancelTicket } from '../hooks/useCancelTicket';
 import { useClaimTicket } from '../hooks/useClaimTicket';
 import { useCloseTicket } from '../hooks/useCloseTicket';
 import { useReopenTicket } from '../hooks/useReopenTicket';
 import { useResolveTicket } from '../hooks/useResolveTicket';
+import { describeTicketError } from '../lib/ticketErrorMessage';
 import { TicketResolveDialog } from './TicketResolveDialog';
 
 interface TicketCommandPanelProps {
   ticket: TicketDto;
-  commands: ReturnType<typeof useTicketCommands>;
+  onReload: () => void;
 }
 
-export function TicketCommandPanel({ ticket, commands }: TicketCommandPanelProps) {
+const transitionMessages = {
+  400: 'Không thể chuyển trạng thái: ticket có thể đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
+};
+
+export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps) {
+  const { user } = useAuth();
   const [resolveOpen, setResolveOpen] = useState(false);
 
   const claimMutation = useClaimTicket(ticket.id);
   const resolveMutation = useResolveTicket(ticket.id);
   const closeMutation = useCloseTicket(ticket.id);
   const reopenMutation = useReopenTicket(ticket.id);
+  const cancelMutation = useCancelTicket(ticket.id);
+  const mutations = [claimMutation, resolveMutation, closeMutation, reopenMutation, cancelMutation];
 
-  const isPending =
-    claimMutation.isPending ||
-    resolveMutation.isPending ||
-    closeMutation.isPending ||
-    reopenMutation.isPending;
+  const isPending = mutations.some((mutation) => mutation.isPending);
+  const failed = mutations.find((mutation) => mutation.isError);
+  const failure = failed ? describeTicketError(failed.error, transitionMessages) : null;
 
-  const error =
-    claimMutation.error ||
-    resolveMutation.error ||
-    closeMutation.error ||
-    reopenMutation.error;
-
-  const handleClaim = async () => {
-    await claimMutation.mutateAsync();
+  // Only the latest command's outcome is shown, so earlier errors are cleared first.
+  const run = (target: typeof claimMutation, onSettled?: () => void) => {
+    for (const mutation of mutations) if (mutation !== target) mutation.reset();
+    target.mutate(undefined, onSettled ? { onSettled } : undefined);
   };
 
-  const handleResolve = async () => {
-    await resolveMutation.mutateAsync();
-    setResolveOpen(false);
+  const allowed = {
+    claim: canClaimTicket(user, ticket.status),
+    resolve: canResolveTicket(user, ticket.status),
+    close: canCloseTicket(user, ticket.status),
+    reopen: canReopenTicket(user, ticket.status),
+    cancel: canCancelTicket(user, ticket.status),
   };
-
-  const handleClose = async () => {
-    await closeMutation.mutateAsync();
-  };
-
-  const handleReopen = async () => {
-    await reopenMutation.mutateAsync();
-  };
+  const hasAction = Object.values(allowed).some(Boolean);
 
   return (
     <Card
@@ -63,53 +63,60 @@ export function TicketCommandPanel({ ticket, commands }: TicketCommandPanelProps
       data-ticket-id={ticket.id}
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
-      {error && (
+      {failure && (
         <Alert
           type="error"
           showIcon
-          message="Thao tác chuyển trạng thái thất bại. Vui lòng thử lại."
+          message={failure.message}
+          action={failure.reloadable ? <Button size="small" onClick={onReload}>Tải lại</Button> : undefined}
           style={{ marginBottom: 12 }}
         />
       )}
 
+      {!hasAction && (
+        <Typography.Text type="secondary">
+          Không có thao tác nào khả dụng với trạng thái hiện tại và vai trò của bạn.
+        </Typography.Text>
+      )}
+
       <Space wrap>
-        {canClaimTicket(ticket.status) && (
+        {allowed.claim && (
           <Button
             type="primary"
             icon={<UserAddOutlined />}
             loading={claimMutation.isPending}
-            disabled={!commands.eligible || isPending}
-            onClick={handleClaim}
+            disabled={isPending}
+            onClick={() => run(claimMutation)}
             style={{ borderRadius: 6 }}
           >
             Nhận xử lý
           </Button>
         )}
 
-        {canResolveTicket(ticket.status) && (
+        {allowed.resolve && (
           <Button
             type="primary"
             icon={<CheckOutlined />}
             loading={resolveMutation.isPending}
-            disabled={!commands.eligible || isPending}
+            disabled={isPending}
             onClick={() => setResolveOpen(true)}
-            style={{ borderRadius: 6, background: '#0F766E', borderColor: '#0F766E' }}
+            style={{ borderRadius: 6, background: 'var(--ok)', borderColor: 'var(--ok)' }}
           >
             Giải quyết
           </Button>
         )}
 
-        {canCloseTicket(ticket.status) && (
+        {allowed.close && (
           <Popconfirm
             title="Đóng yêu cầu này?"
             description="Bạn có chắc chắn muốn đóng hoàn tất yêu cầu này?"
-            onConfirm={handleClose}
-            okText="Đóng vé"
-            cancelText="Hủy"
+            onConfirm={() => run(closeMutation)}
+            okText="Xác nhận đóng"
+            cancelText="Không"
           >
             <Button
               loading={closeMutation.isPending}
-              disabled={!commands.eligible || isPending}
+              disabled={isPending}
               icon={<CloseOutlined />}
               style={{ borderRadius: 6 }}
             >
@@ -118,23 +125,44 @@ export function TicketCommandPanel({ ticket, commands }: TicketCommandPanelProps
           </Popconfirm>
         )}
 
-        {canReopenTicket(ticket.status) && (
+        {allowed.reopen && (
           <Button
             loading={reopenMutation.isPending}
-            disabled={!commands.eligible || isPending}
+            disabled={isPending}
             icon={<RollbackOutlined />}
-            onClick={handleReopen}
+            onClick={() => run(reopenMutation)}
             style={{ borderRadius: 6 }}
           >
             Mở lại vé
           </Button>
+        )}
+
+        {allowed.cancel && (
+          <Popconfirm
+            title="Hủy yêu cầu này?"
+            description="Yêu cầu đã hủy sẽ không được xử lý tiếp."
+            onConfirm={() => run(cancelMutation)}
+            okText="Xác nhận hủy"
+            cancelText="Không"
+          >
+            <Button
+              danger
+              loading={cancelMutation.isPending}
+              disabled={isPending}
+              icon={<StopOutlined />}
+              style={{ borderRadius: 6 }}
+            >
+              Hủy vé
+            </Button>
+          </Popconfirm>
         )}
       </Space>
 
       <TicketResolveDialog
         open={resolveOpen}
         onClose={() => setResolveOpen(false)}
-        onConfirm={handleResolve}
+        // Closing on failure too keeps the error alert in the panel visible.
+        onConfirm={() => run(resolveMutation, () => setResolveOpen(false))}
         loading={resolveMutation.isPending}
       />
     </Card>

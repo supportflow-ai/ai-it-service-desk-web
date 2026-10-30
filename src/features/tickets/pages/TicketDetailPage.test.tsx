@@ -35,6 +35,7 @@ it('lets the requester read the public timeline, but never internal notes or the
   expect(await screen.findByText(timelineItemA.content)).toBeInTheDocument();
   expect(screen.queryByText(leakedNote.content)).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Ghi chú nội bộ' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Hủy vé/ })).toBeInTheDocument();
 });
 
 it('validates the comment length, sends a trimmed comment and refreshes the timeline', async () => {

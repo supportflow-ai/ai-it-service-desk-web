@@ -4,7 +4,6 @@ import { Link, useParams } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
-import { useTicketCommands } from '../hooks/useTicketCommands';
 import { isTicketId } from '../model/ticketId';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
 import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
@@ -18,11 +17,11 @@ const { Title, Paragraph } = Typography;
 export function TicketWorkspacePage() {
   const { id } = useParams();
   const ticket = useTicket(id ?? '');
-  const commands = useTicketCommands(id ?? '');
 
   if (!isTicketId(id)) return <Result status="404" title="Không tìm thấy ticket" />;
   if (ticket.isPending) return <PageLoader />;
   if (!ticket.data) return <ErrorState error={ticket.error} onRetry={() => { void ticket.refetch(); }} />;
+  const reload = () => { void ticket.refetch(); };
 
   return (
     <div style={{ maxWidth: 1380, margin: '0 auto' }}>
@@ -36,7 +35,7 @@ export function TicketWorkspacePage() {
 
       {ticket.error && (
         <div style={{ marginBottom: 16 }}>
-          <ErrorState error={ticket.error} onRetry={() => { void ticket.refetch(); }} />
+          <ErrorState error={ticket.error} onRetry={reload} />
         </div>
       )}
 
@@ -65,7 +64,7 @@ export function TicketWorkspacePage() {
               </Paragraph>
             </Card>
 
-            <TicketCommandPanel ticket={ticket.data} commands={commands} />
+            <TicketCommandPanel ticket={ticket.data} onReload={reload} />
 
             <TicketAttachmentSection ticketId={ticket.data.id} />
 
