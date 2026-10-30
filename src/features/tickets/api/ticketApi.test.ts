@@ -33,3 +33,16 @@ it('rejects malformed ticket payloads', async () => {
   server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, status: 99 })));
   await expect(ticketApi.getTicketById(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
 });
+it('sends agent queue filters and omits the ones that are not set', async () => {
+  const seen: Record<string, string>[] = [];
+  server.use(http.get('http://localhost/api/tickets/queue', ({ request }) => {
+    seen.push(Object.fromEntries(new URL(request.url).searchParams));
+    return HttpResponse.json({ items: [ticketA], page: 1, pageSize: 10, totalCount: 1 });
+  }));
+  await ticketApi.getAgentQueue({ scope: 'unassigned', status: TicketStatus.Submitted, category: 'NET', page: 2, pageSize: 20 });
+  await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, page: 1, pageSize: 10 });
+  expect(seen).toEqual([
+    { page: '2', pageSize: '20', scope: 'unassigned', status: '1', category: 'NET' },
+    { page: '1', pageSize: '10' },
+  ]);
+});

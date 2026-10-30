@@ -32,6 +32,11 @@ export const test = base.extend<{ api: ApiFixture }>({
         const pageSize = Number(url.searchParams.get('pageSize'));
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
+      if (key === 'GET /api/tickets/queue') {
+        const pageNumber = Number(url.searchParams.get('page'));
+        const pageSize = Number(url.searchParams.get('pageSize'));
+        return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
+      }
       if (key === 'POST /api/tickets') {
         api.createdPayload = request.postDataJSON();
         return route.fulfill({ status: 201, json: ticketA });

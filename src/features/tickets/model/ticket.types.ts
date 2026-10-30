@@ -63,6 +63,17 @@ export interface PagedTicketResult {
   totalCount: number;
 }
 
+/** `all` is sent as no scope; the backend only knows `unassigned` and `my`. */
+export type AgentQueueScope = 'unassigned' | 'my' | 'all';
+
+export interface AgentQueueFilters {
+  scope: AgentQueueScope;
+  status: TicketStatus | null;
+  category: TicketCategory | null;
+  page: number;
+  pageSize: number;
+}
+
 export interface TimelineItemDto {
   id: string;
   ticketId: string;

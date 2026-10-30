@@ -73,8 +73,9 @@ for (const [role, path, allowed] of [
     await page.addInitScript(() => localStorage.setItem('token', 'restored'));
     await page.goto(path);
     await expect(page).toHaveURL(allowed ? path : '/403');
-    if (allowed) await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
-    else await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
+    if (!allowed) await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
+    else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
+    else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });
 }
 

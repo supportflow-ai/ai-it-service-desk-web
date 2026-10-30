@@ -38,10 +38,11 @@ can replace this mechanism later; do not silently switch to another document's w
 
 Pinned to backend `dev` commit `8fe5c43a6832dd22908d8162b94fab6e3bee4735` (PR #31, 2026-10-28),
 source `src/backend/ServiceDesk.Api/Endpoints/TicketEndpoints.cs` and the matching
-`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-302, TC-306 and TC-310.
+`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-291, TC-302, TC-306 and TC-310.
 
 | Method/path | Request | Success response | Who may call (use case check) |
 | --- | --- | --- | --- |
+| GET /tickets/queue | page, pageSize (1–100), optional status, category, scope (`unassigned`/`my`) | items, page, pageSize, totalCount; newest first | Agent or Admin |
 | POST /tickets/{id}/claim | None | TicketDto | Agent role only; Submitted/Assigned → InProgress |
 | POST /tickets/{id}/resolve | None | TicketDto | Agent or Admin; InProgress → Resolved |
 | POST /tickets/{id}/close | None | TicketDto | Owner or Admin; Resolved → Closed |
@@ -69,10 +70,14 @@ Known backend gaps at this commit, reflected in the UI rather than papered over:
   the UI shows a role label instead of an id. Status transitions are not recorded as
   timeline events.
 - Claim by an Admin-only account is rejected with 401, so the UI hides claim for Admin.
+- Queue scopes are status-based: `unassigned` returns Submitted tickets and `my` returns every
+  InProgress ticket, not only the caller's. The "Của tôi" tab says so. There is no priority
+  field, priority filter or sort parameter, so the priority filter stays locked and the order
+  is fixed to newest first.
 
 ## Not enabled
 
-Assignment, the agent queue endpoint and AI HTTP endpoints are not used yet. Their UI remains
+Assignment and AI HTTP endpoints are not used yet. Their UI remains
 visibly unsupported/disabled. There is no production mock, endpoint probing, guessed `If-Match`,
 self-assignment identity or default ticket revision. AI panels remain available as presentation
 components with async callbacks for a later reviewed integration. Missing revision, stale and
