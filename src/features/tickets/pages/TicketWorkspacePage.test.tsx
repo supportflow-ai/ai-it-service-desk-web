@@ -1,4 +1,5 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, expect, it } from 'vitest';
@@ -11,6 +12,16 @@ import { TicketWorkspacePage } from './TicketWorkspacePage';
 
 let requests: string[] = [];
 
+function renderAt(ticketId: string) {
+  const { Wrapper } = createTestWrapper();
+  render(
+    <MemoryRouter initialEntries={[`/agent-workspace/tickets/${ticketId}`]}>
+      <Routes><Route path="/agent-workspace/tickets/:id" element={<TicketWorkspacePage />} /></Routes>
+    </MemoryRouter>,
+    { wrapper: Wrapper },
+  );
+}
+
 function renderWorkspace(ticket: typeof ticketA = ticketA) {
   server.use(
     http.get(`http://localhost/api/tickets/${ticket.id}`, ({ request }) => {
@@ -22,13 +33,7 @@ function renderWorkspace(ticket: typeof ticketA = ticketA) {
       return HttpResponse.json([timelineItemA]);
     }),
   );
-  const { Wrapper } = createTestWrapper();
-  render(
-    <MemoryRouter initialEntries={[`/agent-workspace/tickets/${ticket.id}`]}>
-      <Routes><Route path="/agent-workspace/tickets/:id" element={<TicketWorkspacePage />} /></Routes>
-    </MemoryRouter>,
-    { wrapper: Wrapper },
-  );
+  renderAt(ticket.id);
 }
 
 function sidebarField(label: string) {
@@ -76,4 +81,41 @@ it('does not guess the assignee of an in-progress ticket', async () => {
   renderWorkspace({ ...ticketA, status: TicketStatus.InProgress });
   await screen.findByRole('heading', { name: ticketA.title });
   expect(sidebarField('Phụ trách')).toHaveTextContent('Chưa có thông tin');
+});
+
+it('runs the whole agent flow on one screen: self-assign, claim, comment, resolve', async () => {
+  let status = TicketStatus.Submitted;
+  const timeline: (typeof timelineItemA)[] = [];
+  const current = () => HttpResponse.json({ ...ticketA, status });
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, current),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json(timeline)),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/assign`, () => { status = TicketStatus.Assigned; return current(); }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => { status = TicketStatus.InProgress; return current(); }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/resolve`, () => { status = TicketStatus.Resolved; return current(); }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/comments`, async ({ request }) => {
+      const body = await request.json();
+      const content = typeof body === 'object' && body !== null && 'content' in body ? String(body.content) : '';
+      const item = { ...timelineItemA, id: `20000000-0000-0000-0000-00000000000${timeline.length + 2}`, content };
+      timeline.push(item);
+      return HttpResponse.json(item, { status: 201 });
+    }),
+  );
+  renderAt(ticketA.id);
+
+  await userEvent.click(await screen.findByRole('button', { name: /Nhận về tôi/ }));
+  await waitFor(() => expect(sidebarField('Phụ trách')).toHaveTextContent('Đã phân công'));
+
+  await userEvent.click(screen.getByRole('button', { name: /Nhận xử lý/ }));
+  expect(await screen.findByRole('button', { name: /Giải quyết/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Nhận về tôi/ })).not.toBeInTheDocument();
+
+  await userEvent.type(screen.getByRole('textbox', { name: 'Nội dung bình luận' }), 'Đã kiểm tra cấu hình VPN');
+  await userEvent.click(screen.getByRole('button', { name: 'Gửi bình luận' }));
+  expect(await screen.findByText('Đã kiểm tra cấu hình VPN')).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('button', { name: /Giải quyết/ }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận giải quyết' }));
+  await waitFor(() => expect(sidebarField('Trạng thái')).toHaveTextContent('Đã giải quyết'));
+  expect(screen.getByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
 });

@@ -100,6 +100,11 @@ as retry-safe. A future idempotency change needs stable per-intent keys and dedi
 Read the root AGENTS.md for ownership and agent workflow. App bootstrap injects HTTP config
 and Auth callbacks; Shared never imports App or accesses session storage. Query keys include a
 monotonic session version, never the token. Session transitions cancel and clear private queries.
+Writes to an existing ticket go through `useTicketWrite` (never retried, mutation key
+`['tickets', version, 'write', ticketId, action]`) and invalidate per `ticketInvalidation` in
+`api/ticketQueries.ts`: a status or assignment change refreshes the ticket, its timeline, the
+requester list and the agent queue; a comment or internal note refreshes only the timeline;
+a new ticket refreshes the two lists.
 
 Feature dependency allowlist: tickets → auth; ai-assistance → tickets. External consumers
 use feature-root index.ts. ESLint Boundaries and TypeScript AST/resolved-module graph checks
