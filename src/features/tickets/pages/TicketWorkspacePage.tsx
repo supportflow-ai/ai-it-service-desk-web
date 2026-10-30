@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Alert, Col, Row, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useLocation, useParams } from 'react-router-dom';
@@ -8,17 +9,22 @@ import { useTicket } from '../hooks/useTicket';
 import { queueReturnPath } from '../lib/agentQueueSearch';
 import { isTicketId } from '../model/ticketId';
 import { isTerminalStatus } from '../model/ticketStatus';
+import type { TicketDto } from '../model/ticket.types';
 import { TicketWorkspaceHeader } from '../components/TicketWorkspaceHeader';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
 import { TicketWorkspaceErrorState } from '../components/TicketWorkspaceErrorState';
 import { TicketAssignmentPanel } from '../components/TicketAssignmentPanel';
-import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
 import { TicketTimeline } from '../components/TicketTimeline';
 import { TicketCommentComposer } from '../components/TicketCommentComposer';
 import { TicketCommandPanel } from '../components/TicketCommandPanel';
 import { TicketAttachmentSection } from '../components/TicketAttachmentSection';
 
-export function TicketWorkspacePage() {
+interface TicketWorkspacePageProps {
+  /** Composed by the App: tickets must not depend on ai-assistance, so the AI panel is injected. */
+  aiPanel?: (context: { ticket: TicketDto }) => ReactNode;
+}
+
+export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) {
   const { id } = useParams();
   const location = useLocation();
   const ticket = useTicket(id ?? '');
@@ -77,9 +83,11 @@ export function TicketWorkspacePage() {
           </Space>
         </Col>
 
-        <Col xs={24} xl={6}>
-          <TicketWorkspaceAI />
-        </Col>
+        {aiPanel && (
+          <Col xs={24} xl={6}>
+            {aiPanel({ ticket: ticket.data })}
+          </Col>
+        )}
       </Row>
     </div>
   );

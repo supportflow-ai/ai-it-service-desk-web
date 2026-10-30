@@ -85,7 +85,10 @@ Known backend gaps at this commit, reflected in the UI rather than papered over:
 
 ## Not enabled
 
-AI HTTP endpoints are not used yet. Their UI remains
+AI HTTP endpoints are not used yet: backend dev 8fe5c43 exposes no triage result or review
+decision endpoint, persists no AIAnalysis/AISuggestion, and its classifier is a NoOp (TC-277
+records "dev integration BLOCKED"). The workspace AI slot (`WorkspaceTriagePanel`, injected by
+the App) therefore shows the not-enabled state. Their UI remains
 visibly unsupported/disabled. There is no production mock, endpoint probing, guessed `If-Match`,
 self-assignment identity or default ticket revision. AI panels remain available as presentation
 components with async callbacks for a later reviewed integration. Missing revision, stale and

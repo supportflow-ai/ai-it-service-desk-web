@@ -65,3 +65,43 @@ it('shows the existing final value separately and never enables terminal suggest
   expect(screen.getByText('Final:')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Accept' })).toBeDisabled();
 });
+
+it('says when AI is not enabled for the ticket, and that manual work continues', () => {
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={null} ticketRevision={null} />, { wrapper: Wrapper });
+  expect(screen.getByText('Gợi ý AI chưa được bật cho ticket này.')).toBeInTheDocument();
+  expect(screen.getByText(/xử lý thủ công như bình thường/)).toBeInTheDocument();
+});
+
+it.each([
+  ['Unavailable', 'Dịch vụ AI tạm thời không khả dụng.'],
+  ['Timeout', 'AI phản hồi quá thời gian cho phép.'],
+  ['InvalidResponse', 'Kết quả AI không hợp lệ nên đã bị loại.'],
+  ['ValidationFailed', 'Kết quả AI không qua được kiểm tra nên đã bị loại.'],
+] as const)('shows a fixed message for the %s outcome and never the provider reason', (outcome, message) => {
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={{ ...analysis, outcome, failureReason: 'provider stack trace' }} ticketRevision={1} />, { wrapper: Wrapper });
+  expect(screen.getByText(message)).toBeInTheDocument();
+  expect(screen.queryByText(/provider stack trace/)).not.toBeInTheDocument();
+  expect(screen.queryByText('Danh mục')).not.toBeInTheDocument();
+});
+
+it('shows each suggestion with its confidence band and flags the ones that need review', () => {
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={{ ...analysis, suggestedUrgency: 'High', urgencyConfidence: 'Low', urgencyScore: 0.3 }}
+    ticketRevision={1} />, { wrapper: Wrapper });
+  expect(screen.getByText('Mạng & Wi-Fi')).toBeInTheDocument();
+  expect(screen.getByText('Độ tin cậy: Cao')).toBeInTheDocument();
+  expect(screen.getByText('Độ tin cậy: Thấp')).toBeInTheDocument();
+  expect(screen.getAllByText('Cần xem xét')).toHaveLength(1);
+  expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+});
+
+it('warns about manual-only and stale results', () => {
+  const onReanalyze = vi.fn();
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={{ ...analysis, requiresManualTriage: true }} ticketRevision={1} stale onReanalyze={onReanalyze} />, { wrapper: Wrapper });
+  expect(screen.getByText('Cần phân loại thủ công')).toBeInTheDocument();
+  expect(screen.getByText('Gợi ý cũ')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Phân tích lại' })).toBeInTheDocument();
+});

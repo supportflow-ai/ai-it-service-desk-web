@@ -174,3 +174,21 @@ it('says a closed ticket has no further actions', async () => {
   expect(screen.queryByRole('button', { name: /Nhận xử lý|Giải quyết|Đóng vé|Mở lại vé|Hủy vé|Nhận về tôi|Hủy phân công/ }))
     .not.toBeInTheDocument();
 });
+
+it('hosts the injected AI panel for the loaded ticket and shows no invented AI data', async () => {
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
+  );
+  const { Wrapper } = createTestWrapper();
+  render(
+    <MemoryRouter initialEntries={[`/agent-workspace/tickets/${ticketA.id}`]}>
+      <Routes>
+        <Route path="/agent-workspace/tickets/:id" element={<TicketWorkspacePage aiPanel={({ ticket }) => <p>AI slot for {ticket.ticketNumber}</p>} />} />
+      </Routes>
+    </MemoryRouter>,
+    { wrapper: Wrapper },
+  );
+  expect(await screen.findByText(`AI slot for ${ticketA.ticketNumber}`)).toBeInTheDocument();
+  expect(screen.queryByText(/92%|Bài viết tri thức/)).not.toBeInTheDocument();
+});
