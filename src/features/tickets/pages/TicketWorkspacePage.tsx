@@ -1,4 +1,4 @@
-import { Card, Col, Result, Row, Space, Typography } from 'antd';
+import { Col, Result, Row, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -6,14 +6,13 @@ import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
 import { queueReturnPath } from '../lib/agentQueueSearch';
 import { isTicketId } from '../model/ticketId';
+import { TicketWorkspaceHeader } from '../components/TicketWorkspaceHeader';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
 import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
 import { TicketTimeline } from '../components/TicketTimeline';
 import { TicketCommentComposer } from '../components/TicketCommentComposer';
 import { TicketCommandPanel } from '../components/TicketCommandPanel';
 import { TicketAttachmentSection } from '../components/TicketAttachmentSection';
-
-const { Title, Paragraph } = Typography;
 
 export function TicketWorkspacePage() {
   const { id } = useParams();
@@ -40,43 +39,26 @@ export function TicketWorkspacePage() {
         </div>
       )}
 
-      {/* 3 Columns Layout */}
       <Row gutter={[20, 20]} align="top">
-        {/* Column 1: Context Metadata */}
-        <Col xs={24} md={6} lg={5}>
-          <TicketWorkspaceSidebar ticket={ticket.data} />
-        </Col>
-
-        {/* Column 2: Main Processing Workbench */}
-        <Col xs={24} md={12} lg={13}>
+        {/* Who and what: metadata the agent needs before acting. */}
+        <Col xs={24} md={8} lg={6} xl={5}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
-            <Card
-              bordered
-              style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                <Title level={2} style={{ margin: 0, fontWeight: 700, fontSize: 20 }}>
-                  {ticket.data.title}
-                </Title>
-              </div>
-
-              <Paragraph style={{ margin: '14px 0 0 0', color: 'var(--tx2)', fontSize: 14, lineHeight: 1.6 }}>
-                {ticket.data.description}
-              </Paragraph>
-            </Card>
-
-            <TicketCommandPanel ticket={ticket.data} onReload={reload} />
-
-            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
-
-            <TicketTimeline ticketId={ticket.data.id} />
-
-            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
+            <TicketWorkspaceSidebar ticket={ticket.data} />
           </Space>
         </Col>
 
-        {/* Column 3: AI Assistant */}
-        <Col xs={24} md={6} lg={6}>
+        {/* The ticket itself, then actions, then the conversation. */}
+        <Col xs={24} md={16} lg={18} xl={13}>
+          <Space direction="vertical" style={{ width: '100%' }} size={16}>
+            <TicketWorkspaceHeader ticket={ticket.data} />
+            <TicketCommandPanel ticket={ticket.data} onReload={reload} />
+            <TicketTimeline ticketId={ticket.data.id} />
+            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
+            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
+          </Space>
+        </Col>
+
+        <Col xs={24} xl={6}>
           <TicketWorkspaceAI />
         </Col>
       </Row>

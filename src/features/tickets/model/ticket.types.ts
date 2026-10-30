@@ -26,15 +26,13 @@ export enum TicketStatus {
   PendingExternal = 9,
 }
 
-export type TicketPriority = 'P1' | 'P2' | 'P3' | 'P4';
-
 export interface CreateTicketPayload {
   title: string;
   categoryId: TicketCategory;
   description: string;
 }
 
-/** The pinned wire DTO already suits the UI, with optional display fields for richer workspace views */
+/** The pinned backend TicketDto; the UI never adds fields the server does not send. */
 export interface TicketDto {
   id: string;
   ticketNumber: string;
@@ -44,16 +42,6 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
-  // Optional metadata fields for workspace and queue displays
-  priority?: TicketPriority;
-  requesterName?: string;
-  departmentName?: string;
-  assignedToName?: string;
-  slaText?: string;
-  slaStatus?: 'ok' | 'warning' | 'danger';
-  updatedAt?: string;
-  deviceCode?: string;
-  revision?: number;
 }
 
 export interface PagedTicketResult {
