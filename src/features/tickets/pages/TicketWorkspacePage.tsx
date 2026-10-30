@@ -71,7 +71,7 @@ export function TicketWorkspacePage() {
 
             <TicketTimeline ticketId={ticket.data.id} />
 
-            <TicketCommentComposer ticketId={ticket.data.id} />
+            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
           </Space>
         </Col>
 
