@@ -9,6 +9,8 @@ import {
   canOpenWorkspace,
   canReopenTicket,
   canResolveTicket,
+  canSelfAssignTicket,
+  canUnassignTicket,
 } from './ticketPermissions';
 
 function userWith(roles: User['roles']): User {
@@ -63,12 +65,28 @@ describe('ticketPermissions', () => {
     expect(canCancelTicket(requester, TicketStatus.Assigned)).toBe(false);
   });
 
+  it('offers self-assign only to agents on tickets nobody holds', () => {
+    expect(canSelfAssignTicket(agent, TicketStatus.Submitted)).toBe(true);
+    expect(canSelfAssignTicket(agent, TicketStatus.Assigned)).toBe(false);
+    expect(canSelfAssignTicket(admin, TicketStatus.Submitted)).toBe(false);
+    expect(canSelfAssignTicket(requester, TicketStatus.Submitted)).toBe(false);
+  });
+
+  it('offers unassign to staff only when the ticket is known to be assigned', () => {
+    expect(canUnassignTicket(agent, TicketStatus.Assigned)).toBe(true);
+    expect(canUnassignTicket(admin, TicketStatus.Assigned)).toBe(true);
+    expect(canUnassignTicket(agent, TicketStatus.InProgress)).toBe(false);
+    expect(canUnassignTicket(requester, TicketStatus.Assigned)).toBe(false);
+  });
+
   it('grants nothing to unknown roles or anonymous users', () => {
     for (const user of [unknownRole, null]) {
       expect(canClaimTicket(user, TicketStatus.Submitted)).toBe(false);
       expect(canResolveTicket(user, TicketStatus.InProgress)).toBe(false);
       expect(canCloseTicket(user, TicketStatus.Resolved)).toBe(false);
       expect(canCancelTicket(user, TicketStatus.Submitted)).toBe(false);
+      expect(canSelfAssignTicket(user, TicketStatus.Submitted)).toBe(false);
+      expect(canUnassignTicket(user, TicketStatus.Assigned)).toBe(false);
     }
   });
 });

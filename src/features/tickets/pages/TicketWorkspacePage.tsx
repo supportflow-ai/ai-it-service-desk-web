@@ -8,6 +8,7 @@ import { queueReturnPath } from '../lib/agentQueueSearch';
 import { isTicketId } from '../model/ticketId';
 import { TicketWorkspaceHeader } from '../components/TicketWorkspaceHeader';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
+import { TicketAssignmentPanel } from '../components/TicketAssignmentPanel';
 import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
 import { TicketTimeline } from '../components/TicketTimeline';
 import { TicketCommentComposer } from '../components/TicketCommentComposer';
@@ -44,6 +45,7 @@ export function TicketWorkspacePage() {
         <Col xs={24} md={8} lg={6} xl={5}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <TicketWorkspaceSidebar ticket={ticket.data} />
+            <TicketAssignmentPanel ticket={ticket.data} onReload={reload} />
           </Space>
         </Col>
 

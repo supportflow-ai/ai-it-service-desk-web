@@ -46,3 +46,19 @@ it('sends agent queue filters and omits the ones that are not set', async () => 
     { page: '1', pageSize: '10' },
   ]);
 });
+it('assigns with the backend agentId payload and unassigns without a body', async () => {
+  const calls: unknown[] = [];
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/assign`, async ({ request }) => {
+      calls.push(await request.json());
+      return HttpResponse.json({ ...ticketA, status: TicketStatus.Assigned });
+    }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/unassign`, async ({ request }) => {
+      calls.push(await request.text());
+      return HttpResponse.json(ticketA);
+    }),
+  );
+  expect((await ticketApi.assignTicket(ticketA.id, 'agent-guid')).status).toBe(TicketStatus.Assigned);
+  expect((await ticketApi.unassignTicket(ticketA.id)).status).toBe(TicketStatus.Submitted);
+  expect(calls).toEqual([{ agentId: 'agent-guid' }, '']);
+});

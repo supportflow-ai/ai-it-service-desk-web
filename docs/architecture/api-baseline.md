@@ -38,11 +38,13 @@ can replace this mechanism later; do not silently switch to another document's w
 
 Pinned to backend `dev` commit `8fe5c43a6832dd22908d8162b94fab6e3bee4735` (PR #31, 2026-10-28),
 source `src/backend/ServiceDesk.Api/Endpoints/TicketEndpoints.cs` and the matching
-`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-291, TC-302, TC-306 and TC-310.
+`ServiceDesk.Application/Ticketing/*UseCase.cs`. Used by TC-291, TC-297, TC-302, TC-306 and TC-310.
 
 | Method/path | Request | Success response | Who may call (use case check) |
 | --- | --- | --- | --- |
 | GET /tickets/queue | page, pageSize (1–100), optional status, category, scope (`unassigned`/`my`) | items, page, pageSize, totalCount; newest first | Agent or Admin |
+| POST /tickets/{id}/assign | agentId (GUID) | TicketDto | Agent or Admin; not Closed/Cancelled; Submitted → Assigned |
+| POST /tickets/{id}/unassign | None | TicketDto | Agent or Admin; not Closed/Cancelled; Assigned → Submitted |
 | POST /tickets/{id}/claim | None | TicketDto | Agent role only; Submitted/Assigned → InProgress |
 | POST /tickets/{id}/resolve | None | TicketDto | Agent or Admin; InProgress → Resolved |
 | POST /tickets/{id}/close | None | TicketDto | Owner or Admin; Resolved → Closed |
@@ -74,10 +76,16 @@ Known backend gaps at this commit, reflected in the UI rather than papered over:
   InProgress ticket, not only the caller's. The "Của tôi" tab says so. There is no priority
   field, priority filter or sort parameter, so the priority filter stays locked and the order
   is fixed to newest first.
+- TicketDto has no assignee id or name and there is no agent directory endpoint. The UI only
+  offers self-assign (agentId = the signed-in Agent's userId) on Submitted tickets and
+  unassign on Assigned tickets, reads "assigned/unassigned" from those two statuses, and keeps
+  "assign to another agent" locked. The server does not validate agentId, any staff member can
+  unassign, Claim does not record an assignee, and no assignment audit event exists. The
+  historical TC-294 policy (team membership, revision, 409) is not implemented.
 
 ## Not enabled
 
-Assignment and AI HTTP endpoints are not used yet. Their UI remains
+AI HTTP endpoints are not used yet. Their UI remains
 visibly unsupported/disabled. There is no production mock, endpoint probing, guessed `If-Match`,
 self-assignment identity or default ticket revision. AI panels remain available as presentation
 components with async callbacks for a later reviewed integration. Missing revision, stale and

@@ -45,6 +45,14 @@ export const ticketApi = {
     const response = await apiClient.post<unknown>('/tickets', payload);
     return readTicket(response.data);
   },
+  async assignTicket(ticketId: string, agentId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/assign`, { agentId });
+    return readTicket(response.data);
+  },
+  async unassignTicket(ticketId: string) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/unassign`);
+    return readTicket(response.data);
+  },
   async claimTicket(ticketId: string) {
     const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/claim`);
     return readTicket(response.data);
