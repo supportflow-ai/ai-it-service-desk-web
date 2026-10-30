@@ -28,8 +28,8 @@ export function AppRouter() {
     {
       ...routes.workspaceTicket,
       // The workspace hosts the AI panel without depending on the ai-assistance feature.
-      element: <TicketWorkspacePage aiPanel={({ ticket }) => (
-        <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} /></Suspense>
+      element: <TicketWorkspacePage aiPanel={({ ticket, reload }) => (
+        <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} onTicketChanged={reload} /></Suspense>
       )} />,
     },
     { ...routes.admin, element: <UnavailablePage title="Admin Panel" /> },

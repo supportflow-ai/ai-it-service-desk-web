@@ -21,7 +21,7 @@ import { TicketAttachmentSection } from '../components/TicketAttachmentSection';
 
 interface TicketWorkspacePageProps {
   /** Composed by the App: tickets must not depend on ai-assistance, so the AI panel is injected. */
-  aiPanel?: (context: { ticket: TicketDto }) => ReactNode;
+  aiPanel?: (context: { ticket: TicketDto; reload: () => void }) => ReactNode;
 }
 
 export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) {
@@ -85,7 +85,7 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
 
         {aiPanel && (
           <Col xs={24} xl={6}>
-            {aiPanel({ ticket: ticket.data })}
+            {aiPanel({ ticket: ticket.data, reload })}
           </Col>
         )}
       </Row>

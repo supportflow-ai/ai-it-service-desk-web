@@ -2,8 +2,8 @@ import { Alert, Button, Card, Space, Tag, Typography } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
 import { ticketCategoryLabels } from '@/features/tickets';
 import { ErrorState } from '@/shared/ui/ErrorState';
-import type { AgentTriageView, ConfidenceBand, SuggestionDto } from '../model/ai.types';
-import { canReviewSuggestion } from '../model/reviewEligibility';
+import type { AgentTriageView, ConfidenceBand, SuggestionDto, SuggestionType } from '../model/ai.types';
+import { reviewBlockReason } from '../model/reviewEligibility';
 import { impactLabels, needsReview, triageOutcomeMessages, urgencyLabels } from '../model/triageDisplay';
 import { useSuggestionDecision } from '../hooks/useSuggestionDecision';
 import type { DecisionHandler } from '../hooks/useSuggestionDecision';
@@ -19,6 +19,8 @@ interface Props {
   stale?: boolean;
   onDecision?: DecisionHandler;
   onReanalyze?: () => void;
+  /** Called after a decision is recorded, so the host can refetch the ticket. */
+  onDecided?: () => void;
 }
 
 const title = <Space size={6}><RobotOutlined style={{ color: 'var(--pr)' }} />Gợi ý AI</Space>;
@@ -38,8 +40,8 @@ function SuggestionRow({ label, value, band, score }: {
   );
 }
 
-export function AgentReviewPanel({ result, ticketRevision, suggestions = [], loading, stale = false, onDecision, onReanalyze }: Props) {
-  const decision = useSuggestionDecision(onDecision);
+export function AgentReviewPanel({ result, ticketRevision, suggestions = [], loading, stale = false, onDecision, onReanalyze, onDecided }: Props) {
+  const decision = useSuggestionDecision(onDecision, onDecided);
   if (loading) return <Card title={title} loading />;
   if (!result) {
     return <Card title={title}>
@@ -53,7 +55,12 @@ export function AgentReviewPanel({ result, ticketRevision, suggestions = [], loa
         description="Không có gợi ý cho ticket này; xử lý thủ công vẫn hoạt động bình thường." />
     </Card>;
   }
-  const enabled = canReviewSuggestion(ticketRevision, stale, result.requiresManualTriage, !!onDecision);
+  const blockReason = reviewBlockReason(ticketRevision, stale, result.requiresManualTriage, !!onDecision);
+  const confidenceByType: Record<SuggestionType, ConfidenceBand | null> = {
+    Category: result.categoryConfidence,
+    Impact: result.impactConfidence,
+    Urgency: result.urgencyConfidence,
+  };
   return <Card title={title} extra={stale && <Tag color="red">Gợi ý cũ</Tag>}>
     <Space direction="vertical" style={{ width: '100%' }}>
       {result.requiresManualTriage && <Alert type="warning" showIcon message="Cần phân loại thủ công"
@@ -75,10 +82,11 @@ export function AgentReviewPanel({ result, ticketRevision, suggestions = [], loa
       <Typography.Text type="secondary" style={{ fontSize: 12 }}>
         AI chỉ gợi ý; quyết định cuối cùng thuộc về kỹ thuật viên.
       </Typography.Text>
-      {!enabled && <Alert type="warning" message="Suggestions cannot be applied: review requires a current revision and an available review action; stale or manual-only suggestions must be reviewed manually." />}
+      {blockReason && suggestions.length > 0 && <Alert type="warning" showIcon message={blockReason} />}
       {decision.error && <ErrorState error={decision.error} />}
       {suggestions.map((suggestion) => <SuggestionReviewCard key={suggestion.id} suggestion={suggestion}
-        revision={ticketRevision} enabled={enabled} pending={decision.isPending}
+        confidence={confidenceByType[suggestion.type]}
+        revision={ticketRevision} enabled={blockReason === null} pending={decision.isPending}
         onDecision={(id, request) => decision.mutateAsync({ id, request })} />)}
     </Space>
   </Card>;
