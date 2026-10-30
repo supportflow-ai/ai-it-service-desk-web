@@ -10,6 +10,13 @@ import type { TicketPriority } from '../model/ticket.types';
 
 const { Title, Text } = Typography;
 
+const priorityLabels: Record<TicketPriority, string> = {
+  P1: 'P1 — Khẩn',
+  P2: 'P2 — Cao',
+  P3: 'P3 — Trung bình',
+  P4: 'P4 — Thấp',
+};
+
 interface QueueTicketItem {
   id: string;
   ticketNumber: string;
@@ -18,7 +25,7 @@ interface QueueTicketItem {
   requesterName: string;
   department: string;
   category: string;
-  priority: TicketPriority;
+  priority?: TicketPriority;
   priorityLabel: string;
   status: TicketStatus;
   assignee: string;
@@ -37,7 +44,8 @@ export function AgentQueuePage() {
   const ticketsQuery = useTickets(page, 10);
   const realTickets = ticketsQuery.data?.items ?? [];
 
-  const queueItems: QueueTicketItem[] = realTickets.map((t, idx) => ({
+  // Priority/SLA are not in the backend TicketDto yet; missing values render as "—", never invented.
+  const queueItems: QueueTicketItem[] = realTickets.map((t) => ({
     id: t.id,
     ticketNumber: t.ticketNumber,
     title: t.title,
@@ -45,12 +53,12 @@ export function AgentQueuePage() {
     requesterName: t.requesterName ?? '—',
     department: t.departmentName ?? '—',
     category: t.categoryId,
-    priority: t.priority ?? (idx % 3 === 0 ? 'P1' : idx % 3 === 1 ? 'P2' : 'P3'),
-    priorityLabel: t.priority === 'P1' ? 'P1 — Khẩn' : t.priority === 'P2' ? 'P2 — Cao' : 'P3 — Trung bình',
+    priority: t.priority,
+    priorityLabel: t.priority ? priorityLabels[t.priority] : '—',
     status: t.status,
     assignee: t.assignedToName ?? '—',
     slaText: t.slaText ?? '—',
-    slaType: t.priority === 'P1' ? 'danger' : 'warning',
+    slaType: t.slaStatus === 'danger' ? 'danger' : t.slaStatus === 'warning' ? 'warning' : 'info',
     updatedText: '—',
   }));
 
@@ -71,7 +79,8 @@ export function AgentQueuePage() {
     return <span className={className}>{item.slaText}</span>;
   };
 
-  const renderPriority = (p: TicketPriority, label: string) => {
+  const renderPriority = (p: TicketPriority | undefined, label: string) => {
+    if (!p) return <span className="meta">{label}</span>;
     let className = 'pri p3';
     if (p === 'P1') className = 'pri p1';
     else if (p === 'P2') className = 'pri p2';
@@ -109,7 +118,7 @@ export function AgentQueuePage() {
             height: 'auto',
           }}
         >
-          Của tôi ({queueItems.length > 0 ? 7 : 0})
+          Của tôi ({ticketsQuery.data?.totalCount ?? 0})
         </Button>
 
         <Button
@@ -124,7 +133,7 @@ export function AgentQueuePage() {
             height: 'auto',
           }}
         >
-          Hàng đợi nhóm (23)
+          Hàng đợi nhóm
         </Button>
 
         <Button
@@ -139,7 +148,7 @@ export function AgentQueuePage() {
             height: 'auto',
           }}
         >
-          Chưa phân công (5)
+          Chưa phân công
         </Button>
       </div>
 

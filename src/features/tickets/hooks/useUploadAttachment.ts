@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useAuth } from '@/features/auth';
+import { sessionStore, useAuth } from '@/features/auth';
+import { AppError } from '@/shared/api/httpError';
 import { ticketApi } from '../api/ticketApi';
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-const ALLOWED_EXTENSIONS = ['.pdf', '.png', '.jpg', '.jpeg', '.docx', '.txt', '.zip'];
+import { validateAttachmentFile } from '../validation/attachmentRules';
 
 export interface UploadedAttachment {
   storageKey: string;
@@ -16,34 +15,29 @@ export interface UploadedAttachment {
 export function useUploadAttachment(ticketId: string) {
   const { sessionVersion } = useAuth();
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  const assertSameSession = () => {
+    if (sessionStore.getSnapshot().version !== sessionVersion) {
+      throw new AppError('Đã hủy yêu cầu của phiên cũ.', 'canceled');
+    }
+  };
 
   const mutation = useMutation({
     mutationKey: ['tickets', sessionVersion, 'upload-attachment', ticketId],
     mutationFn: async (file: File): Promise<UploadedAttachment> => {
-      setValidationError(null);
-
-      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
-      if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        const msg = `Định dạng '${ext}' không được hỗ trợ. Chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP.`;
-        setValidationError(msg);
-        throw new Error(msg);
-      }
-
-      if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
-        const msg = 'Dung lượng tệp phải lớn hơn 0 và tối đa 10 MB.';
-        setValidationError(msg);
-        throw new Error(msg);
-      }
-
+      const contentType = file.type || 'application/octet-stream';
       // 1. Xin presigned upload URL từ backend
       const presigned = await ticketApi.generateAttachmentUploadUrl(ticketId, {
         fileName: file.name,
         fileSizeBytes: file.size,
-        contentType: file.type || 'application/octet-stream',
+        contentType,
       });
+      assertSameSession();
 
       // 2. Tải tệp trực tiếp lên MinIO/S3 storage qua pre-signed URL
-      await ticketApi.uploadFileToPresignedUrl(presigned.uploadUrl, file);
+      await ticketApi.uploadFileToPresignedUrl(presigned.uploadUrl, file, { onProgress: setProgress });
+      assertSameSession();
 
       return {
         storageKey: presigned.storageKey,
@@ -55,22 +49,28 @@ export function useUploadAttachment(ticketId: string) {
     retry: false,
   });
 
-  const downloadAttachment = async (storageKey: string, fileName?: string) => {
-    const res = await ticketApi.getAttachmentDownloadUrl(ticketId, storageKey);
-    const link = document.createElement('a');
-    link.href = res.downloadUrl;
-    link.download = fileName || storageKey.split('/').pop() || 'download';
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  /** Validates locally first, so a rejected file never reaches the API. */
+  const upload = (file: File, onUploaded: (attachment: UploadedAttachment) => void) => {
+    mutation.reset();
+    const invalid = validateAttachmentFile(file);
+    setValidationError(invalid);
+    if (invalid) return;
+    setProgress(0);
+    mutation.mutate(file, { onSuccess: onUploaded });
+  };
+
+  const clearError = () => {
+    setValidationError(null);
+    mutation.reset();
   };
 
   return {
-    uploadFile: mutation.mutateAsync,
+    upload,
+    progress,
     isUploading: mutation.isPending,
-    uploadError: validationError || (mutation.error ? (mutation.error as Error).message : null),
-    downloadAttachment,
+    uploadingFileName: mutation.isPending ? mutation.variables.name : null,
+    validationError,
+    error: mutation.error,
+    clearError,
   };
 }

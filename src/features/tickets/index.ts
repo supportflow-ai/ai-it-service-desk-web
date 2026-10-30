@@ -5,17 +5,8 @@ export { TicketWorkspacePage } from './pages/TicketWorkspacePage';
 export { AgentQueuePage } from './pages/AgentQueuePage';
 export { RequesterDashboard } from './components/RequesterDashboard';
 export { TicketStatusTag } from './components/TicketStatusTag';
-export { TicketAttachmentSection } from './components/TicketAttachmentSection';
 export { useTickets } from './hooks/useTickets';
 export { useTicket } from './hooks/useTicket';
 export { useCreateTicket } from './hooks/useCreateTicket';
-export { useUploadAttachment } from './hooks/useUploadAttachment';
 export { TicketCategory } from './model/ticket.types';
-export type {
-  CreateTicketPayload,
-  DownloadUrlResult,
-  GenerateUploadUrlPayload,
-  TicketDto,
-  TicketStatus,
-  UploadUrlResult,
-} from './model/ticket.types';
+export type { TicketDto, CreateTicketPayload, TicketStatus } from './model/ticket.types';

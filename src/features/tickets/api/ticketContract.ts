@@ -57,10 +57,21 @@ export function readTimeline(value: unknown): TimelineItemDto[] {
   return value;
 }
 
+// Presigned URLs are navigated to or written to directly, so only absolute http(s) URLs are accepted.
+function isHttpUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === 'http:' || protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function isUploadUrlResult(value: unknown): value is UploadUrlResult {
   return isRecord(value)
-    && typeof value.uploadUrl === 'string'
-    && typeof value.storageKey === 'string'
+    && isHttpUrl(value.uploadUrl)
+    && typeof value.storageKey === 'string' && value.storageKey.length > 0
     && typeof value.expirySeconds === 'number';
 }
 
@@ -70,7 +81,7 @@ export function readUploadUrlResult(value: unknown): UploadUrlResult {
 }
 
 function isDownloadUrlResult(value: unknown): value is DownloadUrlResult {
-  return isRecord(value) && typeof value.downloadUrl === 'string';
+  return isRecord(value) && isHttpUrl(value.downloadUrl);
 }
 
 export function readDownloadUrlResult(value: unknown): DownloadUrlResult {

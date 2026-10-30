@@ -7,6 +7,7 @@ import { isTicketId } from '../model/ticketId';
 import { TicketHeader } from '../components/TicketHeader';
 import { TicketMetadata } from '../components/TicketMetadata';
 import { TicketCommandPanel } from '../components/TicketCommandPanel';
+import { TicketAttachmentSection } from '../components/TicketAttachmentSection';
 import { TicketTimeline } from '../components/TicketTimeline';
 import { TicketCommentComposer } from '../components/TicketCommentComposer';
 
@@ -24,6 +25,7 @@ export function TicketDetailPage() {
       <TicketHeader ticket={ticket.data} /><TicketMetadata ticket={ticket.data} />
     </Card>
     <TicketCommandPanel ticket={ticket.data} onReload={reload} />
+    <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
     <TicketTimeline ticketId={ticket.data.id} />
     <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
   </Space>;

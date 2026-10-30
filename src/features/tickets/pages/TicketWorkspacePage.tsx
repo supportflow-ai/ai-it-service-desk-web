@@ -66,7 +66,7 @@ export function TicketWorkspacePage() {
 
             <TicketCommandPanel ticket={ticket.data} onReload={reload} />
 
-            <TicketAttachmentSection ticketId={ticket.data.id} />
+            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
 
             <TicketTimeline ticketId={ticket.data.id} />
 

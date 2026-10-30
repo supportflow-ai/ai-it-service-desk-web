@@ -3,7 +3,8 @@ import { TicketStatusTag } from './TicketStatusTag';
 import { ticketCategoryLabels } from '../model/ticketCategories';
 
 export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
-  const priority = ticket.priority ?? 'P2';
+  // The backend TicketDto has no priority yet; show nothing rather than a made-up value.
+  const priority = ticket.priority;
   const priorityClass = priority === 'P1' ? 'pri p1' : priority === 'P2' ? 'pri p2' : 'pri p3';
   const priorityLabel = priority === 'P1' ? 'P1 — Khẩn' : priority === 'P2' ? 'P2 — Cao' : 'P3 — Trung bình';
 
@@ -42,7 +43,7 @@ export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
 
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Ưu tiên</dt>
         <dd style={{ margin: 0 }}>
-          <span className={priorityClass}>{priorityLabel}</span>
+          {priority ? <span className={priorityClass}>{priorityLabel}</span> : <span style={{ color: 'var(--tx)' }}>—</span>}
         </dd>
 
         <dt style={{ color: 'var(--tx3)', fontSize: 12, marginTop: 10 }}>Phụ trách</dt>

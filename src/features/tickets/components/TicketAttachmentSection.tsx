@@ -1,36 +1,44 @@
 import { useRef, useState } from 'react';
-import { Alert, Button, Card, Empty, Space } from 'antd';
+import type { ChangeEvent } from 'react';
+import { Alert, Button, Card, Empty, Progress, Space, Typography } from 'antd';
 import { DownloadOutlined, PaperClipOutlined, UploadOutlined } from '@ant-design/icons';
+import { useAttachmentDownload } from '../hooks/useAttachmentDownload';
 import { useUploadAttachment } from '../hooks/useUploadAttachment';
 import type { UploadedAttachment } from '../hooks/useUploadAttachment';
+import { describeTicketError } from '../lib/ticketErrorMessage';
+import { ATTACHMENT_ACCEPT } from '../validation/attachmentRules';
 
 interface TicketAttachmentSectionProps {
   ticketId: string;
 }
 
+const attachmentMessages = {
+  400: 'Tệp không hợp lệ: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP và tối đa 10 MB.',
+};
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Callers must remount this section (key={ticketId}) when the ticket changes. */
 export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The backend has no attachment list/metadata endpoint yet, so only this session's uploads are known.
   const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
-  const { uploadFile, isUploading, uploadError, downloadAttachment } = useUploadAttachment(ticketId);
+  const upload = useUploadAttachment(ticketId);
+  const download = useAttachmentDownload(ticketId);
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
+  const uploadFailure = upload.validationError
+    ?? (upload.error ? describeTicketError(upload.error, attachmentMessages)?.message ?? null : null);
+  const downloadFailure = download.error ? describeTicketError(download.error)?.message ?? null : null;
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-
-    try {
-      const uploaded = await uploadFile(file);
-      setAttachments((prev) => [...prev, uploaded]);
-    } catch {
-      // Error handled by hook state
-    } finally {
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
+    upload.upload(file, (uploaded) => setAttachments((prev) => [...prev, uploaded]));
   };
 
   return (
@@ -48,12 +56,14 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
             ref={fileInputRef}
             onChange={handleFileChange}
             style={{ display: 'none' }}
-            accept=".pdf,.png,.jpg,.jpeg,.docx,.txt,.zip"
+            accept={ATTACHMENT_ACCEPT}
+            aria-label="Chọn tệp đính kèm"
+            data-testid="attachment-input"
           />
           <Button
             size="small"
             icon={<UploadOutlined />}
-            loading={isUploading}
+            loading={upload.isUploading}
             onClick={() => fileInputRef.current?.click()}
             style={{ borderRadius: 6 }}
           >
@@ -63,13 +73,40 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
       }
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
-      {uploadError && (
+      <Alert
+        type="info"
+        showIcon
+        message="Danh sách chỉ gồm các tệp bạn tải lên trong phiên này. Hệ thống chưa hỗ trợ lưu danh sách tệp của ticket, nên tệp sẽ không hiển thị lại sau khi tải lại trang."
+        style={{ marginBottom: 12 }}
+      />
+
+      {uploadFailure && (
         <Alert
           type="error"
           showIcon
-          message={uploadError}
+          closable
+          onClose={upload.clearError}
+          message={uploadFailure}
           style={{ marginBottom: 12 }}
         />
+      )}
+
+      {downloadFailure && (
+        <Alert
+          type="error"
+          showIcon
+          closable
+          onClose={download.clearError}
+          message={`Không tải xuống được tệp. ${downloadFailure}`}
+          style={{ marginBottom: 12 }}
+        />
+      )}
+
+      {upload.isUploading && (
+        <div style={{ marginBottom: 12 }}>
+          <Typography.Text style={{ fontSize: 13 }}>Đang tải lên {upload.uploadingFileName}</Typography.Text>
+          <Progress percent={upload.progress} size="small" status="active" />
+        </div>
       )}
 
       {attachments.length === 0 ? (
@@ -104,7 +141,8 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
                 size="small"
                 type="link"
                 icon={<DownloadOutlined />}
-                onClick={() => downloadAttachment(att.storageKey, att.fileName)}
+                loading={download.downloadingKey === att.storageKey}
+                onClick={() => download.download({ storageKey: att.storageKey, fileName: att.fileName })}
               >
                 Tải xuống
               </Button>
