@@ -1,9 +1,10 @@
-import { Button, Card, Col, Result, Row, Space, Typography } from 'antd';
+import { Card, Col, Result, Row, Space, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
+import { queueReturnPath } from '../lib/agentQueueSearch';
 import { isTicketId } from '../model/ticketId';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
 import { TicketWorkspaceAI } from '../components/TicketWorkspaceAI';
@@ -16,6 +17,7 @@ const { Title, Paragraph } = Typography;
 
 export function TicketWorkspacePage() {
   const { id } = useParams();
+  const location = useLocation();
   const ticket = useTicket(id ?? '');
 
   if (!isTicketId(id)) return <Result status="404" title="Không tìm thấy ticket" />;
@@ -26,10 +28,9 @@ export function TicketWorkspacePage() {
   return (
     <div style={{ maxWidth: 1380, margin: '0 auto' }}>
       <div style={{ marginBottom: 16 }}>
-        <Link to="/agent-workspace">
-          <Button icon={<ArrowLeftOutlined />} type="link" style={{ padding: 0, fontWeight: 500 }}>
-            Quay lại hàng đợi
-          </Button>
+        {/* Returns to the queue with the filters the agent left it with. */}
+        <Link to={queueReturnPath(location.state)} style={{ fontWeight: 500 }}>
+          <ArrowLeftOutlined /> Quay lại hàng đợi
         </Link>
       </div>
 

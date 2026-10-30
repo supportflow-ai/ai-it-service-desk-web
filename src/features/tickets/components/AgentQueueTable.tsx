@@ -1,7 +1,10 @@
 import { Table, Typography } from 'antd';
+import { Link } from 'react-router-dom';
 import type { PagedTicketResult, TicketDto } from '../model/ticket.types';
 import { AGENT_QUEUE_PAGE_SIZES } from '../model/agentQueue';
 import { ticketCategoryLabels } from '../model/ticketCategories';
+import { workspaceTicketPath } from '../lib/agentQueueSearch';
+import type { QueueReturnState } from '../lib/agentQueueSearch';
 import { TicketStatusTag } from './TicketStatusTag';
 
 interface AgentQueueTableProps {
@@ -9,6 +12,7 @@ interface AgentQueueTableProps {
   loading: boolean;
   page: number;
   pageSize: number;
+  returnState: QueueReturnState;
   onPageChange: (page: number, pageSize: number) => void;
   onOpen: (ticket: TicketDto) => void;
 }
@@ -20,7 +24,7 @@ function formatCreatedAt(iso: string) {
   });
 }
 
-export function AgentQueueTable({ result, loading, page, pageSize, onPageChange, onOpen }: AgentQueueTableProps) {
+export function AgentQueueTable({ result, loading, page, pageSize, returnState, onPageChange, onOpen }: AgentQueueTableProps) {
   return (
     <Table<TicketDto>
       rowKey="id"
@@ -28,9 +32,25 @@ export function AgentQueueTable({ result, loading, page, pageSize, onPageChange,
       dataSource={result?.items ?? []}
       loading={loading}
       locale={{ emptyText: 'Không có ticket nào phù hợp với bộ lọc.' }}
-      onRow={(ticket) => ({ onClick: () => onOpen(ticket), style: { cursor: 'pointer' } })}
+      onRow={(ticket) => ({
+        // The ticket link handles its own clicks (including opening in a new tab).
+        onClick: (event) => {
+          if (event.target instanceof Element && event.target.closest('a')) return;
+          onOpen(ticket);
+        },
+        style: { cursor: 'pointer' },
+      })}
       columns={[
-        { title: 'Mã', key: 'number', width: 140, render: (_, ticket) => <span className="mono">{ticket.ticketNumber}</span> },
+        {
+          title: 'Mã',
+          key: 'number',
+          width: 140,
+          render: (_, ticket) => (
+            <Link className="mono" to={workspaceTicketPath(ticket.id)} state={returnState} aria-label={`Mở ticket ${ticket.ticketNumber}`}>
+              {ticket.ticketNumber}
+            </Link>
+          ),
+        },
         {
           title: 'Tiêu đề',
           key: 'title',

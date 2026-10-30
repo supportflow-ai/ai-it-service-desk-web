@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, expect, it } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
@@ -8,18 +8,25 @@ import { server } from '../../../../tests/mocks/server';
 import { ticketA, ticketB, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
 import { AgentQueuePage } from './AgentQueuePage';
+import { TicketWorkspacePage } from './TicketWorkspacePage';
 
 let requests: Record<string, string>[] = [];
 let queueStatus = 200;
 
-function renderQueue() {
+function LocationProbe() {
+  const location = useLocation();
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+}
+
+function renderQueue(entry = '/agent-workspace', workspace = <p>Workspace opened</p>) {
   const { Wrapper } = createTestWrapper();
   render(
-    <MemoryRouter initialEntries={['/agent-workspace']}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/agent-workspace" element={<AgentQueuePage />} />
-        <Route path="/agent-workspace/tickets/:id" element={<p>Workspace opened</p>} />
+        <Route path="/agent-workspace/tickets/:id" element={workspace} />
       </Routes>
+      <LocationProbe />
     </MemoryRouter>,
     { wrapper: Wrapper },
   );
@@ -84,4 +91,29 @@ it('shows a permission error without any rows', async () => {
   renderQueue();
   expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này.')).toBeInTheDocument();
   expect(screen.queryByText(ticketA.ticketNumber)).not.toBeInTheDocument();
+});
+
+it('restores filters from the URL and writes filter changes back to it', async () => {
+  renderQueue('/agent-workspace?scope=all&status=2&page=2');
+  await screen.findByText(ticketA.ticketNumber);
+  expect(requests[0]).toEqual({ page: '2', pageSize: '10', status: '2' });
+  expect(screen.getByRole('tab', { name: /Tất cả/ })).toHaveAttribute('aria-selected', 'true');
+
+  await userEvent.click(screen.getByRole('tab', { name: /Chưa phân công/ }));
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/agent-workspace?status=2'));
+});
+
+it('returns from the workspace to the same filtered queue', async () => {
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
+  );
+  renderQueue('/agent-workspace?scope=all&category=NET', <TicketWorkspacePage />);
+  await userEvent.click(await screen.findByRole('link', { name: `Mở ticket ${ticketA.ticketNumber}` }));
+  expect(await screen.findByRole('heading', { name: ticketA.title })).toBeInTheDocument();
+  expect(screen.getByTestId('location')).toHaveTextContent(`/agent-workspace/tickets/${ticketA.id}`);
+
+  await userEvent.click(screen.getByRole('link', { name: /Quay lại hàng đợi/ }));
+  await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/agent-workspace?scope=all&category=NET'));
+  await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', category: 'NET' }));
 });
