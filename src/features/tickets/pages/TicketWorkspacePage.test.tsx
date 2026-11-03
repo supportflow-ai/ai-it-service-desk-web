@@ -74,27 +74,29 @@ it('lays out only metadata the backend returns, without invented values', async 
   expect(screen.queryByText('Ưu tiên')).not.toBeInTheDocument();
 });
 
-it('derives the assignee state from the status only where the domain makes it certain', async () => {
-  renderWorkspace({ ...ticketA, status: TicketStatus.Assigned });
+it('shows the assignee from the id the backend returns, whatever the status', async () => {
+  renderWorkspace({ ...ticketA, status: TicketStatus.InProgress, assignedToId: '00000000-0000-0000-0000-000000000005' });
   await screen.findByRole('heading', { name: ticketA.title });
   expect(sidebarField('Phụ trách')).toHaveTextContent('Đã phân công');
 });
 
-it('does not guess the assignee of an in-progress ticket', async () => {
-  renderWorkspace({ ...ticketA, status: TicketStatus.InProgress });
+it('says "Bạn" when the signed-in agent holds the ticket', async () => {
+  renderWorkspace({ ...ticketA, status: TicketStatus.InProgress, assignedToId: user.userId });
   await screen.findByRole('heading', { name: ticketA.title });
-  expect(sidebarField('Phụ trách')).toHaveTextContent('Chưa có thông tin');
+  expect(sidebarField('Phụ trách')).toHaveTextContent('Bạn');
 });
 
 it('runs the whole agent flow on one screen: self-assign, claim, comment, resolve', async () => {
   let status = TicketStatus.Submitted;
+  let assignedToId: string | null = null;
   const timeline: (typeof timelineItemA)[] = [];
-  const current = () => HttpResponse.json({ ...ticketA, status });
+  const current = () => HttpResponse.json({ ...ticketA, status, assignedToId });
   server.use(
     http.get(`http://localhost/api/tickets/${ticketA.id}`, current),
     http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json(timeline)),
-    http.post(`http://localhost/api/tickets/${ticketA.id}/assign`, () => { status = TicketStatus.Assigned; return current(); }),
-    http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => { status = TicketStatus.InProgress; return current(); }),
+    // Like the backend: assign stores the chosen agent, claim stores the caller.
+    http.post(`http://localhost/api/tickets/${ticketA.id}/assign`, () => { status = TicketStatus.Assigned; assignedToId = user.userId; return current(); }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => { status = TicketStatus.InProgress; assignedToId = user.userId; return current(); }),
     http.post(`http://localhost/api/tickets/${ticketA.id}/resolve`, () => { status = TicketStatus.Resolved; return current(); }),
     http.post(`http://localhost/api/tickets/${ticketA.id}/comments`, async ({ request }) => {
       const body = await request.json();
@@ -107,7 +109,7 @@ it('runs the whole agent flow on one screen: self-assign, claim, comment, resolv
   renderAt(ticketA.id);
 
   await userEvent.click(await screen.findByRole('button', { name: /Nhận về tôi/ }));
-  await waitFor(() => expect(sidebarField('Phụ trách')).toHaveTextContent('Đã phân công'));
+  await waitFor(() => expect(sidebarField('Phụ trách')).toHaveTextContent('Bạn'));
 
   await userEvent.click(screen.getByRole('button', { name: /Nhận xử lý/ }));
   expect(await screen.findByRole('button', { name: /Giải quyết/ })).toBeInTheDocument();
@@ -121,7 +123,8 @@ it('runs the whole agent flow on one screen: self-assign, claim, comment, resolv
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận giải quyết' }));
   await waitFor(() => expect(sidebarField('Trạng thái')).toHaveTextContent('Đã giải quyết'));
   expect(screen.getByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
-});
+  // Four writes, each re-rendering the whole workspace in jsdom: 15–20 s, above the 15 s default.
+}, 30_000);
 
 it('shows a not-found page with a way back when the ticket does not exist', async () => {
   server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => new HttpResponse(null, { status: 404 })));

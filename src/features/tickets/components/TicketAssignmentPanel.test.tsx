@@ -55,10 +55,15 @@ it('does not overwrite an assignment made from another screen: a stale take asks
   expect(screen.queryByText(/Ticket vừa được người khác cập nhật/)).not.toBeInTheDocument();
 });
 
-it('never offers self-assign to an admin-only account or on a ticket already held', async () => {
+it('lets an admin take an unassigned ticket, as the backend allows', async () => {
   renderPanel(['Admin'], TicketStatus.Submitted);
+  expect(await screen.findByRole('button', { name: /Nhận về tôi/ })).toBeEnabled();
+});
+
+it('offers no assignment change on an in-progress ticket', async () => {
+  renderPanel(['Agent'], TicketStatus.InProgress);
   expect(await screen.findByText(/Không có thao tác phân công/)).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /Nhận về tôi/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Nhận về tôi|Hủy phân công/ })).not.toBeInTheDocument();
 });
 
 it('keeps choosing another agent locked and explains why', async () => {

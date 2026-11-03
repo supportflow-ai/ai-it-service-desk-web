@@ -57,11 +57,11 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   };
 
   const allowed = {
-    claim: canClaimTicket(user, ticket.status),
-    resolve: canResolveTicket(user, ticket.status),
-    close: canCloseTicket(user, ticket.status),
-    reopen: canReopenTicket(user, ticket.status),
-    cancel: canCancelTicket(user, ticket.status),
+    claim: canClaimTicket(user, ticket),
+    resolve: canResolveTicket(user, ticket),
+    close: canCloseTicket(user, ticket),
+    reopen: canReopenTicket(user, ticket),
+    cancel: canCancelTicket(user, ticket),
   };
   const hasAction = Object.values(allowed).some(Boolean);
 

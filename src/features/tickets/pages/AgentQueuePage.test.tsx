@@ -69,7 +69,7 @@ it('switches scope and filters by status, restarting from page 1', async () => {
 
   await userEvent.click(screen.getByRole('tab', { name: /Của tôi/ }));
   await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', scope: 'my', status: '2' }));
-  expect(screen.getByText(/hệ thống chưa lọc riêng theo người phụ trách/)).toBeInTheDocument();
+  expect(screen.getByText(/Ticket đang giao cho bạn/)).toBeInTheDocument();
 });
 
 it('keeps the unsupported priority filter locked', async () => {

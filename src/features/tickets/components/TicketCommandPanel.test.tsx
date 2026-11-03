@@ -9,10 +9,10 @@ import { sessionStore } from '@/features/auth';
 import { TicketCategory, TicketStatus } from '../model/ticket.types';
 import { TicketCommandPanel } from './TicketCommandPanel';
 
-function renderPanel(roles: string[], status: TicketStatus, onReload = () => {}) {
+function renderPanel(roles: string[], status: TicketStatus, onReload = () => {}, requesterId = ticketA.requesterId) {
   sessionStore.setToken('session');
   server.use(http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles })));
-  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status };
+  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status, requesterId };
   const { Wrapper } = createTestWrapper();
   render(<TicketCommandPanel ticket={ticket} onReload={onReload} />, { wrapper: Wrapper });
 }
@@ -30,11 +30,27 @@ it('does not offer close or reopen to a plain agent on a resolved ticket', async
   expect(screen.queryByRole('button', { name: /Mở lại vé/ })).not.toBeInTheDocument();
 });
 
-it('lets admin close or reopen a resolved ticket and never shows claim', async () => {
+it('lets admin close or reopen a resolved ticket they do not own', async () => {
   renderPanel(['Admin'], TicketStatus.Resolved);
   expect(await screen.findByRole('button', { name: /Đóng vé/ })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Mở lại vé/ })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Nhận xử lý/ })).not.toBeInTheDocument();
+});
+
+it('lets admin claim a submitted ticket, as the backend allows', async () => {
+  renderPanel(['Admin'], TicketStatus.Submitted);
+  expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeEnabled();
+});
+
+it('lets an agent cancel a ticket they opened themselves', async () => {
+  renderPanel(['Agent'], TicketStatus.Submitted, () => {}, user.userId);
+  expect(await screen.findByRole('button', { name: /Hủy vé/ })).toBeInTheDocument();
+});
+
+it('does not offer cancel to a requester who does not own the ticket', async () => {
+  renderPanel(['Requester'], TicketStatus.Submitted);
+  expect(await screen.findByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Hủy vé/ })).not.toBeInTheDocument();
 });
 
 it('lets the requester cancel their submitted ticket after confirmation', async () => {
@@ -43,7 +59,7 @@ it('lets the requester cancel their submitted ticket after confirmation', async 
     calls.push('cancel');
     return HttpResponse.json({ ...ticketA, status: TicketStatus.Cancelled });
   }));
-  renderPanel(['Requester'], TicketStatus.Submitted);
+  renderPanel(['Requester'], TicketStatus.Submitted, () => {}, user.userId);
   await userEvent.click(await screen.findByRole('button', { name: /Hủy vé/ }));
   expect(calls).toEqual([]);
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận hủy' }));

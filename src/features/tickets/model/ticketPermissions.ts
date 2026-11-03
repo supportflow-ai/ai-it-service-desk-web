@@ -1,23 +1,21 @@
 import { hasAnyRole } from '@/features/auth';
 import type { User } from '@/features/auth';
 import { TicketStatus } from './ticket.types';
+import type { TicketDto } from './ticket.types';
 
 // These are UI eligibility checks only. The server still authorizes each request.
 // Role rules mirror the backend use cases pinned on `dev` (ServiceDesk.Application/Ticketing).
+
+type TicketFacts = Pick<TicketDto, 'status' | 'requesterId'>;
 
 function isStaff(user: User | null) {
   return !!user && hasAnyRole(user.roles, ['Agent', 'Admin']);
 }
 
-/**
- * Close/reopen/cancel are allowed for the ticket owner or Admin. TicketDto carries no
- * requester id, so ownership is only provable for non-staff requesters: the backend
- * scopes their ticket reads to their own tickets.
- */
-function isOwnerOrAdmin(user: User | null) {
+/** Close/reopen/cancel use cases accept the ticket's requester, whatever their role, or an Admin. */
+function isOwnerOrAdmin(user: User | null, ticket: TicketFacts) {
   if (!user) return false;
-  if (hasAnyRole(user.roles, ['Admin'])) return true;
-  return hasAnyRole(user.roles, ['Requester']) && !isStaff(user);
+  return hasAnyRole(user.roles, ['Admin']) || ticket.requesterId === user.userId;
 }
 
 export function canOpenWorkspace(user: User | null) {
@@ -28,38 +26,36 @@ export function canAddInternalNote(user: User | null) {
   return isStaff(user);
 }
 
-/** ClaimTicketUseCase requires the Agent role; Admin alone is rejected. */
-export function canClaimTicket(user: User | null, status: TicketStatus) {
-  return !!user && hasAnyRole(user.roles, ['Agent'])
-    && (status === TicketStatus.Submitted || status === TicketStatus.Assigned);
+/** ClaimTicketUseCase accepts Agent or Admin on Submitted and Assigned tickets. */
+export function canClaimTicket(user: User | null, ticket: TicketFacts) {
+  return isStaff(user) && (ticket.status === TicketStatus.Submitted || ticket.status === TicketStatus.Assigned);
 }
 
-export function canResolveTicket(user: User | null, status: TicketStatus) {
-  return isStaff(user) && status === TicketStatus.InProgress;
+export function canResolveTicket(user: User | null, ticket: TicketFacts) {
+  return isStaff(user) && ticket.status === TicketStatus.InProgress;
 }
 
-export function canCloseTicket(user: User | null, status: TicketStatus) {
-  return isOwnerOrAdmin(user) && status === TicketStatus.Resolved;
+export function canCloseTicket(user: User | null, ticket: TicketFacts) {
+  return isOwnerOrAdmin(user, ticket) && ticket.status === TicketStatus.Resolved;
 }
 
-export function canReopenTicket(user: User | null, status: TicketStatus) {
-  return isOwnerOrAdmin(user) && status === TicketStatus.Resolved;
+export function canReopenTicket(user: User | null, ticket: TicketFacts) {
+  return isOwnerOrAdmin(user, ticket) && ticket.status === TicketStatus.Resolved;
 }
 
-export function canCancelTicket(user: User | null, status: TicketStatus) {
-  return isOwnerOrAdmin(user) && status === TicketStatus.Submitted;
+export function canCancelTicket(user: User | null, ticket: TicketFacts) {
+  return isOwnerOrAdmin(user, ticket) && ticket.status === TicketStatus.Submitted;
+}
+
+/** Self-assign only takes a ticket nobody holds (Submitted); the backend accepts Agent or Admin as assignee. */
+export function canSelfAssignTicket(user: User | null, ticket: TicketFacts) {
+  return isStaff(user) && ticket.status === TicketStatus.Submitted;
 }
 
 /**
- * Self-assign only takes a ticket nobody holds (Submitted). An Assigned ticket already has
- * an assignee the UI cannot see, so taking it over is not offered. Admin-only accounts are
- * excluded because they could not claim the ticket afterwards.
+ * UnassignTicketUseCase accepts any Agent or Admin. It is offered only on Assigned: unassigning an
+ * InProgress ticket would leave it in progress with nobody holding it.
  */
-export function canSelfAssignTicket(user: User | null, status: TicketStatus) {
-  return !!user && hasAnyRole(user.roles, ['Agent']) && status === TicketStatus.Submitted;
-}
-
-/** UnassignTicketUseCase accepts any Agent or Admin; Assigned is the only status known to have an assignee. */
-export function canUnassignTicket(user: User | null, status: TicketStatus) {
-  return isStaff(user) && status === TicketStatus.Assigned;
+export function canUnassignTicket(user: User | null, ticket: TicketFacts) {
+  return isStaff(user) && ticket.status === TicketStatus.Assigned;
 }

@@ -85,27 +85,26 @@ write is never retried. The backend's revision is the PostgreSQL `xmin` and it s
 when the expected or current revision is 0, so 0 gives no conflict protection: a backend gap.
 An upload is done only after confirm succeeds; the list is then refreshed from the server.
 
-Rejected lifecycle transitions return 400, permission failures 401/403 and out-of-scope
+Rejected lifecycle transitions return 400, permission failures 403 and out-of-scope
 tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
-TicketDto has no requester id, so close/reopen/cancel are shown only to Admin and to Requester
-accounts without a staff role, whose ticket reads the server scopes to their own tickets.
 
-Known backend gaps at commit 8fe5c43, reflected in the UI rather than papered over (the
-attachment list and the revision/409 gaps were closed by `007a258`, see above):
-- Timeline entries are kept in memory on the server and carry the user id as `authorName`;
-  the UI shows a role label instead of an id. Status transitions are not recorded as
-  timeline events.
-- Claim by an Admin-only account is rejected with 401, so the UI hides claim for Admin.
-- Queue scopes are status-based: `unassigned` returns Submitted tickets and `my` returns every
-  InProgress ticket, not only the caller's. The "Của tôi" tab says so. There is no priority
-  field, priority filter or sort parameter, so the priority filter stays locked and the order
-  is fixed to newest first.
-- TicketDto has no assignee id or name and there is no agent directory endpoint. The UI only
-  offers self-assign (agentId = the signed-in Agent's userId) on Submitted tickets and
-  unassign on Assigned tickets, reads "assigned/unassigned" from those two statuses, and keeps
-  "assign to another agent" locked. The server does not validate agentId, any staff member can
-  unassign, Claim does not record an assignee, and no assignment audit event exists. The
-  historical TC-294 team-membership policy is not implemented.
+How the UI follows backend `007a258` (TicketDto also carries `requesterId` and nullable
+`assignedToId`, both required by the reader):
+- Close/reopen/cancel are shown to the ticket's requester (`requesterId` = the signed-in user,
+  whatever their role) and to Admin, as the use cases allow.
+- Claim and self-assign are shown to Agent and Admin. Claim is offered on Submitted and
+  Assigned tickets, like the backend, which does not check who holds an Assigned ticket.
+- "Phụ trách" reads `assignedToId`: none → "Chưa phân công", the signed-in user → "Bạn",
+  anyone else → "Đã phân công". The backend sends no assignee name; `GET /api/users` exists
+  but returns emails, so it is not used and "assign to another agent" stays locked.
+- Unassign is offered only on Assigned tickets: the backend also accepts InProgress but then
+  leaves the ticket in progress with nobody holding it.
+- Queue scopes filter on the assignee and leave out Closed/Cancelled; the tab descriptions say so.
+- Status and assignment changes appear in the timeline as `authorRole: "System"` entries,
+  shown as "Hệ thống". `authorName` of people is the account's user name, today its email.
+- TicketDto has `priority`, but every new ticket gets the default P3 and the queue cannot
+  filter or sort by it, so priority is not shown and its filter stays locked.
+- The historical TC-294 team-membership policy is not implemented.
 
 ## Not enabled
 

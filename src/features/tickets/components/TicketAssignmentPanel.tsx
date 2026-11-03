@@ -2,7 +2,7 @@ import { Alert, Button, Card, Popconfirm, Select, Space, Typography } from 'antd
 import { UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
-import { assignmentView } from '../model/assignment';
+import { assignmentLabel } from '../model/assignment';
 import { canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
 import { useAssignTicket } from '../hooks/useAssignTicket';
 import { useUnassignTicket } from '../hooks/useUnassignTicket';
@@ -27,9 +27,8 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
   const failedError = assignMutation.isError ? assignMutation.error : unassignMutation.isError ? unassignMutation.error : null;
   const failure = failedError ? describeTicketError(failedError, assignmentMessages) : null;
 
-  const assignment = assignmentView(ticket.status);
-  const allowSelfAssign = canSelfAssignTicket(user, ticket.status);
-  const allowUnassign = canUnassignTicket(user, ticket.status);
+  const allowSelfAssign = canSelfAssignTicket(user, ticket);
+  const allowUnassign = canUnassignTicket(user, ticket);
 
   // Both carry the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).
   const selfAssign = () => {
@@ -61,8 +60,7 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
       )}
 
       <Typography.Paragraph style={{ marginBottom: 12 }}>
-        Phụ trách:{' '}
-        {assignment.known ? <strong>{assignment.label}</strong> : <Typography.Text type="secondary">{assignment.label}</Typography.Text>}
+        Phụ trách: <strong>{assignmentLabel(ticket, user?.userId)}</strong>
       </Typography.Paragraph>
 
       <Space direction="vertical" style={{ width: '100%' }}>

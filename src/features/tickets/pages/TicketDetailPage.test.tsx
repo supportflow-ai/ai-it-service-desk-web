@@ -10,6 +10,7 @@ import { sessionStore } from '@/features/auth';
 import { TicketDetailPage } from './TicketDetailPage';
 
 const leakedNote = { ...timelineItemA, id: '20000000-0000-0000-0000-000000000009', content: 'Ghi chú bí mật', isInternal: true };
+const ownTicket = { ...ticketA, requesterId: user.userId };
 
 function renderRequesterPage() {
   const { Wrapper, queryClient } = createTestWrapper();
@@ -26,7 +27,7 @@ beforeEach(() => {
   sessionStore.setToken('requester');
   server.use(
     http.get('http://localhost/api/auth/me', () => HttpResponse.json(user)),
-    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ownTicket)),
     http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json([])),
   );
 });
@@ -93,11 +94,12 @@ it.each([
 ])('hides the cached ticket and its actions when a refetch returns %i, and keeps the session', async (status, title) => {
   let lost = false;
   server.use(
-    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => (lost ? new HttpResponse(null, { status }) : HttpResponse.json(ticketA))),
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => (lost ? new HttpResponse(null, { status }) : HttpResponse.json(ownTicket))),
     http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
   );
   const queryClient = renderRequesterPage();
   expect(await screen.findByRole('heading', { name: ticketA.title })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Hủy vé/ })).toBeInTheDocument();
 
   lost = true;
   await act(() => queryClient.invalidateQueries({ queryKey: ['tickets'] }));

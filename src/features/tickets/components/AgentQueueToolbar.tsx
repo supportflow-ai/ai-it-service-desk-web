@@ -73,7 +73,7 @@ export function AgentQueueToolbar({ filters, totalCount, onChange }: AgentQueueT
           options={categoryOptions}
           onChange={(value?: AgentQueueFilters['category']) => onChange({ category: value ?? null })}
         />
-        <Tooltip title="Chưa hỗ trợ: ticket chưa có trường ưu tiên trong hệ thống.">
+        <Tooltip title="Chưa hỗ trợ lọc theo ưu tiên.">
           <Select aria-label="Ưu tiên" disabled placeholder="Ưu tiên: chưa hỗ trợ" style={{ width: 180 }} />
         </Tooltip>
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>Sắp xếp: mới tạo trước</Typography.Text>

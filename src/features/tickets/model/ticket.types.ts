@@ -42,6 +42,10 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
+  /** The owner: close, reopen and cancel are allowed to them and to Admin. */
+  requesterId: string;
+  /** Null while nobody is assigned. The backend sends no assignee name. */
+  assignedToId: string | null;
   /** Sent back as expectedRevision, so a write based on an outdated copy is rejected with 409. */
   revision: number;
 }

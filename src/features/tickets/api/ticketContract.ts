@@ -17,6 +17,8 @@ function isTicket(value: unknown): value is TicketDto {
     && Object.values(TicketCategory).some((category) => category === value.categoryId)
     && Object.values(TicketStatus).some((status) => typeof status === 'number' && status === value.status)
     && (value.requesterDepartmentId === undefined || value.requesterDepartmentId === null || typeof value.requesterDepartmentId === 'string')
+    && typeof value.requesterId === 'string'
+    && (value.assignedToId === null || typeof value.assignedToId === 'string')
     && typeof value.revision === 'number' && Number.isInteger(value.revision) && value.revision >= 0;
 }
 

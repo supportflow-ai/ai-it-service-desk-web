@@ -22,6 +22,11 @@ const agent = userWith(['Agent']);
 const admin = userWith(['Admin']);
 const unknownRole = userWith([]);
 
+/** A ticket owned by someone other than every user above. */
+function ticket(status: TicketStatus, requesterId = 'someone-else') {
+  return { status, requesterId };
+}
+
 describe('ticketPermissions', () => {
   it('allows agent and admin to open workspace and add internal notes', () => {
     expect(canOpenWorkspace(agent)).toBe(true);
@@ -32,61 +37,64 @@ describe('ticketPermissions', () => {
     expect(canAddInternalNote(null)).toBe(false);
   });
 
-  it('lets only agents claim submitted or assigned tickets', () => {
-    expect(canClaimTicket(agent, TicketStatus.Submitted)).toBe(true);
-    expect(canClaimTicket(agent, TicketStatus.Assigned)).toBe(true);
-    expect(canClaimTicket(agent, TicketStatus.InProgress)).toBe(false);
-    expect(canClaimTicket(admin, TicketStatus.Submitted)).toBe(false);
-    expect(canClaimTicket(requester, TicketStatus.Submitted)).toBe(false);
+  it('lets agents and admins claim submitted or assigned tickets', () => {
+    for (const user of [agent, admin]) {
+      expect(canClaimTicket(user, ticket(TicketStatus.Submitted))).toBe(true);
+      expect(canClaimTicket(user, ticket(TicketStatus.Assigned))).toBe(true);
+      expect(canClaimTicket(user, ticket(TicketStatus.InProgress))).toBe(false);
+    }
+    expect(canClaimTicket(requester, ticket(TicketStatus.Submitted))).toBe(false);
   });
 
   it('lets staff resolve in-progress tickets', () => {
-    expect(canResolveTicket(agent, TicketStatus.InProgress)).toBe(true);
-    expect(canResolveTicket(admin, TicketStatus.InProgress)).toBe(true);
-    expect(canResolveTicket(agent, TicketStatus.Submitted)).toBe(false);
-    expect(canResolveTicket(requester, TicketStatus.InProgress)).toBe(false);
+    expect(canResolveTicket(agent, ticket(TicketStatus.InProgress))).toBe(true);
+    expect(canResolveTicket(admin, ticket(TicketStatus.InProgress))).toBe(true);
+    expect(canResolveTicket(agent, ticket(TicketStatus.Submitted))).toBe(false);
+    expect(canResolveTicket(requester, ticket(TicketStatus.InProgress))).toBe(false);
   });
 
-  it('keeps close, reopen and cancel for the owner or admin, never a plain agent', () => {
-    for (const user of [requester, admin]) {
-      expect(canCloseTicket(user, TicketStatus.Resolved)).toBe(true);
-      expect(canReopenTicket(user, TicketStatus.Resolved)).toBe(true);
-      expect(canCancelTicket(user, TicketStatus.Submitted)).toBe(true);
+  it('keeps close, reopen and cancel for the ticket owner, whatever their role, or an admin', () => {
+    for (const user of [requester, agent, userWith(['Requester', 'Agent'])]) {
+      expect(canCloseTicket(user, ticket(TicketStatus.Resolved, user.userId))).toBe(true);
+      expect(canReopenTicket(user, ticket(TicketStatus.Resolved, user.userId))).toBe(true);
+      expect(canCancelTicket(user, ticket(TicketStatus.Submitted, user.userId))).toBe(true);
+      expect(canCloseTicket(user, ticket(TicketStatus.Resolved))).toBe(false);
+      expect(canReopenTicket(user, ticket(TicketStatus.Resolved))).toBe(false);
+      expect(canCancelTicket(user, ticket(TicketStatus.Submitted))).toBe(false);
     }
-    expect(canCloseTicket(agent, TicketStatus.Resolved)).toBe(false);
-    expect(canReopenTicket(agent, TicketStatus.Resolved)).toBe(false);
-    expect(canCancelTicket(agent, TicketStatus.Submitted)).toBe(false);
-    expect(canCancelTicket(userWith(['Requester', 'Agent']), TicketStatus.Submitted)).toBe(false);
+    expect(canCloseTicket(admin, ticket(TicketStatus.Resolved))).toBe(true);
+    expect(canReopenTicket(admin, ticket(TicketStatus.Resolved))).toBe(true);
+    expect(canCancelTicket(admin, ticket(TicketStatus.Submitted))).toBe(true);
   });
 
   it('rejects transitions from the wrong status', () => {
-    expect(canCloseTicket(requester, TicketStatus.InProgress)).toBe(false);
-    expect(canReopenTicket(requester, TicketStatus.Closed)).toBe(false);
-    expect(canCancelTicket(requester, TicketStatus.Assigned)).toBe(false);
+    expect(canCloseTicket(requester, ticket(TicketStatus.InProgress, requester.userId))).toBe(false);
+    expect(canReopenTicket(requester, ticket(TicketStatus.Closed, requester.userId))).toBe(false);
+    expect(canCancelTicket(requester, ticket(TicketStatus.Assigned, requester.userId))).toBe(false);
   });
 
-  it('offers self-assign only to agents on tickets nobody holds', () => {
-    expect(canSelfAssignTicket(agent, TicketStatus.Submitted)).toBe(true);
-    expect(canSelfAssignTicket(agent, TicketStatus.Assigned)).toBe(false);
-    expect(canSelfAssignTicket(admin, TicketStatus.Submitted)).toBe(false);
-    expect(canSelfAssignTicket(requester, TicketStatus.Submitted)).toBe(false);
+  it('offers self-assign to staff only on tickets nobody holds', () => {
+    expect(canSelfAssignTicket(agent, ticket(TicketStatus.Submitted))).toBe(true);
+    expect(canSelfAssignTicket(admin, ticket(TicketStatus.Submitted))).toBe(true);
+    expect(canSelfAssignTicket(agent, ticket(TicketStatus.Assigned))).toBe(false);
+    expect(canSelfAssignTicket(requester, ticket(TicketStatus.Submitted))).toBe(false);
   });
 
-  it('offers unassign to staff only when the ticket is known to be assigned', () => {
-    expect(canUnassignTicket(agent, TicketStatus.Assigned)).toBe(true);
-    expect(canUnassignTicket(admin, TicketStatus.Assigned)).toBe(true);
-    expect(canUnassignTicket(agent, TicketStatus.InProgress)).toBe(false);
-    expect(canUnassignTicket(requester, TicketStatus.Assigned)).toBe(false);
+  it('offers unassign to staff only on assigned tickets, never on in-progress ones', () => {
+    expect(canUnassignTicket(agent, ticket(TicketStatus.Assigned))).toBe(true);
+    expect(canUnassignTicket(admin, ticket(TicketStatus.Assigned))).toBe(true);
+    expect(canUnassignTicket(agent, ticket(TicketStatus.InProgress))).toBe(false);
+    expect(canUnassignTicket(requester, ticket(TicketStatus.Assigned))).toBe(false);
   });
 
   it('grants nothing to unknown roles or anonymous users', () => {
     for (const user of [unknownRole, null]) {
-      expect(canClaimTicket(user, TicketStatus.Submitted)).toBe(false);
-      expect(canResolveTicket(user, TicketStatus.InProgress)).toBe(false);
-      expect(canCloseTicket(user, TicketStatus.Resolved)).toBe(false);
-      expect(canCancelTicket(user, TicketStatus.Submitted)).toBe(false);
-      expect(canSelfAssignTicket(user, TicketStatus.Submitted)).toBe(false);
-      expect(canUnassignTicket(user, TicketStatus.Assigned)).toBe(false);
+      expect(canClaimTicket(user, ticket(TicketStatus.Submitted))).toBe(false);
+      expect(canResolveTicket(user, ticket(TicketStatus.InProgress))).toBe(false);
+      expect(canCloseTicket(user, ticket(TicketStatus.Resolved))).toBe(false);
+      expect(canCancelTicket(user, ticket(TicketStatus.Submitted))).toBe(false);
+      expect(canSelfAssignTicket(user, ticket(TicketStatus.Submitted))).toBe(false);
+      expect(canUnassignTicket(user, ticket(TicketStatus.Assigned))).toBe(false);
     }
   });
 });

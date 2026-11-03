@@ -86,9 +86,9 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
   await page.goto(`/agent-workspace/tickets/${ticketA.id}`);
   await expect(page.getByRole('heading', { name: ticketA.title })).toBeVisible();
   await expect(page.getByText('Chưa có trao đổi nào cho ticket này.')).toBeVisible();
-  // Backend ClaimTicketUseCase only accepts the Agent role; Admin may cancel a submitted ticket instead.
+  // Backend ClaimTicketUseCase accepts Agent or Admin, and Admin may also cancel a submitted ticket.
   await expect(page.getByRole('button', { name: /Hủy vé/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Nhận xử lý/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Nhận xử lý/i })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gửi bình luận', exact: true })).toBeDisabled();
   await expect(page.getByText('Ticket được tạo mới')).toHaveCount(0);
   await expect(page.getByText('Gợi ý AI chưa được bật cho ticket này.')).toBeVisible();
