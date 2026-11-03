@@ -8,6 +8,7 @@ import { server } from '../../../../tests/mocks/server';
 import { ticketA, user, timelineItemA } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
 import { TicketStatus } from '../model/ticket.types';
+import type { TicketDto } from '../model/ticket.types';
 import { TicketWorkspacePage } from './TicketWorkspacePage';
 
 let requests: string[] = [];
@@ -22,7 +23,7 @@ function renderAt(ticketId: string) {
   );
 }
 
-function renderWorkspace(ticket: typeof ticketA = ticketA) {
+function renderWorkspace(ticket: TicketDto = ticketA) {
   server.use(
     http.get(`http://localhost/api/tickets/${ticket.id}`, ({ request }) => {
       requests.push(new URL(request.url).pathname);
@@ -65,28 +66,29 @@ it('lays out only metadata the backend returns, without invented values', async 
   await screen.findByRole('heading', { name: ticketA.title });
   expect(within(sidebarField('Mã ticket')).getByText(ticketA.ticketNumber)).toBeInTheDocument();
   expect(sidebarField('Danh mục')).toHaveTextContent('Mạng & Wi-Fi');
-  expect(sidebarField('Người yêu cầu')).toHaveTextContent('Chưa có thông tin');
+  expect(sidebarField('Người yêu cầu')).toHaveTextContent(ticketA.requesterId);
+  expect(sidebarField('Mức ưu tiên')).toHaveTextContent(ticketA.priority);
   expect(sidebarField('Phụ trách')).toHaveTextContent('Chưa phân công');
   expect(screen.queryByText(/P\d — /)).not.toBeInTheDocument();
   expect(screen.queryByText('Ưu tiên')).not.toBeInTheDocument();
 });
 
-it('derives the assignee state from the status only where the domain makes it certain', async () => {
-  renderWorkspace({ ...ticketA, status: TicketStatus.Assigned });
+it('uses the assignee id returned by the backend', async () => {
+  renderWorkspace({ ...ticketA, status: TicketStatus.Assigned, assignedToId: user.userId });
   await screen.findByRole('heading', { name: ticketA.title });
-  expect(sidebarField('Phụ trách')).toHaveTextContent('Đã phân công');
+  expect(sidebarField('Phụ trách')).toHaveTextContent(user.userId);
 });
 
-it('does not guess the assignee of an in-progress ticket', async () => {
+it('preserves a null assignee returned by the backend', async () => {
   renderWorkspace({ ...ticketA, status: TicketStatus.InProgress });
   await screen.findByRole('heading', { name: ticketA.title });
-  expect(sidebarField('Phụ trách')).toHaveTextContent('Chưa có thông tin');
+  expect(sidebarField('Phụ trách')).toHaveTextContent('Chưa phân công');
 });
 
 it('runs the whole agent flow on one screen: self-assign, claim, comment, resolve', async () => {
   let status = TicketStatus.Submitted;
   const timeline: (typeof timelineItemA)[] = [];
-  const current = () => HttpResponse.json({ ...ticketA, status });
+  const current = () => HttpResponse.json({ ...ticketA, requesterId: '00000000-0000-0000-0000-000000000099', status, assignedToId: status === TicketStatus.Submitted ? null : user.userId, revision: status === TicketStatus.Submitted ? 1 : 2 });
   server.use(
     http.get(`http://localhost/api/tickets/${ticketA.id}`, current),
     http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json(timeline)),
@@ -104,7 +106,7 @@ it('runs the whole agent flow on one screen: self-assign, claim, comment, resolv
   renderAt(ticketA.id);
 
   await userEvent.click(await screen.findByRole('button', { name: /Nhận về tôi/ }));
-  await waitFor(() => expect(sidebarField('Phụ trách')).toHaveTextContent('Đã phân công'));
+  await waitFor(() => expect(sidebarField('Phụ trách')).toHaveTextContent(user.userId));
 
   await userEvent.click(screen.getByRole('button', { name: /Nhận xử lý/ }));
   expect(await screen.findByRole('button', { name: /Giải quyết/ })).toBeInTheDocument();

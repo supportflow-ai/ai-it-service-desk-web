@@ -8,13 +8,14 @@ interface ApiFixture {
   tickets: typeof ticketA[];
   requests: string[];
   createdPayload: unknown;
-  presign: { uploadUrl: string; storageKey: string; expirySeconds: number } | null;
+  presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> } | null;
 }
 
 export const test = base.extend<{ api: ApiFixture }>({
   api: async ({ page }, provide) => {
     const api: ApiFixture = { roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null, presign: null };
     const unexpected: string[] = [];
+    const attachments = new Map<string, Record<string, unknown>[]>();
     await page.route('**/api/**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
@@ -79,6 +80,18 @@ export const test = base.extend<{ api: ApiFixture }>({
           },
         });
       }
+      const attachmentTicket = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}/attachments`);
+      if (attachmentTicket) return route.fulfill({ json: attachments.get(attachmentTicket.id) ?? [] });
+      const confirmTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/attachments/confirm`);
+      if (confirmTicket) {
+        const body: unknown = request.postDataJSON();
+        if (!body || typeof body !== 'object') return route.fulfill({ status: 400 });
+        const attachment = { ...body, id: '30000000-0000-0000-0000-000000000001', ticketId: confirmTicket.id,
+          uploadedBy: user.userId, createdAt: '2026-11-03T00:00:00Z' };
+        attachments.set(confirmTicket.id, [attachment]);
+        return route.fulfill({ status: 201, json: attachment });
+      }
+      if (key === 'GET /api/users') return route.fulfill({ json: [] });
       const uploadTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/attachments/upload-url`);
       if (uploadTicket && api.presign) return route.fulfill({ status: 200, json: api.presign });
       const downloadTicket = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}/attachments/download-url`);

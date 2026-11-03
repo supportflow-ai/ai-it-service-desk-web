@@ -32,15 +32,15 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   const { user } = useAuth();
   const [resolveOpen, setResolveOpen] = useState(false);
 
-  const claimMutation = useClaimTicket(ticket.id);
-  const resolveMutation = useResolveTicket(ticket.id);
-  const closeMutation = useCloseTicket(ticket.id);
-  const reopenMutation = useReopenTicket(ticket.id);
-  const cancelMutation = useCancelTicket(ticket.id);
+  const claimMutation = useClaimTicket(ticket.id, ticket.revision);
+  const resolveMutation = useResolveTicket(ticket.id, ticket.revision);
+  const closeMutation = useCloseTicket(ticket.id, ticket.revision);
+  const reopenMutation = useReopenTicket(ticket.id, ticket.revision);
+  const cancelMutation = useCancelTicket(ticket.id, ticket.revision);
   const mutations = [claimMutation, resolveMutation, closeMutation, reopenMutation, cancelMutation];
 
   // Also covers assignment writes from the other panel, so two state changes never overlap.
-  const isPending = useTicketStateWritePending(ticket.id);
+  const isPending = useTicketStateWritePending(ticket.id) || !ticket.revision;
   const failed = mutations.find((mutation) => mutation.isError);
   const failure = failed ? describeTicketError(failed.error, transitionMessages) : null;
 
@@ -53,9 +53,9 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   const allowed = {
     claim: canClaimTicket(user, ticket.status),
     resolve: canResolveTicket(user, ticket.status),
-    close: canCloseTicket(user, ticket.status),
-    reopen: canReopenTicket(user, ticket.status),
-    cancel: canCancelTicket(user, ticket.status),
+    close: canCloseTicket(user, ticket.status, ticket.requesterId),
+    reopen: canReopenTicket(user, ticket.status, ticket.requesterId),
+    cancel: canCancelTicket(user, ticket.status, ticket.requesterId),
   };
   const hasAction = Object.values(allowed).some(Boolean);
 
@@ -65,6 +65,7 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
       data-ticket-id={ticket.id}
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
+      {!ticket.revision && <Alert type="warning" message="Cần tải lại ticket để lấy phiên bản hiện tại trước khi thao tác." />}
       {failure && (
         <Alert
           type="error"

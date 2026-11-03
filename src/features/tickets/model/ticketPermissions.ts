@@ -10,13 +10,13 @@ function isStaff(user: User | null) {
 }
 
 /**
- * Close/reopen/cancel are allowed for the ticket owner or Admin. TicketDto carries no
- * requester id, so ownership is only provable for non-staff requesters: the backend
- * scopes their ticket reads to their own tickets.
+ * Close/reopen/cancel use requesterId when supplied; legacy non-staff reads are scoped
+ * to the caller by the backend. Backend authorization remains authoritative.
  */
-function isOwnerOrAdmin(user: User | null) {
+function isOwnerOrAdmin(user: User | null, requesterId?: string) {
   if (!user) return false;
   if (hasAnyRole(user.roles, ['Admin'])) return true;
+  if (requesterId !== undefined) return user.userId === requesterId;
   return hasAnyRole(user.roles, ['Requester']) && !isStaff(user);
 }
 
@@ -38,28 +38,28 @@ export function canResolveTicket(user: User | null, status: TicketStatus) {
   return isStaff(user) && status === TicketStatus.InProgress;
 }
 
-export function canCloseTicket(user: User | null, status: TicketStatus) {
-  return isOwnerOrAdmin(user) && status === TicketStatus.Resolved;
+export function canCloseTicket(user: User | null, status: TicketStatus, requesterId?: string) {
+  return isOwnerOrAdmin(user, requesterId) && status === TicketStatus.Resolved;
 }
 
-export function canReopenTicket(user: User | null, status: TicketStatus) {
-  return isOwnerOrAdmin(user) && status === TicketStatus.Resolved;
+export function canReopenTicket(user: User | null, status: TicketStatus, requesterId?: string) {
+  return isOwnerOrAdmin(user, requesterId) && status === TicketStatus.Resolved;
 }
 
-export function canCancelTicket(user: User | null, status: TicketStatus) {
-  return isOwnerOrAdmin(user) && status === TicketStatus.Submitted;
+export function canCancelTicket(user: User | null, status: TicketStatus, requesterId?: string) {
+  return isOwnerOrAdmin(user, requesterId) && status === TicketStatus.Submitted;
 }
 
 /**
- * Self-assign only takes a ticket nobody holds (Submitted). An Assigned ticket already has
- * an assignee the UI cannot see, so taking it over is not offered. Admin-only accounts are
- * excluded because they could not claim the ticket afterwards.
+ * Self-assign is offered on Submitted. Staff can choose a different agent explicitly;
+ * both commands carry the ticket revision.
  */
 export function canSelfAssignTicket(user: User | null, status: TicketStatus) {
   return !!user && hasAnyRole(user.roles, ['Agent']) && status === TicketStatus.Submitted;
 }
 
 /** UnassignTicketUseCase accepts any Agent or Admin; Assigned is the only status known to have an assignee. */
-export function canUnassignTicket(user: User | null, status: TicketStatus) {
-  return isStaff(user) && status === TicketStatus.Assigned;
+export function canUnassignTicket(user: User | null, status: TicketStatus, assignedToId?: string | null) {
+  return isStaff(user) && (assignedToId === undefined ? status === TicketStatus.Assigned
+    : !!assignedToId && status !== TicketStatus.Closed && status !== TicketStatus.Cancelled);
 }

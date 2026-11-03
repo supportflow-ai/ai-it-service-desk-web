@@ -54,11 +54,17 @@ it('assigns with the backend agentId payload and unassigns without a body', asyn
       return HttpResponse.json({ ...ticketA, status: TicketStatus.Assigned });
     }),
     http.post(`http://localhost/api/tickets/${ticketA.id}/unassign`, async ({ request }) => {
+      expect(new URL(request.url).searchParams.get('expectedRevision')).toBe(String(ticketA.revision));
       calls.push(await request.text());
       return HttpResponse.json(ticketA);
     }),
   );
-  expect((await ticketApi.assignTicket(ticketA.id, 'agent-guid')).status).toBe(TicketStatus.Assigned);
-  expect((await ticketApi.unassignTicket(ticketA.id)).status).toBe(TicketStatus.Submitted);
-  expect(calls).toEqual([{ agentId: 'agent-guid' }, '']);
+  expect((await ticketApi.assignTicket(ticketA.id, 'agent-guid', ticketA.revision)).status).toBe(TicketStatus.Assigned);
+  expect((await ticketApi.unassignTicket(ticketA.id, ticketA.revision)).status).toBe(TicketStatus.Submitted);
+  expect(calls).toEqual([{ agentId: 'agent-guid', expectedRevision: ticketA.revision }, '']);
+});
+
+it('rejects a status write without a valid revision before sending HTTP', async () => {
+  await expect(ticketApi.claimTicket(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
+  await expect(ticketApi.assignTicket(ticketA.id, 'agent-guid', 0)).rejects.toMatchObject({ kind: 'invalid-response' });
 });

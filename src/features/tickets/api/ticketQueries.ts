@@ -15,6 +15,8 @@ export const ticketKeys = {
   queueAll,
   queue: (version: number, filters: AgentQueueFilters) => [...queueAll(version), { ...filters }] as const,
   detail: (version: number, id: string) => ['tickets', version, 'detail', id] as const,
+  agents: (version: number) => ['tickets', version, 'agents'] as const,
+  attachments: (version: number, id: string) => ['tickets', version, 'attachments', id] as const,
   timeline: (version: number, id: string) => ['tickets', version, 'timeline', id] as const,
   /** Prefix shared by every write to one ticket, so pending writes can be found per ticket. */
   writes,

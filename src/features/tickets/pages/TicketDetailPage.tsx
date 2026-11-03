@@ -24,7 +24,7 @@ export function TicketDetailPage() {
       {ticket.error && <ErrorState error={ticket.error} onRetry={reload} />}
       <TicketHeader ticket={ticket.data} /><TicketMetadata ticket={ticket.data} />
     </Card>
-    <TicketCommandPanel ticket={ticket.data} onReload={reload} />
+    <TicketCommandPanel key={`command-${ticket.data.id}`} ticket={ticket.data} onReload={reload} />
     <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
     <TicketTimeline ticketId={ticket.data.id} />
     <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />

@@ -25,14 +25,15 @@ const unavailable = <Typography.Text type="secondary">Chưa có thông tin</Typo
 
 /** Only fields the backend TicketDto actually returns are shown as values. */
 export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
-  const assignment = assignmentView(ticket.status);
+  const assignment = assignmentView(ticket.status, ticket.assignedToId);
   return (
     <Card title="Thông tin ticket" size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)', fontSize: 13 }}>
       <dl style={{ margin: 0 }}>
         <Field label="Mã ticket"><span className="mono">{ticket.ticketNumber}</span></Field>
         <Field label="Trạng thái"><TicketStatusTag status={ticket.status} /></Field>
         <Field label="Danh mục">{ticketCategoryLabels[ticket.categoryId]}</Field>
-        <Field label="Người yêu cầu">{unavailable}</Field>
+        <Field label="Người yêu cầu">{ticket.requesterId ?? unavailable}</Field>
+        <Field label="Mức ưu tiên">{ticket.priority ?? unavailable}</Field>
         <Field label="Phụ trách">{assignment.known ? assignment.label : unavailable}</Field>
         <Field label="Tạo lúc">{formatCreatedAt(ticket.createdAt)}</Field>
       </dl>

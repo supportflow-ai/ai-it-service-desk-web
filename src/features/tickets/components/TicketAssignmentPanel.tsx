@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Alert, Button, Card, Popconfirm, Select, Space, Typography } from 'antd';
 import { UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
+import { TicketStatus } from '../model/ticket.types';
 import type { TicketDto } from '../model/ticket.types';
 import { assignmentView } from '../model/assignment';
 import { canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
+import { useAgents } from '../hooks/useAgents';
 import { useAssignTicket } from '../hooks/useAssignTicket';
 import { useUnassignTicket } from '../hooks/useUnassignTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
@@ -20,16 +23,21 @@ const assignmentMessages = {
 
 export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPanelProps) {
   const { user } = useAuth();
-  const assignMutation = useAssignTicket(ticket.id);
-  const unassignMutation = useUnassignTicket(ticket.id);
+  const agents = useAgents();
+  const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
+  const assignMutation = useAssignTicket(ticket.id, ticket.revision);
+  const unassignMutation = useUnassignTicket(ticket.id, ticket.revision);
   // Also covers status writes from the other panel, so two state changes never overlap.
-  const isPending = useTicketStateWritePending(ticket.id);
+  const isPending = useTicketStateWritePending(ticket.id) || !ticket.revision;
   const failedError = assignMutation.isError ? assignMutation.error : unassignMutation.isError ? unassignMutation.error : null;
   const failure = failedError ? describeTicketError(failedError, assignmentMessages) : null;
 
-  const assignment = assignmentView(ticket.status);
+  const assignment = assignmentView(ticket.status, ticket.assignedToId);
   const allowSelfAssign = canSelfAssignTicket(user, ticket.status);
-  const allowUnassign = canUnassignTicket(user, ticket.status);
+  const allowUnassign = canUnassignTicket(user, ticket.status, ticket.assignedToId);
+  const canAssign = !!user?.roles.some((role) => role === 'Agent' || role === 'Admin') && ![TicketStatus.Closed, TicketStatus.Cancelled].includes(ticket.status);
+  const assignee = agents.data?.find((agent) => agent.userId === ticket.assignedToId);
+  const assignmentLabel = assignee?.fullName || assignee?.email || assignment.label;
 
   const selfAssign = () => {
     if (!user) return;
@@ -43,6 +51,7 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
 
   return (
     <Card title="Phân công" size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}>
+      {!ticket.revision && <Alert type="warning" message="Cần tải lại ticket để lấy phiên bản hiện tại trước khi thao tác." />}
       {failure && (
         <Alert
           type="error"
@@ -55,7 +64,7 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
 
       <Typography.Paragraph style={{ marginBottom: 12 }}>
         Phụ trách:{' '}
-        {assignment.known ? <strong>{assignment.label}</strong> : <Typography.Text type="secondary">{assignment.label}</Typography.Text>}
+        {assignment.known ? <strong>{assignmentLabel}</strong> : <Typography.Text type="secondary">{assignment.label}</Typography.Text>}
       </Typography.Paragraph>
 
       <Space direction="vertical" style={{ width: '100%' }}>
@@ -83,11 +92,18 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
           </Typography.Text>
         )}
 
-        {/* No agent directory endpoint exists, so choosing another agent stays locked. */}
-        <Select aria-label="Giao cho kỹ thuật viên khác" disabled placeholder="Giao cho kỹ thuật viên khác" style={{ width: '100%' }} />
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-          Chưa hỗ trợ chọn kỹ thuật viên khác: hệ thống chưa có danh sách kỹ thuật viên.
-        </Typography.Text>
+        <Select aria-label="Giao cho kỹ thuật viên khác" placeholder="Giao cho kỹ thuật viên khác"
+          value={selectedAgent} onChange={setSelectedAgent} loading={agents.isPending}
+          disabled={!canAssign || isPending || agents.isError || !agents.data?.length}
+          options={(agents.data ?? []).map((agent) => ({ value: agent.userId, label: agent.fullName || agent.email }))}
+          style={{ width: '100%' }} />
+        <Button disabled={!canAssign || isPending || !selectedAgent} loading={assignMutation.isPending}
+          onClick={() => { if (selectedAgent) assignMutation.mutate(selectedAgent, { onSuccess: () => setSelectedAgent(undefined) }); }}>
+          Xác nhận phân công
+        </Button>
+        {agents.isError && <Alert type="error" message="Không tải được danh sách kỹ thuật viên."
+          action={<Button onClick={() => { void agents.refetch(); }}>Thử lại</Button>} />}
+        {agents.isSuccess && agents.data.length === 0 && <Typography.Text type="secondary">Chưa có kỹ thuật viên trong danh sách.</Typography.Text>}
       </Space>
     </Card>
   );

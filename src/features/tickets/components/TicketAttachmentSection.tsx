@@ -1,10 +1,11 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { Alert, Button, Card, Empty, Progress, Space, Typography } from 'antd';
 import { DownloadOutlined, PaperClipOutlined, UploadOutlined } from '@ant-design/icons';
 import { useAttachmentDownload } from '../hooks/useAttachmentDownload';
 import { useUploadAttachment } from '../hooks/useUploadAttachment';
-import type { UploadedAttachment } from '../hooks/useUploadAttachment';
+import { useAttachments } from '../hooks/useAttachments';
+import { normalizeError } from '@/shared/api/httpError';
 import { describeTicketError } from '../lib/ticketErrorMessage';
 import { ATTACHMENT_ACCEPT } from '../validation/attachmentRules';
 
@@ -25,8 +26,9 @@ function formatFileSize(bytes: number) {
 /** Callers must remount this section (key={ticketId}) when the ticket changes. */
 export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // The backend has no attachment list/metadata endpoint yet, so only this session's uploads are known.
-  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+  const files = useAttachments(ticketId);
+  const accessLost = files.isError && [403, 404].includes(normalizeError(files.error).status ?? 0);
+  const attachments = accessLost ? [] : files.data ?? [];
   const upload = useUploadAttachment(ticketId);
   const download = useAttachmentDownload(ticketId);
 
@@ -38,7 +40,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    upload.upload(file, (uploaded) => setAttachments((prev) => [...prev, uploaded]));
+    upload.upload(file);
   };
 
   return (
@@ -64,6 +66,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
             size="small"
             icon={<UploadOutlined />}
             loading={upload.isUploading}
+            disabled={!!upload.pendingConfirmation || accessLost}
             onClick={() => fileInputRef.current?.click()}
             style={{ borderRadius: 6 }}
           >
@@ -73,12 +76,13 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
       }
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
-      <Alert
-        type="info"
-        showIcon
-        message="Danh sách chỉ gồm các tệp bạn tải lên trong phiên này. Hệ thống chưa hỗ trợ lưu danh sách tệp của ticket, nên tệp sẽ không hiển thị lại sau khi tải lại trang."
-        style={{ marginBottom: 12 }}
-      />
+      {files.isPending && <Typography.Paragraph>Đang tải danh sách tệp…</Typography.Paragraph>}
+      {files.isError && <Alert type="error" showIcon message="Không tải được danh sách tệp đính kèm."
+        action={<Button onClick={() => { void files.refetch(); }}>Thử lại</Button>} style={{ marginBottom: 12 }} />}
+      {upload.pendingConfirmation && !upload.isUploading && <Alert type="warning" showIcon
+        message="Tệp đã tải lên nhưng chưa xác nhận lưu. Hãy thử xác nhận lại."
+        action={<Space><Button onClick={upload.retryConfirmation}>Xác nhận lại</Button>
+          <Button onClick={upload.discardConfirmation}>Chọn tệp khác</Button></Space>} style={{ marginBottom: 12 }} />}
 
       {uploadFailure && (
         <Alert
@@ -109,7 +113,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
         </div>
       )}
 
-      {attachments.length === 0 ? (
+      {attachments.length === 0 && !files.isPending && !files.isError ? (
         <Empty
           description="Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP)."
           image={Empty.PRESENTED_IMAGE_SIMPLE}

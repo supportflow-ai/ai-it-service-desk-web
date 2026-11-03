@@ -42,6 +42,14 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
+  requesterId?: string;
+  assignedToId?: string | null;
+  assignedAt?: string | null;
+  updatedAt?: string | null;
+  revision?: number;
+  priority?: string | null;
+  impact?: string | null;
+  urgency?: string | null;
 }
 
 export interface PagedTicketResult {
@@ -89,12 +97,30 @@ export interface GenerateUploadUrlPayload {
   contentType: string;
 }
 
+export interface ConfirmAttachmentPayload extends GenerateUploadUrlPayload {
+  storageKey: string;
+}
+
+export interface TicketAttachmentDto extends ConfirmAttachmentPayload {
+  id: string;
+  ticketId: string;
+  uploadedBy: string;
+  createdAt: string;
+}
+
 export interface UploadUrlResult {
   uploadUrl: string;
   storageKey: string;
   expirySeconds: number;
+  formData?: Record<string, string> | null;
 }
 
 export interface DownloadUrlResult {
   downloadUrl: string;
+}
+
+export interface AgentSummary {
+  userId: string;
+  email: string;
+  fullName?: string | null;
 }

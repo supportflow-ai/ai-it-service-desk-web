@@ -4,10 +4,10 @@ import { ticketA } from '../tests/fixtures';
 const uploadUrl = 'https://storage.example.invalid/servicedesk/upload-target';
 const storageKey = `tickets/${ticketA.id}/key_log.txt`;
 
-test('requester uploads the raw file to storage and downloads it through a fresh URL', async ({ page, api }) => {
-  api.presign = { uploadUrl, storageKey, expirySeconds: 3600 };
+test('requester uploads with a bounded POST policy, confirms and reloads the attachment', async ({ page, api }) => {
+  api.presign = { uploadUrl, storageKey, expirySeconds: 3600, formData: { key: storageKey, policy: 'signed-policy', 'Content-Type': 'text/plain' } };
   let stored: { body: string; authorization: string | undefined; contentType: string | undefined } | undefined;
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'PUT', 'Access-Control-Allow-Headers': 'content-type' };
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'content-type' };
   await page.route(uploadUrl, async (route) => {
     const request = route.request();
     if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
@@ -26,7 +26,14 @@ test('requester uploads the raw file to storage and downloads it through a fresh
   await page.getByTestId('attachment-input').setInputFiles({ name: 'log.txt', mimeType: 'text/plain', buffer: Buffer.from('hello storage') });
 
   await expect(page.getByText('log.txt', { exact: true })).toBeVisible();
-  expect(stored).toEqual({ body: 'hello storage', authorization: undefined, contentType: 'text/plain' });
+  expect(stored?.authorization).toBeUndefined();
+  expect(stored?.contentType).toMatch(/^multipart\/form-data; boundary=/);
+  expect(stored?.body).toContain('name="policy"');
+  expect(stored?.body).toContain('signed-policy');
+  expect(stored?.body).toContain('hello storage');
+  expect(api.requests).toContain(`POST /api/tickets/${ticketA.id}/attachments/confirm`);
+  await page.reload();
+  await expect(page.getByText('log.txt', { exact: true })).toBeVisible();
   expect(api.requests).toContain(`POST /api/tickets/${ticketA.id}/attachments/upload-url`);
 
   const popup = page.waitForEvent('popup');

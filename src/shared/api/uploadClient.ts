@@ -6,6 +6,7 @@ const storageClient = axios.create();
 
 export interface PresignedUploadOptions {
   contentType?: string;
+  formData?: Record<string, string> | null;
   /** Called with 0–100 while the body is sent. */
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
@@ -13,10 +14,15 @@ export interface PresignedUploadOptions {
 
 /** Uploads raw binary data to a presigned URL using PUT. */
 export async function uploadToPresignedUrl(uploadUrl: string, file: Blob, options: PresignedUploadOptions = {}): Promise<void> {
-  const { contentType, onProgress, signal } = options;
+  const { contentType, onProgress, signal, formData } = options;
   try {
-    await storageClient.put(uploadUrl, file, {
-      headers: { 'Content-Type': contentType || file.type || 'application/octet-stream' },
+    const body = formData ? new FormData() : file;
+    if (body instanceof FormData) {
+      Object.entries(formData ?? {}).forEach(([key, value]) => body.append(key, value));
+      body.append('file', file);
+    }
+    await storageClient.request({ url: uploadUrl, method: formData ? 'POST' : 'PUT', data: body,
+      headers: formData ? undefined : { 'Content-Type': contentType || file.type || 'application/octet-stream' },
       onUploadProgress: (event) => {
         if (onProgress && event.total) onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
       },

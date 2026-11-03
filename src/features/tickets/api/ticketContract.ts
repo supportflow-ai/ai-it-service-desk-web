@@ -3,6 +3,8 @@ import { isRecord } from '@/shared/lib/guards';
 import { TicketCategory, TicketStatus } from '../model/ticket.types';
 import type {
   DownloadUrlResult,
+  TicketAttachmentDto,
+  AgentSummary,
   PagedTicketResult,
   TicketDto,
   TimelineItemDto,
@@ -15,6 +17,8 @@ function isTicket(value: unknown): value is TicketDto {
     && typeof value.createdAt === 'string'
     && Object.values(TicketCategory).some((category) => category === value.categoryId)
     && Object.values(TicketStatus).some((status) => typeof status === 'number' && status === value.status)
+    && (value.revision === undefined || (typeof value.revision === 'number' && Number.isInteger(value.revision) && value.revision >= 0 && value.revision <= 4294967295))
+    && ['requesterId', 'assignedToId', 'assignedAt', 'updatedAt', 'priority', 'impact', 'urgency'].every((field) => value[field] == null || typeof value[field] === 'string')
     && (value.requesterDepartmentId === undefined || value.requesterDepartmentId === null || typeof value.requesterDepartmentId === 'string');
 }
 
@@ -72,7 +76,8 @@ function isUploadUrlResult(value: unknown): value is UploadUrlResult {
   return isRecord(value)
     && isHttpUrl(value.uploadUrl)
     && typeof value.storageKey === 'string' && value.storageKey.length > 0
-    && typeof value.expirySeconds === 'number';
+    && typeof value.expirySeconds === 'number'
+    && (value.formData == null || (isRecord(value.formData) && Object.values(value.formData).every((item) => typeof item === 'string')));
 }
 
 export function readUploadUrlResult(value: unknown): UploadUrlResult {
@@ -86,5 +91,31 @@ function isDownloadUrlResult(value: unknown): value is DownloadUrlResult {
 
 export function readDownloadUrlResult(value: unknown): DownloadUrlResult {
   if (!isDownloadUrlResult(value)) throw new AppError('Phản hồi download URL không hợp lệ.', 'invalid-response');
+  return value;
+}
+
+function isAttachment(value: unknown): value is TicketAttachmentDto {
+  return isRecord(value) && typeof value.id === 'string' && typeof value.ticketId === 'string'
+    && typeof value.fileName === 'string' && typeof value.storageKey === 'string'
+    && typeof value.contentType === 'string' && typeof value.uploadedBy === 'string'
+    && typeof value.createdAt === 'string' && typeof value.fileSizeBytes === 'number'
+    && Number.isSafeInteger(value.fileSizeBytes) && value.fileSizeBytes > 0;
+}
+
+export function readAttachment(value: unknown): TicketAttachmentDto {
+  if (!isAttachment(value)) throw new AppError('Phản hồi tệp đính kèm không hợp lệ.', 'invalid-response');
+  return value;
+}
+
+export function readAttachments(value: unknown): TicketAttachmentDto[] {
+  if (!Array.isArray(value) || !value.every(isAttachment)) throw new AppError('Danh sách tệp đính kèm không hợp lệ.', 'invalid-response');
+  return value;
+}
+
+export function readAgents(value: unknown): AgentSummary[] {
+  if (!Array.isArray(value) || !value.every((item) => isRecord(item) && typeof item.userId === 'string'
+    && typeof item.email === 'string' && (item.fullName == null || typeof item.fullName === 'string'))) {
+    throw new AppError('Danh sách kỹ thuật viên không hợp lệ.', 'invalid-response');
+  }
   return value;
 }

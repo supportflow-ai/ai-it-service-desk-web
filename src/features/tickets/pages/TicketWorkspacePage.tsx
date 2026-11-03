@@ -68,7 +68,7 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Col xs={24} md={8} lg={6} xl={5}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <TicketWorkspaceSidebar ticket={ticket.data} />
-            <TicketAssignmentPanel ticket={ticket.data} onReload={reload} />
+            <TicketAssignmentPanel key={`assignment-${ticket.data.id}`} ticket={ticket.data} onReload={reload} />
           </Space>
         </Col>
 
@@ -76,7 +76,7 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Col xs={24} md={16} lg={18} xl={13}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <TicketWorkspaceHeader ticket={ticket.data} />
-            <TicketCommandPanel ticket={ticket.data} onReload={reload} />
+            <TicketCommandPanel key={`command-${ticket.data.id}`} ticket={ticket.data} onReload={reload} />
             <TicketTimeline ticketId={ticket.data.id} />
             <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
             <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />

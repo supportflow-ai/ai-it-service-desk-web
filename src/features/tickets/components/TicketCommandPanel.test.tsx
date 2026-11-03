@@ -12,7 +12,7 @@ import { TicketCommandPanel } from './TicketCommandPanel';
 function renderPanel(roles: string[], status: TicketStatus, onReload = () => {}) {
   sessionStore.setToken('session');
   server.use(http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles })));
-  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status };
+  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status, requesterId: roles.includes('Requester') ? user.userId : '00000000-0000-0000-0000-000000000099' };
   const { Wrapper } = createTestWrapper();
   render(<TicketCommandPanel ticket={ticket} onReload={onReload} />, { wrapper: Wrapper });
 }
