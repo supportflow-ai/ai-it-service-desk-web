@@ -10,7 +10,8 @@ import { TicketAttachmentSection } from './TicketAttachmentSection';
 
 const uploadUrl = 'https://storage.example.com/servicedesk';
 const pendingKey = `uploads/pending/${ticketA.id}/0001`;
-const presign = { uploadUrl, storageKey: pendingKey, expirySeconds: 3600, formData: { key: pendingKey, policy: 'signed' } };
+// No formData: the raw-PUT shape. The POST-policy shape is covered in e2e (jsdom File + FormData hangs MSW on Node 22).
+const presign = { uploadUrl, storageKey: pendingKey, expirySeconds: 3600 };
 const attachment = {
   id: '30000000-0000-0000-0000-000000000001', ticketId: ticketA.id, fileName: 'log.txt', fileSizeBytes: 5,
   contentType: 'text/plain', storageKey: `tickets/${ticketA.id}/attachments/0001`, uploadedBy: user.userId,
@@ -67,7 +68,7 @@ it('uploads to storage without the API token, confirms the file, then shows it f
       requested.push(await request.json());
       return HttpResponse.json(presign);
     }),
-    http.post(uploadUrl, ({ request }) => {
+    http.put(uploadUrl, ({ request }) => {
       storage = { method: request.method, authorization: request.headers.get('authorization') };
       return new HttpResponse(null, { status: 204 });
     }),
@@ -84,7 +85,7 @@ it('uploads to storage without the API token, confirms the file, then shows it f
   expect(await screen.findByText('log.txt')).toBeInTheDocument();
   const metadata = { fileName: 'log.txt', fileSizeBytes: 5, contentType: 'text/plain' };
   expect(requested).toEqual([metadata]);
-  expect(storage).toEqual({ method: 'POST', authorization: null });
+  expect(storage).toEqual({ method: 'PUT', authorization: null });
   expect(confirmed).toEqual([{ ...metadata, storageKey: pendingKey }]);
   expect(listReads).toBe(2);
   expect(screen.getByText('Tệp đính kèm (1)')).toBeInTheDocument();
@@ -94,7 +95,7 @@ it('does not confirm or list a file the storage rejected', async () => {
   let confirms = 0;
   server.use(
     http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json(presign)),
-    http.post(uploadUrl, () => new HttpResponse(null, { status: 403 })),
+    http.put(uploadUrl, () => new HttpResponse(null, { status: 403 })),
     http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => { confirms += 1; return HttpResponse.json(attachment, { status: 201 }); }),
   );
   renderSection();
@@ -108,7 +109,7 @@ it('does not confirm or list a file the storage rejected', async () => {
 it('explains a rejected confirmation and does not show the file as attached', async () => {
   server.use(
     http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json(presign)),
-    http.post(uploadUrl, () => new HttpResponse(null, { status: 204 })),
+    http.put(uploadUrl, () => new HttpResponse(null, { status: 200 })),
     http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => (
       HttpResponse.json({ error: 'Yêu cầu upload đã hết hạn.' }, { status: 400 })
     )),
