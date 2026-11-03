@@ -18,9 +18,10 @@ All paths below are relative to the build-time API base URL (`/api` by default).
 | POST /tickets | title, description, categoryId | Full TicketDto, status Submitted | All three roles |
 
 TicketDto contains id, ticketNumber, title, description, categoryId, numeric status,
-createdAt and optional/nullable requesterDepartmentId. The UI does not invent priority,
-assignment, resolution, revision or concurrency data. DTOs already suit the current UI;
-there is no identity mapper. Runtime readers validate required response fields.
+createdAt and optional/nullable requesterDepartmentId; since backend dev `007a258` it also
+carries `revision` (see below). The UI does not invent priority, assignment or resolution
+data, and never makes up a revision. DTOs already suit the current UI; there is no identity
+mapper. Runtime readers validate required response fields.
 
 Source files at the pinned SHA:
 - `src/backend/ServiceDesk.Api/Endpoints/{AuthEndpoints,TicketEndpoints}.cs`
@@ -60,14 +61,37 @@ TimelineItemDto contains id, ticketId, authorId, authorName, authorRole, content
 and createdAt. Presigned URLs must be absolute http(s); uploads go straight to storage with
 a separate HTTP client so the API bearer token is never sent there.
 
+### Revision and attachment metadata
+
+Pinned to backend `dev` commit `007a2589086970157a99f51d7792b9a418ed0487` (2026-11-03), same
+source files plus `ServiceDesk.Application/Ticketing/{Contracts/AttachmentContracts,ConfirmAttachmentUpload/*,GetTicketAttachments/*}.cs`
+and `ServiceDesk.Infrastructure/Storage/MinioObjectStorageService.cs`. This changes the rows above:
+
+| Method/path | Request | Success response | Notes |
+| --- | --- | --- | --- |
+| Every TicketDto response | — | adds `revision` (non-negative integer) | Required by the reader; a ticket without it is an invalid response |
+| POST /tickets/{id}/assign | agentId, expectedRevision (body) | TicketDto | Stale revision → 409 |
+| POST /tickets/{id}/{unassign,claim,resolve,close,reopen,cancel} | `expectedRevision` query, no body | TicketDto | Stale revision → 409 |
+| POST /tickets/{id}/attachments/upload-url | unchanged | adds nullable `formData` (string map) | Present: multipart POST of every field, then `file`. Absent/null: raw PUT |
+| POST /tickets/{id}/attachments/confirm | fileName, fileSizeBytes, contentType, storageKey (as sent to upload-url) | TicketAttachmentDto, 201 | Required: without it the file is not attached to the ticket |
+| GET /tickets/{id}/attachments | None | TicketAttachmentDto[], newest first | All three roles, same ticket scope as detail |
+
+TicketAttachmentDto contains id, ticketId, fileName, fileSizeBytes, contentType, storageKey
+(the confirmed, ticket-owned key used for download-url), uploadedBy and createdAt.
+
+Status and assignment commands send the revision of the ticket on screen. A 409 shows
+"ticket was changed by someone else" with a reload button; reloading clears that error, and the
+write is never retried. The backend's revision is the PostgreSQL `xmin` and it skips the check
+when the expected or current revision is 0, so 0 gives no conflict protection: a backend gap.
+An upload is done only after confirm succeeds; the list is then refreshed from the server.
+
 Rejected lifecycle transitions return 400, permission failures 401/403 and out-of-scope
 tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
 TicketDto has no requester id, so close/reopen/cancel are shown only to Admin and to Requester
 accounts without a staff role, whose ticket reads the server scopes to their own tickets.
 
-Known backend gaps at this commit, reflected in the UI rather than papered over:
-- No attachment list/metadata endpoint: the UI lists only files uploaded in the current
-  session and says so.
+Known backend gaps at commit 8fe5c43, reflected in the UI rather than papered over (the
+attachment list and the revision/409 gaps were closed by `007a258`, see above):
 - Timeline entries are kept in memory on the server and carry the user id as `authorName`;
   the UI shows a role label instead of an id. Status transitions are not recorded as
   timeline events.
@@ -81,7 +105,7 @@ Known backend gaps at this commit, reflected in the UI rather than papered over:
   unassign on Assigned tickets, reads "assigned/unassigned" from those two statuses, and keeps
   "assign to another agent" locked. The server does not validate agentId, any staff member can
   unassign, Claim does not record an assignee, and no assignment audit event exists. The
-  historical TC-294 policy (team membership, revision, 409) is not implemented.
+  historical TC-294 team-membership policy is not implemented.
 
 ## Not enabled
 
@@ -112,7 +136,9 @@ is pending, every status and assignment control for it is disabled; a 404 reload
 the workspace shows not-found instead of stale data) and invalidate per `ticketInvalidation` in
 `api/ticketQueries.ts`: a status or assignment change refreshes the ticket, its timeline, the
 requester list and the agent queue; a comment or internal note refreshes only the timeline;
-a new ticket refreshes the two lists.
+a confirmed upload refreshes only the attachment list; a new ticket refreshes the two lists.
+A 403/404 on a ticket, timeline or attachment read hides the cached copy on both the requester
+detail page and the agent workspace.
 
 Feature dependency allowlist: tickets → auth; ai-assistance → tickets. External consumers
 use feature-root index.ts. ESLint Boundaries and TypeScript AST/resolved-module graph checks

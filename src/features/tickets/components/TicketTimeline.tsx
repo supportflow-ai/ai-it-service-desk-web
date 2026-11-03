@@ -1,8 +1,8 @@
 import { Card, Empty, Skeleton, Space } from 'antd';
 import { useAuth } from '@/features/auth';
-import { normalizeError } from '@/shared/api/httpError';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { useTicketTimeline } from '../hooks/useTicketTimeline';
+import { isAccessLostError } from '../lib/ticketErrorMessage';
 import { canAddInternalNote } from '../model/ticketPermissions';
 import { timelineAuthorLabel, timelineRoleLabel, visibleTimelineItems } from '../model/timeline';
 
@@ -19,10 +19,7 @@ function formatDate(isoString: string) {
 export function TicketTimeline({ ticketId }: TicketTimelineProps) {
   const { user } = useAuth();
   const timeline = useTicketTimeline(ticketId);
-  const status = timeline.error ? normalizeError(timeline.error).status : undefined;
-  // 403/404 means the data is no longer ours to show, even if an older copy is cached.
-  const accessLost = status === 403 || status === 404;
-  const items = timeline.data && !accessLost
+  const items = timeline.data && !isAccessLostError(timeline.error)
     ? visibleTimelineItems(timeline.data, canAddInternalNote(user))
     : [];
 

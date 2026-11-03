@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -12,13 +12,14 @@ import { TicketDetailPage } from './TicketDetailPage';
 const leakedNote = { ...timelineItemA, id: '20000000-0000-0000-0000-000000000009', content: 'Ghi chú bí mật', isInternal: true };
 
 function renderRequesterPage() {
-  const { Wrapper } = createTestWrapper();
+  const { Wrapper, queryClient } = createTestWrapper();
   render(
     <MemoryRouter initialEntries={[`/requester-dashboard/tickets/${ticketA.id}`]}>
       <Routes><Route path="/requester-dashboard/tickets/:id" element={<TicketDetailPage />} /></Routes>
     </MemoryRouter>,
     { wrapper: Wrapper },
   );
+  return queryClient;
 }
 
 beforeEach(() => {
@@ -26,6 +27,7 @@ beforeEach(() => {
   server.use(
     http.get('http://localhost/api/auth/me', () => HttpResponse.json(user)),
     http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json([])),
   );
 });
 
@@ -83,6 +85,27 @@ it('keeps the typed comment and explains the failure when sending is rejected', 
   if (!composer) throw new Error('Composer card is missing');
   expect(await within(composer).findByText(/Không tìm thấy ticket/)).toBeInTheDocument();
   expect(input).toHaveValue('Vẫn chưa vào được mạng');
+});
+
+it.each([
+  [403, 'Bạn không có quyền xem ticket này'],
+  [404, 'Không tìm thấy ticket'],
+])('hides the cached ticket and its actions when a refetch returns %i, and keeps the session', async (status, title) => {
+  let lost = false;
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => (lost ? new HttpResponse(null, { status }) : HttpResponse.json(ticketA))),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
+  );
+  const queryClient = renderRequesterPage();
+  expect(await screen.findByRole('heading', { name: ticketA.title })).toBeInTheDocument();
+
+  lost = true;
+  await act(() => queryClient.invalidateQueries({ queryKey: ['tickets'] }));
+  expect(await screen.findByText(title)).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { name: ticketA.title })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Hủy vé|Đính kèm tệp|Gửi bình luận/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /Quay lại danh sách/ })).toHaveAttribute('href', '/requester-dashboard/tickets');
+  expect(sessionStore.getSnapshot().token).toBe('requester');
 });
 
 it('hides cached timeline entries once access to the ticket is lost', async () => {

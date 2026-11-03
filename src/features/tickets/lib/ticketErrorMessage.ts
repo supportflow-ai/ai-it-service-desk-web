@@ -12,6 +12,13 @@ const defaultMessages: Partial<Record<number, string>> = {
   409: 'Ticket vừa được người khác cập nhật. Hãy tải lại trước khi thao tác tiếp.',
 };
 
+/** 403/404 on a read means the data is no longer ours to show, even if an older copy is cached. */
+export function isAccessLostError(error: unknown) {
+  if (!error) return false;
+  const status = normalizeError(error).status;
+  return status === 403 || status === 404;
+}
+
 /**
  * Maps a failed ticket request to a user-facing message. Returns null for cancellations,
  * which are not user errors. `overrides` lets each use case explain its own 400 rules.

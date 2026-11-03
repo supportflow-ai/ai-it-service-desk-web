@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
-import { Alert, Button, Card, Empty, Progress, Space, Typography } from 'antd';
+import { Alert, Button, Card, Empty, Progress, Skeleton, Space, Typography } from 'antd';
 import { DownloadOutlined, PaperClipOutlined, UploadOutlined } from '@ant-design/icons';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { useAttachmentDownload } from '../hooks/useAttachmentDownload';
+import { useTicketAttachments } from '../hooks/useTicketAttachments';
 import { useUploadAttachment } from '../hooks/useUploadAttachment';
-import type { UploadedAttachment } from '../hooks/useUploadAttachment';
-import { describeTicketError } from '../lib/ticketErrorMessage';
+import { describeTicketError, isAccessLostError } from '../lib/ticketErrorMessage';
 import { ATTACHMENT_ACCEPT } from '../validation/attachmentRules';
 
 interface TicketAttachmentSectionProps {
@@ -13,7 +14,7 @@ interface TicketAttachmentSectionProps {
 }
 
 const attachmentMessages = {
-  400: 'Tệp không hợp lệ: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP và tối đa 10 MB.',
+  400: 'Không thể đính kèm tệp: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP tối đa 10 MB, hoặc yêu cầu tải lên đã hết hạn. Vui lòng chọn lại tệp.',
 };
 
 function formatFileSize(bytes: number) {
@@ -25,10 +26,10 @@ function formatFileSize(bytes: number) {
 /** Callers must remount this section (key={ticketId}) when the ticket changes. */
 export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // The backend has no attachment list/metadata endpoint yet, so only this session's uploads are known.
-  const [attachments, setAttachments] = useState<UploadedAttachment[]>([]);
+  const attachments = useTicketAttachments(ticketId);
   const upload = useUploadAttachment(ticketId);
   const download = useAttachmentDownload(ticketId);
+  const items = attachments.data && !isAccessLostError(attachments.error) ? attachments.data : [];
 
   const uploadFailure = upload.validationError
     ?? (upload.error ? describeTicketError(upload.error, attachmentMessages)?.message ?? null : null);
@@ -38,7 +39,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    upload.upload(file, (uploaded) => setAttachments((prev) => [...prev, uploaded]));
+    upload.upload(file);
   };
 
   return (
@@ -46,7 +47,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <PaperClipOutlined style={{ color: 'var(--pr)' }} />
-          <span>Tệp đính kèm ({attachments.length})</span>
+          <span>Tệp đính kèm ({items.length})</span>
         </div>
       }
       extra={
@@ -73,12 +74,11 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
       }
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
-      <Alert
-        type="info"
-        showIcon
-        message="Danh sách chỉ gồm các tệp bạn tải lên trong phiên này. Hệ thống chưa hỗ trợ lưu danh sách tệp của ticket, nên tệp sẽ không hiển thị lại sau khi tải lại trang."
-        style={{ marginBottom: 12 }}
-      />
+      {attachments.error && (
+        <div style={{ marginBottom: 12 }}>
+          <ErrorState error={attachments.error} onRetry={() => { void attachments.refetch(); }} />
+        </div>
+      )}
 
       {uploadFailure && (
         <Alert
@@ -109,16 +109,20 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
         </div>
       )}
 
-      {attachments.length === 0 ? (
+      {attachments.isPending && <Skeleton active paragraph={{ rows: 1 }} />}
+
+      {!attachments.isPending && !attachments.error && items.length === 0 && (
         <Empty
           description="Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP)."
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
-      ) : (
+      )}
+
+      {items.length > 0 && (
         <Space direction="vertical" style={{ width: '100%' }} size={8}>
-          {attachments.map((att) => (
+          {items.map((att) => (
             <div
-              key={att.storageKey}
+              key={att.id}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',

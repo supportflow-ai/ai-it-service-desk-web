@@ -55,7 +55,7 @@ it('refreshes the ticket, its activity and every list after a status change', as
   await settled(hook);
   expect(reads).toEqual({ detail: 1, timeline: 1, mine: 1, queue: 1 });
 
-  await act(async () => { await hook.result.current.claim.mutateAsync(); });
+  await act(async () => { await hook.result.current.claim.mutateAsync(ticketA.revision); });
   await settled(hook);
   expect(reads).toEqual({ detail: 2, timeline: 2, mine: 2, queue: 2 });
 });
@@ -76,7 +76,7 @@ it('refreshes nothing and sends the write once when it fails', async () => {
   const hook = renderWorkspaceReads();
   await settled(hook);
 
-  await act(async () => { await expect(hook.result.current.claim.mutateAsync()).rejects.toMatchObject({ status: 500 }); });
+  await act(async () => { await expect(hook.result.current.claim.mutateAsync(ticketA.revision)).rejects.toMatchObject({ status: 500 }); });
   expect(claims).toBe(1);
   expect(reads).toEqual({ detail: 1, timeline: 1, mine: 1, queue: 1 });
 });

@@ -58,7 +58,66 @@ it('assigns with the backend agentId payload and unassigns without a body', asyn
       return HttpResponse.json(ticketA);
     }),
   );
-  expect((await ticketApi.assignTicket(ticketA.id, 'agent-guid')).status).toBe(TicketStatus.Assigned);
-  expect((await ticketApi.unassignTicket(ticketA.id)).status).toBe(TicketStatus.Submitted);
-  expect(calls).toEqual([{ agentId: 'agent-guid' }, '']);
+  expect((await ticketApi.assignTicket(ticketA.id, 'agent-guid', 7)).status).toBe(TicketStatus.Assigned);
+  expect((await ticketApi.unassignTicket(ticketA.id, 7)).status).toBe(TicketStatus.Submitted);
+  expect(calls).toEqual([{ agentId: 'agent-guid', expectedRevision: 7 }, '']);
+});
+it('sends the revision the user acted on with every status and assignment command', async () => {
+  const seen: string[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/:command`, async ({ request, params }) => {
+    seen.push(`${String(params.command)}?${new URL(request.url).searchParams.toString()} ${await request.text()}`);
+    return HttpResponse.json(ticketA);
+  }));
+  await ticketApi.assignTicket(ticketA.id, 'agent-guid', 11);
+  await ticketApi.unassignTicket(ticketA.id, 12);
+  await ticketApi.claimTicket(ticketA.id, 13);
+  await ticketApi.resolveTicket(ticketA.id, 14);
+  await ticketApi.closeTicket(ticketA.id, 15);
+  await ticketApi.reopenTicket(ticketA.id, 16);
+  await ticketApi.cancelTicket(ticketA.id, 17);
+  expect(seen).toEqual([
+    'assign? {"agentId":"agent-guid","expectedRevision":11}',
+    'unassign?expectedRevision=12 ',
+    'claim?expectedRevision=13 ',
+    'resolve?expectedRevision=14 ',
+    'close?expectedRevision=15 ',
+    'reopen?expectedRevision=16 ',
+    'cancel?expectedRevision=17 ',
+  ]);
+});
+it.each([undefined, null, -1, 1.5, '7'])('rejects a ticket whose revision is %j', async (revision) => {
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, revision })));
+  await expect(ticketApi.getTicketById(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
+});
+it('accepts both presigned upload shapes and rejects malformed policy fields', async () => {
+  const presign = { uploadUrl: 'https://storage.example.com/servicedesk', storageKey: `uploads/pending/${ticketA.id}/1`, expirySeconds: 3600 };
+  let formData: unknown;
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json({ ...presign, formData })));
+  const payload = { fileName: 'log.txt', fileSizeBytes: 5, contentType: 'text/plain' };
+
+  expect(await ticketApi.generateAttachmentUploadUrl(ticketA.id, payload)).toEqual(presign);
+  formData = null;
+  expect((await ticketApi.generateAttachmentUploadUrl(ticketA.id, payload)).formData).toBeNull();
+  formData = { key: presign.storageKey, policy: 'signed' };
+  expect((await ticketApi.generateAttachmentUploadUrl(ticketA.id, payload)).formData).toEqual(formData);
+  formData = { key: presign.storageKey, size: 5 };
+  await expect(ticketApi.generateAttachmentUploadUrl(ticketA.id, payload)).rejects.toMatchObject({ kind: 'invalid-response' });
+});
+it('confirms an upload with its metadata and reads the stored attachment list', async () => {
+  const attachment = {
+    id: '30000000-0000-0000-0000-000000000001', ticketId: ticketA.id, fileName: 'log.txt', fileSizeBytes: 5,
+    contentType: 'text/plain', storageKey: `tickets/${ticketA.id}/attachments/1`, uploadedBy: 'user-guid', createdAt: '2026-11-03T08:00:00Z',
+  };
+  const confirmed: unknown[] = [];
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, async ({ request }) => {
+      confirmed.push(await request.json());
+      return HttpResponse.json(attachment, { status: 201 });
+    }),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json([attachment, { ...attachment, storageKey: 7 }])),
+  );
+  const payload = { fileName: 'log.txt', fileSizeBytes: 5, contentType: 'text/plain', storageKey: `uploads/pending/${ticketA.id}/1` };
+  expect(await ticketApi.confirmAttachmentUpload(ticketA.id, payload)).toEqual(attachment);
+  expect(confirmed).toEqual([payload]);
+  await expect(ticketApi.getTicketAttachments(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
 });

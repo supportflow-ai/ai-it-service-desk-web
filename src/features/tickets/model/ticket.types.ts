@@ -42,6 +42,8 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
+  /** Sent back as expectedRevision, so a write based on an outdated copy is rejected with 409. */
+  revision: number;
 }
 
 export interface PagedTicketResult {
@@ -93,6 +95,23 @@ export interface UploadUrlResult {
   uploadUrl: string;
   storageKey: string;
   expirySeconds: number;
+  /** Fields of a presigned POST policy; absent or null means a raw PUT to uploadUrl. */
+  formData?: Record<string, string> | null;
+}
+
+export interface ConfirmAttachmentPayload extends GenerateUploadUrlPayload {
+  storageKey: string;
+}
+
+export interface TicketAttachmentDto {
+  id: string;
+  ticketId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+  storageKey: string;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 export interface DownloadUrlResult {

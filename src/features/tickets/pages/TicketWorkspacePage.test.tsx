@@ -48,7 +48,10 @@ function sidebarField(label: string) {
 beforeEach(() => {
   requests = [];
   sessionStore.setToken('agent');
-  server.use(http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Agent'] })));
+  server.use(
+    http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Agent'] })),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json([])),
+  );
 });
 
 it('renders workspace with real ticket data and dynamic timeline', async () => {

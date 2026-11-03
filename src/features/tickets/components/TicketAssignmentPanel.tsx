@@ -31,14 +31,21 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
   const allowSelfAssign = canSelfAssignTicket(user, ticket.status);
   const allowUnassign = canUnassignTicket(user, ticket.status);
 
+  // Both carry the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).
   const selfAssign = () => {
     if (!user) return;
     unassignMutation.reset();
-    assignMutation.mutate(user.userId);
+    assignMutation.mutate({ agentId: user.userId, expectedRevision: ticket.revision });
   };
   const unassign = () => {
     assignMutation.reset();
-    unassignMutation.mutate();
+    unassignMutation.mutate(ticket.revision);
+  };
+  // Reloading shows the current ticket, so the error about the old copy no longer applies.
+  const reload = () => {
+    assignMutation.reset();
+    unassignMutation.reset();
+    onReload();
   };
 
   return (
@@ -48,7 +55,7 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
           type="error"
           showIcon
           message={failure.message}
-          action={failure.reloadable ? <Button size="small" onClick={onReload}>Tải lại</Button> : undefined}
+          action={failure.reloadable ? <Button size="small" onClick={reload}>Tải lại</Button> : undefined}
           style={{ marginBottom: 12 }}
         />
       )}

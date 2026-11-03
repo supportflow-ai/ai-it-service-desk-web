@@ -22,6 +22,22 @@ describe('uploadToPresignedUrl', () => {
     expect(seen).toEqual({ method: 'PUT', authorization: null, contentType: 'text/plain' });
   });
 
+  // The multipart body (signed fields first, then the file) is checked in e2e/attachments.spec.ts.
+  it('POSTs a presigned policy instead of a PUT and never sends the API bearer token', async () => {
+    configureApiClient({ baseURL: 'http://localhost/api', getAccessToken: () => 'api-token', getSessionVersion: () => 1, onUnauthorized: () => {} });
+    let seen: { method: string; authorization: string | null } | undefined;
+    server.use(http.post(target, ({ request }) => {
+      seen = { method: request.method, authorization: request.headers.get('authorization') };
+      return new HttpResponse(null, { status: 204 });
+    }));
+
+    await uploadToPresignedUrl(target, new File(['hello'], 'test.txt', { type: 'text/plain' }), {
+      formData: { key: 'uploads/pending/1', policy: 'signed', 'Content-Type': 'text/plain' },
+    });
+
+    expect(seen).toEqual({ method: 'POST', authorization: null });
+  });
+
   it('normalizes a storage rejection without exposing it as an API status', async () => {
     server.use(http.put(target, () => new HttpResponse(null, { status: 403 })));
 

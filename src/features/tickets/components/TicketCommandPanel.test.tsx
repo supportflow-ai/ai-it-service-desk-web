@@ -66,6 +66,24 @@ it('explains a rejected transition and offers a reload instead of retrying', asy
   expect(claims).toBe(1);
 });
 
+it('sends the revision on screen and asks for a reload when someone else changed the ticket', async () => {
+  const sent: (string | null)[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, ({ request }) => {
+    sent.push(new URL(request.url).searchParams.get('expectedRevision'));
+    return HttpResponse.json({ error: 'Dữ liệu đã bị thay đổi bởi người khác.' }, { status: 409 });
+  }));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.Submitted, onReload);
+  await userEvent.click(await screen.findByRole('button', { name: /Nhận xử lý/ }));
+  expect(await screen.findByText(/Ticket vừa được người khác cập nhật/)).toBeInTheDocument();
+  expect(sent).toEqual([String(ticketA.revision)]);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+  expect(screen.queryByText(/Ticket vừa được người khác cập nhật/)).not.toBeInTheDocument();
+  expect(sent).toHaveLength(1);
+});
+
 it('reports a permission failure without the generic retry message', async () => {
   server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => new HttpResponse(null, { status: 403 })));
   renderPanel(['Agent'], TicketStatus.Submitted);

@@ -4,6 +4,7 @@ import { TicketCategory, TicketStatus } from '../model/ticket.types';
 import type {
   DownloadUrlResult,
   PagedTicketResult,
+  TicketAttachmentDto,
   TicketDto,
   TimelineItemDto,
   UploadUrlResult,
@@ -15,7 +16,8 @@ function isTicket(value: unknown): value is TicketDto {
     && typeof value.createdAt === 'string'
     && Object.values(TicketCategory).some((category) => category === value.categoryId)
     && Object.values(TicketStatus).some((status) => typeof status === 'number' && status === value.status)
-    && (value.requesterDepartmentId === undefined || value.requesterDepartmentId === null || typeof value.requesterDepartmentId === 'string');
+    && (value.requesterDepartmentId === undefined || value.requesterDepartmentId === null || typeof value.requesterDepartmentId === 'string')
+    && typeof value.revision === 'number' && Number.isInteger(value.revision) && value.revision >= 0;
 }
 
 export function readTicket(value: unknown): TicketDto {
@@ -72,11 +74,37 @@ function isUploadUrlResult(value: unknown): value is UploadUrlResult {
   return isRecord(value)
     && isHttpUrl(value.uploadUrl)
     && typeof value.storageKey === 'string' && value.storageKey.length > 0
-    && typeof value.expirySeconds === 'number';
+    && typeof value.expirySeconds === 'number'
+    && (value.formData === undefined || value.formData === null
+      || (isRecord(value.formData) && Object.values(value.formData).every((field) => typeof field === 'string')));
 }
 
 export function readUploadUrlResult(value: unknown): UploadUrlResult {
   if (!isUploadUrlResult(value)) throw new AppError('Phản hồi upload URL không hợp lệ.', 'invalid-response');
+  return value;
+}
+
+function isAttachment(value: unknown): value is TicketAttachmentDto {
+  return isRecord(value)
+    && typeof value.id === 'string'
+    && typeof value.ticketId === 'string'
+    && typeof value.fileName === 'string'
+    && typeof value.fileSizeBytes === 'number'
+    && typeof value.contentType === 'string'
+    && typeof value.storageKey === 'string' && value.storageKey.length > 0
+    && typeof value.uploadedBy === 'string'
+    && typeof value.createdAt === 'string';
+}
+
+export function readAttachment(value: unknown): TicketAttachmentDto {
+  if (!isAttachment(value)) throw new AppError('Phản hồi tệp đính kèm không hợp lệ.', 'invalid-response');
+  return value;
+}
+
+export function readAttachments(value: unknown): TicketAttachmentDto[] {
+  if (!Array.isArray(value) || !value.every(isAttachment)) {
+    throw new AppError('Phản hồi danh sách tệp đính kèm không hợp lệ.', 'invalid-response');
+  }
   return value;
 }
 

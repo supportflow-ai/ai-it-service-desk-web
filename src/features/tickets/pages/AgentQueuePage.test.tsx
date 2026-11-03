@@ -107,6 +107,7 @@ it('returns from the workspace to the same filtered queue', async () => {
   server.use(
     http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
     http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json([])),
   );
   renderQueue('/agent-workspace?scope=all&category=NET', <TicketWorkspacePage />);
   await userEvent.click(await screen.findByRole('link', { name: `Mở ticket ${ticketA.ticketNumber}` }));

@@ -44,10 +44,16 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   const failed = mutations.find((mutation) => mutation.isError);
   const failure = failed ? describeTicketError(failed.error, transitionMessages) : null;
 
-  // Only the latest command's outcome is shown, so earlier errors are cleared first.
+  // Only the latest command's outcome is shown, so earlier errors are cleared first. The command
+  // carries the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).
   const run = (target: typeof claimMutation, onSettled?: () => void) => {
     for (const mutation of mutations) if (mutation !== target) mutation.reset();
-    target.mutate(undefined, onSettled ? { onSettled } : undefined);
+    target.mutate(ticket.revision, onSettled ? { onSettled } : undefined);
+  };
+  // Reloading shows the current ticket, so the error about the old copy no longer applies.
+  const reload = () => {
+    for (const mutation of mutations) mutation.reset();
+    onReload();
   };
 
   const allowed = {
@@ -70,7 +76,7 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
           type="error"
           showIcon
           message={failure.message}
-          action={failure.reloadable ? <Button size="small" onClick={onReload}>Tải lại</Button> : undefined}
+          action={failure.reloadable ? <Button size="small" onClick={reload}>Tải lại</Button> : undefined}
           style={{ marginBottom: 12 }}
         />
       )}

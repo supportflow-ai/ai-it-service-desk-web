@@ -16,7 +16,7 @@ function renderPanel(roles: string[], status: TicketStatus, onReload = () => {})
   render(<TicketAssignmentPanel ticket={{ ...ticketA, categoryId: TicketCategory.NET, status }} onReload={onReload} />, { wrapper: Wrapper });
 }
 
-it('lets an agent take an unassigned ticket with their own user id', async () => {
+it('lets an agent take an unassigned ticket with their own user id and the revision on screen', async () => {
   const bodies: unknown[] = [];
   server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/assign`, async ({ request }) => {
     bodies.push(await request.json());
@@ -25,21 +25,34 @@ it('lets an agent take an unassigned ticket with their own user id', async () =>
   renderPanel(['Agent'], TicketStatus.Submitted);
   expect(screen.getByText('Chưa phân công')).toBeInTheDocument();
   await userEvent.click(await screen.findByRole('button', { name: /Nhận về tôi/ }));
-  await waitFor(() => expect(bodies).toEqual([{ agentId: user.userId }]));
+  await waitFor(() => expect(bodies).toEqual([{ agentId: user.userId, expectedRevision: ticketA.revision }]));
   expect(screen.queryByRole('alert')).not.toBeInTheDocument();
 });
 
 it('lets staff unassign an assigned ticket after confirmation', async () => {
-  let unassigned = 0;
-  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/unassign`, () => {
-    unassigned += 1;
+  const sent: (string | null)[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/unassign`, ({ request }) => {
+    sent.push(new URL(request.url).searchParams.get('expectedRevision'));
     return HttpResponse.json({ ...ticketA, status: TicketStatus.Submitted });
   }));
   renderPanel(['Admin'], TicketStatus.Assigned);
   await userEvent.click(await screen.findByRole('button', { name: /Hủy phân công/ }));
-  expect(unassigned).toBe(0);
+  expect(sent).toEqual([]);
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận hủy phân công' }));
-  await waitFor(() => expect(unassigned).toBe(1));
+  await waitFor(() => expect(sent).toEqual([String(ticketA.revision)]));
+});
+
+it('does not overwrite an assignment made from another screen: a stale take asks for a reload', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/assign`, () => (
+    HttpResponse.json({ error: 'Dữ liệu đã bị thay đổi bởi người khác.' }, { status: 409 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.Submitted, onReload);
+  await userEvent.click(await screen.findByRole('button', { name: /Nhận về tôi/ }));
+  expect(await screen.findByText(/Ticket vừa được người khác cập nhật/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+  expect(screen.queryByText(/Ticket vừa được người khác cập nhật/)).not.toBeInTheDocument();
 });
 
 it('never offers self-assign to an admin-only account or on a ticket already held', async () => {
