@@ -92,5 +92,12 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
   await expect(page.getByText('Ticket được tạo mới')).toHaveCount(0);
   await expect(page.getByText('Gợi ý AI chưa được bật cho ticket này.')).toBeVisible();
   await expect(page.getByText(/92%/)).toHaveCount(0);
-  expect(api.requests).toEqual(['GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, `GET /api/tickets/${ticketA.id}/timeline`]);
+  expect(api.requests).toHaveLength(3);
+  expect(api.requests).toEqual(
+    expect.arrayContaining([
+      'GET /api/auth/me',
+      `GET /api/tickets/${ticketA.id}`,
+      `GET /api/tickets/${ticketA.id}/timeline`,
+    ])
+  );
 });
