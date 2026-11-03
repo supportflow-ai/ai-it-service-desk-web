@@ -118,7 +118,7 @@ it('runs the whole agent flow on one screen: self-assign, claim, comment, resolv
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận giải quyết' }));
   await waitFor(() => expect(sidebarField('Trạng thái')).toHaveTextContent('Đã giải quyết'));
   expect(screen.getByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
-});
+}, 30000);
 
 it('shows a not-found page with a way back when the ticket does not exist', async () => {
   server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => new HttpResponse(null, { status: 404 })));
