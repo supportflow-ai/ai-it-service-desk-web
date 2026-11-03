@@ -65,7 +65,7 @@ jobs:
             "ref": "${{ github.ref }}",
             "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "images": {
-              "web": "ghcr.io/supportflow-ai/servicedesk-web@${{ steps.build-web.outputs.web_digest }}"
+              "servicedesk-web": "ghcr.io/supportflow-ai/servicedesk-web@${{ steps.build-web.outputs.web_digest }}"
             }
           }
           EOF
