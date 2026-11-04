@@ -6,9 +6,7 @@ import { isRecord } from '@/shared/lib/guards';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useArticle } from '../hooks/useArticle';
 import { isArticleAccessLost } from '../lib/articleErrorMessage';
-import { KNOWLEDGE_ADMIN_PATH } from '../lib/knowledgePaths';
-import { toKnowledgeSearch } from '../lib/knowledgeSearch';
-import { defaultArticleListFilters } from '../model/articleList';
+import { articlePath, knowledgeListPath, listStateFrom } from '../lib/knowledgePaths';
 import { isArticleId } from '../model/articleId';
 import { ArticleStatus } from '../model/knowledge.types';
 import { canEditArticle } from '../model/knowledgePermissions';
@@ -29,26 +27,29 @@ export function EditArticlePage() {
   const { user } = useAuth();
   const article = useArticle(id ?? '');
   const reload = () => { void article.refetch(); };
-  // A publish still finishing after the person left this page must not pull them to the list.
+  // A publish still finishing after the person left this page must not pull them back to the article.
   const left = useRef(false);
   useEffect(() => {
     left.current = false;
     return () => { left.current = true; };
   }, []);
-  const publishedListPath = `${KNOWLEDGE_ADMIN_PATH}?${toKnowledgeSearch({ ...defaultArticleListFilters, status: ArticleStatus.Published }).toString()}`;
+  const listPath = knowledgeListPath(location.state);
 
-  if (!isArticleId(id)) return <ArticleUnavailable error={null} backPath={KNOWLEDGE_ADMIN_PATH} onRetry={reload} />;
+  if (!isArticleId(id)) return <ArticleUnavailable error={null} backPath={listPath} onRetry={reload} />;
   if (article.isPending) return <PageLoader />;
   if (!article.data || isArticleAccessLost(article.error)) {
-    return <ArticleUnavailable error={article.error} backPath={KNOWLEDGE_ADMIN_PATH} onRetry={reload} />;
+    return <ArticleUnavailable error={article.error} backPath={listPath} onRetry={reload} />;
   }
 
   const data = article.data;
+  const readPath = articlePath(data.id);
+  const listState = listStateFrom(location.state);
   const header = (
     <ArticlePageHeader
       title="Sửa bản nháp"
-      backPath={KNOWLEDGE_ADMIN_PATH}
-      backLabel="Quay lại danh sách"
+      backPath={readPath}
+      backState={listState}
+      backLabel="Quay lại bài viết"
       extra={<><ArticleStatusTag status={data.status} /><span className="meta">v{data.version}</span></>}
     />
   );
@@ -61,7 +62,7 @@ export function EditArticlePage() {
     return (
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         {header}
-        <Result status="info" title="Không sửa được bài viết này" subTitle={reason} extra={<Link to={KNOWLEDGE_ADMIN_PATH}>Về danh sách bài viết</Link>} />
+        <Result status="info" title="Không sửa được bài viết này" subTitle={reason} extra={<Link to={readPath} state={listState}>Xem bài viết</Link>} />
       </div>
     );
   }
@@ -73,9 +74,9 @@ export function EditArticlePage() {
         key={data.id}
         article={data}
         onReload={reload}
-        onCancel={() => navigate(KNOWLEDGE_ADMIN_PATH)}
-        // A published article cannot be edited, so editing ends on the list of published articles.
-        onPublished={() => { if (!left.current) navigate(publishedListPath); }}
+        onCancel={() => navigate(readPath, { state: listState })}
+        // A published article cannot be edited, so editing ends on the article as readers now see it.
+        onPublished={() => { if (!left.current) navigate(readPath, { replace: true, state: listState }); }}
         createdAt={createdAtOf(location.state)}
       />
     </div>

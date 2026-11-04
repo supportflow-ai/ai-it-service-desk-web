@@ -191,8 +191,16 @@ built against them:
   each after a confirmation: `POST /knowledge/articles/{id}/publish|archive` with `{ expectedRevision }`
   in the body. Author or Admin only, as the use cases do (the contract's Admin-only default, KB-05/06,
   awaits TC-330). The editor holds publishing back while the form has unsaved changes, and ends on
-  the Published list. 409/422 explain and offer a reload; status and version come from the returned
+  the article's page. 409/422 explain and offer a reload; status and version come from the returned
   article (version stays 1, gap G3).
+- `/knowledge/manage/:id` (TC-341) is the staff view of one article in any status the backend serves
+  (`GET /knowledge/articles/{id}`): rendered Markdown, status, tags, dates, and the edit, publish and
+  archive actions the user may take. 403 and 404 read the same (UX-04); a failed refresh keeps the
+  article on screen with a retry. List → article → editor carry the list's normalized search in router
+  state (`{ listSearch }`, accepted only as `?…`), so "back" returns to the same filters. The list tells
+  apart an empty base, filters that match nothing, a page past the end and a failed load. Unsaved
+  changes ask before the tab closes or reloads (`beforeunload`); moves inside the app are not
+  intercepted, since `BrowserRouter` has no navigation blocker.
 - The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled

@@ -12,6 +12,7 @@ export const routeConfig = {
   // Knowledge authoring needs Agent or Admin (RequireAgent at backend dev 1506a5b).
   knowledgeAdmin: { path: '/knowledge/manage', roles: ['Agent', 'Admin'], label: 'Kho tri thức' },
   knowledgeNew: { path: '/knowledge/manage/new', roles: ['Agent', 'Admin'] },
+  knowledgeRead: { path: '/knowledge/manage/:id', roles: ['Agent', 'Admin'] },
   knowledgeEdit: { path: '/knowledge/manage/:id/edit', roles: ['Agent', 'Admin'] },
   admin: { path: '/admin-panel', roles: ['Admin'], label: 'Quản trị hệ thống' },
 } as const satisfies Record<string, RouteDefinition>;

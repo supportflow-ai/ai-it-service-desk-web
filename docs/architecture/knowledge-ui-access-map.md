@@ -64,12 +64,14 @@ Tìm kiếm: `query` khớp không phân biệt hoa thường trên title hoặc
 | `/knowledge` | Tra cứu kho tri thức (chỉ bài đã xuất bản) | ✓ | ✓ | ✓ | `GET …/search?query&tag&page&pageSize`; với A/M **luôn gửi `status=1`** để không lẫn nháp/lưu trữ |
 | `/knowledge/:id` | Đọc bài | ✓ (Published) | ✓ (Published + bài của mình) | ✓ | `GET …/{id}`; 404 → màn "Không tìm thấy bài viết" không nói bài có tồn tại hay không (UX-04) |
 | `/knowledge/manage` | Quản lý bài viết: tab Nháp / Đã xuất bản / Lưu trữ, lọc tag, tìm | ✗ → trang 403 | ✓ | ✓ | `GET …/articles?status&tag&query&page&pageSize` |
+| `/knowledge/manage/:id` | Xem bài phía staff (mọi trạng thái backend cho đọc) kèm Sửa / Xuất bản / Lưu trữ | ✗ → 403 | ✓ Published + bài của mình | ✓ | `GET …/{id}` |
 | `/knowledge/manage/new` | Tạo bản nháp | ✗ → 403 | ✓ | ✓ | `POST …/articles` |
 | `/knowledge/manage/:id/edit` | Sửa bản nháp | ✗ → 403 | ✓ chỉ tác giả, chỉ Draft | ✓ chỉ Draft | `GET …/{id}` rồi `PUT …/{id}/draft` |
 
 Menu (giữ cách tách góc nhìn hiện có của UI):
 - Requester: thêm **Kho tri thức** → `/knowledge`. Ô "Kho tri thức" ở trang Tổng quan mở `/knowledge?query=…`.
-- Agent/Admin: thêm **Kho tri thức** → `/knowledge/manage`. Từ đây mở được trang đọc `/knowledge/:id`.
+- Agent/Admin: thêm **Kho tri thức** → `/knowledge/manage`. Tiêu đề trên danh sách mở `/knowledge/manage/:id`
+  (TC-341); trang đọc `/knowledge/:id` để dành cho tra cứu bài đã xuất bản.
 - Route guard theo role chỉ là UX; backend vẫn kiểm từng request (ACT-10).
 
 ## 4. Ma trận thao tác

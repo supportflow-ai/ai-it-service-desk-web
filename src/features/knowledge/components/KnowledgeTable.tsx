@@ -2,10 +2,12 @@ import { Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { EditOutlined, LockOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
+import type { ReactNode } from 'react';
 import type { ArticleDto, PagedArticleResult } from '../model/knowledge.types';
 import { ARTICLE_PAGE_SIZES } from '../model/articleList';
 import { canEditArticle, canOpenArticle, isArticleAuthor } from '../model/knowledgePermissions';
-import { editArticlePath } from '../lib/knowledgePaths';
+import { articlePath, editArticlePath } from '../lib/knowledgePaths';
+import type { KnowledgeListState } from '../lib/knowledgePaths';
 import { ArticleLifecycleActions } from './ArticleLifecycleActions';
 import { ArticleStatusTag } from './ArticleStatusTag';
 
@@ -17,6 +19,9 @@ interface KnowledgeTableProps {
   onPageChange: (page: number, pageSize: number) => void;
   /** Refetches the list, e.g. after a row's action found the article changed meanwhile. */
   onReload: () => void;
+  /** Carried to an article and its editor, to come back to the same filters. */
+  listState: KnowledgeListState;
+  emptyText: ReactNode;
 }
 
 // Short columns keep to one line; the table scrolls sideways on narrow screens instead.
@@ -29,7 +34,7 @@ function formatDate(iso: string) {
   });
 }
 
-export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, onReload }: KnowledgeTableProps) {
+export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, onReload, listState, emptyText }: KnowledgeTableProps) {
   const { user } = useAuth();
   return (
     <Table<ArticleDto>
@@ -38,24 +43,24 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, 
       dataSource={result?.items ?? []}
       loading={loading}
       scroll={{ x: 960 }}
-      locale={{ emptyText: 'Không có bài viết nào phù hợp với bộ lọc.' }}
+      locale={{ emptyText }}
       columns={[
         {
           title: 'Tiêu đề',
           key: 'title',
-          render: (_, article) => (
-            <>
-              <div style={{ fontWeight: 600, color: 'var(--tx)' }}>{article.title}</div>
-              {/* The staff list returns other authors' unpublished articles, which open on 404 only (gap G1). */}
-              {!canOpenArticle(user, article) && (
+          render: (_, article) => (canOpenArticle(user, article)
+            ? <Link to={articlePath(article.id)} state={listState} style={{ fontWeight: 600 }}>{article.title}</Link>
+            : (
+              <>
+                {/* The staff list returns other authors' unpublished articles, which open on 404 only (gap G1). */}
+                <div style={{ fontWeight: 600, color: 'var(--tx)' }}>{article.title}</div>
                 <Tooltip title="Chỉ tác giả hoặc Admin mở được bài viết chưa xuất bản.">
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                     <LockOutlined /> Bài chưa xuất bản của kỹ thuật viên khác
                   </Typography.Text>
                 </Tooltip>
-              )}
-            </>
-          ),
+              </>
+            )),
         },
         { title: 'Trạng thái', key: 'status', onCell: oneLine, render: (_, article) => <ArticleStatusTag status={article.status} /> },
         {
@@ -76,7 +81,7 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, 
           render: (_, article) => (
             <Space size={12} align="start">
               {canEditArticle(user, article) && (
-                <Link to={editArticlePath(article.id)} aria-label={`Sửa bài ${article.title}`} style={{ lineHeight: '24px' }}>
+                <Link to={editArticlePath(article.id)} state={listState} aria-label={`Sửa bài ${article.title}`} style={{ lineHeight: '24px' }}>
                   <EditOutlined /> Sửa
                 </Link>
               )}

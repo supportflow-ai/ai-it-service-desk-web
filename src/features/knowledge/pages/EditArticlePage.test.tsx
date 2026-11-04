@@ -15,9 +15,15 @@ let revisions: unknown[] = [];
 let updateStatus = 200;
 let served: object = ownDraft;
 
-function ListProbe() {
+function LocationProbe() {
   const location = useLocation();
-  return <output data-testid="list">{`${location.pathname}${location.search}`}</output>;
+  return <output data-testid="location">{`${location.pathname}${location.search} ${JSON.stringify(location.state)}`}</output>;
+}
+
+function unloadPrevented() {
+  const event = new Event('beforeunload', { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
 }
 
 function renderEdit(roles = ['Agent'], id = ownDraft.id, state: unknown = null) {
@@ -27,7 +33,8 @@ function renderEdit(roles = ['Agent'], id = ownDraft.id, state: unknown = null) 
     <MemoryRouter initialEntries={[{ pathname: `/knowledge/manage/${id}/edit`, state }]}>
       <Routes>
         <Route path="/knowledge/manage/:id/edit" element={<EditArticlePage />} />
-        <Route path="/knowledge/manage" element={<ListProbe />} />
+        <Route path="/knowledge/manage/:id" element={<LocationProbe />} />
+        <Route path="/knowledge/manage" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,
     { wrapper: Wrapper },
@@ -63,6 +70,25 @@ it('opens the draft prefilled and saves it with its revision, then with the one 
   expect(await screen.findByText(/Đã lưu bản nháp lúc/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
   await waitFor(() => expect(revisions).toEqual([ownDraft.revision, ownDraft.revision + 1]));
+});
+
+it('goes back to the article, and from there to the list it came from', async () => {
+  renderEdit(['Agent'], ownDraft.id, { listSearch: '?tag=vpn', createdAt: ownDraft.createdAt });
+  await screen.findByLabelText('Tiêu đề');
+  expect(screen.getByRole('link', { name: /Quay lại bài viết/ })).toHaveAttribute('href', `/knowledge/manage/${ownDraft.id}`);
+  await userEvent.click(screen.getByRole('button', { name: 'Hủy' }));
+  expect(await screen.findByTestId('location')).toHaveTextContent(`/knowledge/manage/${ownDraft.id} {"listSearch":"?tag=vpn"}`);
+});
+
+it('asks before the tab closes only while there are unsaved changes', async () => {
+  renderEdit();
+  const title = await screen.findByLabelText('Tiêu đề');
+  expect(unloadPrevented()).toBe(false);
+  await userEvent.type(title, ' (bổ sung)');
+  await waitFor(() => expect(unloadPrevented()).toBe(true));
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  expect(await screen.findByText(/Đã lưu bản nháp lúc/)).toBeInTheDocument();
+  await waitFor(() => expect(unloadPrevented()).toBe(false));
 });
 
 it('keeps the revision it opened on when a background refetch brings a newer one', async () => {
@@ -131,13 +157,13 @@ it('shows not found for an address that names no article', async () => {
   expect(await screen.findByText('Không tìm thấy bài viết')).toBeInTheDocument();
 });
 
-it('publishes only saved content, then shows the published list', async () => {
+it('publishes only saved content, then shows the published article', async () => {
   const published: unknown[] = [];
   server.use(http.post(`${articleUrl(':id')}/publish`, async ({ request }) => {
     published.push(await request.json());
     return HttpResponse.json({ ...ownDraft, status: 1, revision: 40, publishedAt: '2026-11-04T11:00:00Z' });
   }));
-  renderEdit();
+  renderEdit(['Agent'], ownDraft.id, { listSearch: '?status=draft' });
   const title = await screen.findByLabelText('Tiêu đề');
   // Looked up each time: the button is re-created when its tooltip comes and goes.
   const publish = () => screen.getByRole('button', { name: /Xuất bản/ });
@@ -153,5 +179,5 @@ it('publishes only saved content, then shows the published list', async () => {
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận xuất bản' }));
   // The save returned revision + 1, so publishing carries that one.
   await waitFor(() => expect(published).toEqual([{ expectedRevision: ownDraft.revision + 1 }]));
-  expect(await screen.findByTestId('list')).toHaveTextContent('/knowledge/manage?status=published');
+  expect(await screen.findByTestId('location')).toHaveTextContent(`/knowledge/manage/${ownDraft.id} {"listSearch":"?status=draft"}`);
 });

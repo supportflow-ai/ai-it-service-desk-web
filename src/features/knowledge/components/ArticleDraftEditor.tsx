@@ -3,6 +3,7 @@ import { Alert, Button, Card, Form } from 'antd';
 import type { ArticleDraftPayload, ArticleDto } from '../model/knowledge.types';
 import { useUpdateDraft } from '../hooks/useArticleWrite';
 import { useArticleWritePending } from '../hooks/useArticleWritePending';
+import { useUnsavedChangesPrompt } from '../hooks/useUnsavedChangesPrompt';
 import { describeArticleError } from '../lib/articleErrorMessage';
 import { normalizeTags } from '../validation/articleRules';
 import { ArticleEditorForm } from './ArticleEditorForm';
@@ -56,6 +57,7 @@ export function ArticleDraftEditor({ article, onReload, onCancel, onPublished, c
     tags: Form.useWatch('tags', form),
   };
   const unsaved = !sameContent(values, base.saved);
+  useUnsavedChangesPrompt(unsaved);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const failure = update.isError ? describeArticleError(update.error, editMessages) : null;
 
