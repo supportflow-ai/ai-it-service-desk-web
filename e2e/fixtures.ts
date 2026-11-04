@@ -90,7 +90,12 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ status: 201, json: created });
       }
       const readArticle = api.articles.find((article) => key === `GET /api/knowledge/articles/${article.id}`);
-      if (readArticle) return route.fulfill({ json: readArticle });
+      if (readArticle) {
+        // GetByIdAsync's read scope: Admin any, Agent Published or their own, anyone else Published only.
+        const readable = api.roles.includes('Admin') || readArticle.status === 1
+          || (api.roles.includes('Agent') && readArticle.authorId === currentUser.userId);
+        return readable ? route.fulfill({ json: readArticle }) : route.fulfill({ status: 404, json: { error: 'Không tìm thấy bài viết.' } });
+      }
       const draftArticle = api.articles.find((article) => key === `PUT /api/knowledge/articles/${draftArticleId(article)}`);
       if (draftArticle) {
         const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'> & { expectedRevision: number };

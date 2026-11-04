@@ -213,6 +213,14 @@ The reader side (TC-219) is open to every signed-in role, as `GET /knowledge/art
   request, PRD J-03) and a page past the end; a failed search offers a retry. The requester overview
   hosts a knowledge card (search box, the 3 newest articles) through a slot, so tickets does not
   depend on knowledge.
+- `/knowledge/:id` (TC-343) reads `GET /knowledge/articles/{id}` and shows a Published article only:
+  title, tags (each opening the search for it), "Phiên bản N · Xuất bản … · Cập nhật …" and the
+  Markdown through the same safe renderer as the editor preview (NFR-SEC-04). No author is shown (the
+  DTO has no name, G9). A Requester gets 404 for anything else, shown like a missing article (UX-04);
+  an unpublished article that is served anyway (staff: their drafts; Admin: archived ones) opens its
+  management page instead, and anyone else sees not found. "Back" returns to the results it was
+  opened from (`{ resultsSearch }` router state, `?…` only); a reader it did not help goes on to a
+  request (PRD J-03).
 - The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled

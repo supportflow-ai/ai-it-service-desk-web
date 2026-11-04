@@ -8,12 +8,13 @@ interface ArticleUnavailableProps {
   /** null: the address names no article. */
   error: unknown;
   backPath: string;
+  backLabel?: string;
   onRetry: () => void;
 }
 
 /** Full-page state when an article cannot be shown: missing, out of scope or failed to load. */
-export function ArticleUnavailable({ error, backPath, onRetry }: ArticleUnavailableProps) {
-  const back = <Link to={backPath}><ArrowLeftOutlined /> Quay lại danh sách</Link>;
+export function ArticleUnavailable({ error, backPath, backLabel = 'Quay lại danh sách', onRetry }: ArticleUnavailableProps) {
+  const back = <Link to={backPath}><ArrowLeftOutlined /> {backLabel}</Link>;
   const status = error === null ? 404 : normalizeError(error).status;
   // 403 and 404 read the same, so the page never says whether an article it hides exists (UX-04).
   if (status === 404 || status === 403) {
