@@ -181,6 +181,12 @@ built against them:
   although the backend does not require it (gap G6); it is the one the form opened on, so a background
   refetch cannot turn a save into an overwrite. 409 and 422 offer a reload that keeps the typed text.
   Only the author or an Admin edits, and only a Draft: published articles cannot be versioned (gap G3).
+- The editor's "Xem trước" tab (TC-339) renders the Markdown as readers will see it with
+  `react-markdown` + `remark-gfm` (tables, task lists, strikethrough). The backend stores content as
+  typed, so the preview is the XSS boundary (NFR-SEC-04): React elements only, never innerHTML; raw
+  HTML is shown as text (not dropped, so "Nhấn <Enter>" keeps its words); links and images keep only
+  http(s), mailto, irc(s), xmpp and relative URLs, so `javascript:`, `data:` and `vbscript:` lose their
+  target; links open in a new tab with `rel="noopener noreferrer nofollow"`. `rehype-raw` must not be added.
 - The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled

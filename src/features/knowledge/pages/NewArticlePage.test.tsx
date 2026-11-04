@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -88,5 +88,30 @@ it('goes back to the list on cancel without sending anything', async () => {
   renderNew();
   await userEvent.click(await screen.findByRole('button', { name: 'Hủy' }));
   expect(await screen.findByText('article list')).toBeInTheDocument();
+  expect(sent).toEqual([]);
+});
+
+it('previews the draft as readers will see it, showing HTML as text instead of running it', async () => {
+  renderNew();
+  await fill('Tiêu đề', 'Kết nối VPN');
+  await userEvent.type(screen.getByRole('combobox', { name: 'Tags' }), 'vpn,');
+  await fill('Nội dung', ['## Bước 1', '', 'Mở **VPN**.', '', '<script>window.__xss = 1</script>'].join('\n'));
+  await userEvent.click(screen.getByRole('tab', { name: 'Xem trước' }));
+  const preview = await screen.findByRole('article', { name: 'Xem trước bài viết' });
+  expect(within(preview).getByRole('heading', { level: 3, name: 'Kết nối VPN' })).toBeInTheDocument();
+  expect(within(preview).getByRole('heading', { level: 2, name: 'Bước 1' })).toBeInTheDocument();
+  expect(within(preview).getByText('VPN', { selector: 'strong' })).toBeInTheDocument();
+  expect(within(preview).getByText('vpn')).toBeInTheDocument();
+  expect(preview.querySelector('script')).toBeNull();
+  expect(preview).toHaveTextContent('<script>window.__xss = 1</script>');
+});
+
+it('says there is nothing to preview yet, and returns to the write tab when a save fails its checks', async () => {
+  renderNew();
+  await userEvent.click(await screen.findByRole('tab', { name: 'Xem trước' }));
+  expect(await screen.findByText('Chưa có nội dung để xem trước.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  expect(await screen.findByText('Vui lòng nhập nội dung.')).toBeVisible();
+  expect(screen.getByRole('tab', { name: 'Viết' })).toHaveAttribute('aria-selected', 'true');
   expect(sent).toEqual([]);
 });

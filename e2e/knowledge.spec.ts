@@ -14,6 +14,10 @@ test('an Agent writes a new article, saves the draft, then saves it again with i
   await tags.fill('Mạng');
   await tags.press('Enter');
   await page.getByLabel('Nội dung').fill('## Bước 1\n\nMở ứng dụng VPN và đăng nhập.');
+  await page.getByRole('tab', { name: 'Xem trước' }).click();
+  const preview = page.getByRole('article', { name: 'Xem trước bài viết' });
+  await expect(preview.getByRole('heading', { level: 2, name: 'Bước 1' })).toBeVisible();
+  await expect(preview.getByText('mạng')).toBeVisible();
   await page.getByRole('button', { name: 'Lưu nháp' }).click();
 
   await expect(page.getByRole('heading', { name: 'Sửa bản nháp' })).toBeVisible();
