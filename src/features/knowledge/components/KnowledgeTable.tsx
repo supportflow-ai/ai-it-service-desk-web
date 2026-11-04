@@ -52,7 +52,7 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, 
             ? <Link to={articlePath(article.id)} state={listState} style={{ fontWeight: 600 }}>{article.title}</Link>
             : (
               <>
-                {/* The staff list returns other authors' unpublished articles, which open on 404 only (gap G1). */}
+                {/* A row the user could only open on 404; backend dev before ced117c listed them to Agents (gap G1). */}
                 <div style={{ fontWeight: 600, color: 'var(--tx)' }}>{article.title}</div>
                 <Tooltip title="Chỉ tác giả hoặc Admin mở được bài viết chưa xuất bản.">
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>

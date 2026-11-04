@@ -49,7 +49,7 @@ export function canArchiveArticle(user: User | null, article: ArticleFacts) {
 
 /**
  * GetArticleDetail: an Admin reads every article; an Agent reads Published ones and their own;
- * anyone else Published ones only. The staff list returns more than this (gap G1), so the list
+ * anyone else Published ones only. The staff list returned more than this before ced117c (gap G1), so the list
  * uses it to lock the rows that would only open on a "not found" page.
  */
 export function canOpenArticle(user: User | null, article: ArticleFacts) {

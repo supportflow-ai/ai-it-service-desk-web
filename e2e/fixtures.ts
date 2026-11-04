@@ -54,6 +54,8 @@ export const test = base.extend<{ api: ApiFixture }>({
       if (lifecycle && lifecycleArticle) {
         const body = request.postDataJSON() as { expectedRevision: number };
         api.articleWrites.push({ key, body });
+        // Required since backend dev ced117c: missing or 0 is a 400.
+        if (!body.expectedRevision) return route.fulfill({ status: 400, json: { error: 'Expected revision is required.' } });
         if (body.expectedRevision !== lifecycleArticle.revision) return route.fulfill({ status: 409, json: { error: 'stale' } });
         const publish = lifecycle[2] === 'publish';
         if (lifecycleArticle.status !== (publish ? 0 : 1)) return route.fulfill({ status: 422, json: { error: 'state' } });
@@ -61,7 +63,7 @@ export const test = base.extend<{ api: ApiFixture }>({
         Object.assign(lifecycleArticle, publish ? { status: 1, publishedAt: now } : { status: 2, archivedAt: now }, { revision: lifecycleArticle.revision + 1, updatedAt: now });
         return route.fulfill({ json: lifecycleArticle });
       }
-      // Like backend dev 1506a5b: a create is a Draft by the caller; a draft update needs the current revision.
+      // Like backend dev ced117c: a create is a Draft by the caller; a draft update needs the current revision.
       if (key === 'POST /api/knowledge/articles') {
         const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'>;
         api.articleWrites.push({ key, body });
@@ -79,6 +81,7 @@ export const test = base.extend<{ api: ApiFixture }>({
       if (draftArticle) {
         const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'> & { expectedRevision: number };
         api.articleWrites.push({ key, body });
+        if (!body.expectedRevision) return route.fulfill({ status: 400, json: { error: 'Expected revision is required.' } });
         if (body.expectedRevision !== draftArticle.revision) return route.fulfill({ status: 409, json: { error: 'stale' } });
         Object.assign(draftArticle, { title: body.title, content: body.content, tags: body.tags, revision: draftArticle.revision + 1, updatedAt: new Date().toISOString() });
         return route.fulfill({ json: draftArticle });

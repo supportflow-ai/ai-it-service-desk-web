@@ -168,17 +168,17 @@ email.
 
 ## Knowledge Base
 
-Backend dev `1506a5b` (PR #39) adds `/api/knowledge/articles`. The routes, actions and permissions
+Backend dev `1506a5b` (PR #39) adds `/api/knowledge/articles`; `ced117c` (PR #40) fixes gaps G1 and G6. The routes, actions and permissions
 the UI will follow, and the gaps against the team contract, are in
 [knowledge-ui-access-map.md](knowledge-ui-access-map.md) (TC-332). The Agent/Admin UI (TC-218) is
 built against them:
 - `/knowledge/manage` (Agent, Admin) lists `GET /knowledge/articles` with status/tag/query filters
-  kept in the URL. The backend returns other authors' unpublished articles to Agents (gap G1); those
-  rows are shown locked, since opening them would only give 404.
+  kept in the URL. Since `ced117c` an Agent's list holds Published articles and their own, an Admin's
+  every article. A row the user could only open on 404 (what `1506a5b` listed, gap G1) stays locked.
 - `/knowledge/manage/new` and `/knowledge/manage/:id/edit` (TC-338) create with `POST /knowledge/articles`
   and save with `PUT /knowledge/articles/{id}/draft`, checked like the Article domain (title ≤ 200,
-  content ≥ 10, ≤ 10 tags of ≤ 50, tags lower case without duplicates). The revision is always sent
-  although the backend does not require it (gap G6); it is the one the form opened on, so a background
+  content ≥ 10, ≤ 10 tags of ≤ 50, tags lower case without duplicates). The revision is always sent,
+  and required since `ced117c` (gap G6; missing or 0 is a 400); it is the one the form opened on, so a background
   refetch cannot turn a save into an overwrite. 409 and 422 offer a reload that keeps the typed text.
   Only the author or an Admin edits, and only a Draft: published articles cannot be versioned (gap G3).
 - The editor's "Xem trước" tab (TC-339) renders the Markdown as readers will see it with

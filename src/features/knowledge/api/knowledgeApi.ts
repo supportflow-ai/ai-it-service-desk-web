@@ -14,9 +14,9 @@ function listParams({ status, tag, query, page, pageSize }: ArticleListFilters) 
   };
 }
 
-/** Endpoints of backend dev 1506a5b (PR #39) only. */
+/** Endpoints of backend dev 1506a5b (PR #39), with the fixes of ced117c (PR #40). */
 export const knowledgeApi = {
-  /** Staff get every author's articles, of every status unless one is chosen (gap G1). */
+  /** An Admin gets every article, an Agent Published ones and their own (since ced117c, gap G1 fixed). */
   async listArticles(filters: ArticleListFilters, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>('/knowledge/articles', { params: listParams(filters), signal });
     return readArticlePage(response.data);
@@ -31,7 +31,7 @@ export const knowledgeApi = {
     const response = await apiClient.post<unknown>('/knowledge/articles', payload);
     return readArticle(response.data);
   },
-  /** Author or Admin, Draft only (else 403/422). The backend does not require the revision (gap G6); it is always sent. */
+  /** Author or Admin, Draft only (else 403/422). The revision is required since ced117c (gap G6 fixed). */
   async updateDraft(id: string, payload: ArticleDraftPayload, expectedRevision: number) {
     const response = await apiClient.put<unknown>(`/knowledge/articles/${encodeURIComponent(id)}/draft`, { ...payload, expectedRevision });
     return readArticle(response.data);
