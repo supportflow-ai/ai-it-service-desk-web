@@ -166,6 +166,13 @@ and reopen reason (FR-TKT-05/06), knowledge base, AI analysis and decisions, att
 (FR-FILE-05). Accounts created before PR #38 have no stored full name, so they are greeted by
 email.
 
+## Knowledge Base
+
+Backend dev `1506a5b` (PR #39) adds `/api/knowledge/articles`. The routes, actions and permissions
+the UI will follow, and the gaps against the team contract, are in
+[knowledge-ui-access-map.md](knowledge-ui-access-map.md) (TC-332). The UI does not call these
+endpoints yet; the dashboard knowledge card stays locked until it does.
+
 ## Not enabled
 
 AI HTTP endpoints are not used yet: backend dev f82f0b2 still exposes no triage result or review
