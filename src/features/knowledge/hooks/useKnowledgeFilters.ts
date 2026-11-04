@@ -7,5 +7,7 @@ export function useKnowledgeFilters() {
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = parseKnowledgeSearch(searchParams);
   const setFilters = (next: ArticleListFilters) => setSearchParams(toKnowledgeSearch(next), { replace: true });
-  return { filters, setFilters };
+  // Normalized, so unknown or invalid parameters are not carried along.
+  const query = toKnowledgeSearch(filters).toString();
+  return { filters, setFilters, search: query ? `?${query}` : '' };
 }

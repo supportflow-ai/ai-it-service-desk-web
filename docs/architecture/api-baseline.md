@@ -181,6 +181,26 @@ built against them:
   although the backend does not require it (gap G6); it is the one the form opened on, so a background
   refetch cannot turn a save into an overwrite. 409 and 422 offer a reload that keeps the typed text.
   Only the author or an Admin edits, and only a Draft: published articles cannot be versioned (gap G3).
+- The editor's "Xem trước" tab (TC-339) renders the Markdown as readers will see it with
+  `react-markdown` + `remark-gfm` (tables, task lists, strikethrough). The backend stores content as
+  typed, so the preview is the XSS boundary (NFR-SEC-04): React elements only, never innerHTML; raw
+  HTML is shown as text (not dropped, so "Nhấn <Enter>" keeps its words); links and images keep only
+  http(s), mailto, irc(s), xmpp and relative URLs, so `javascript:`, `data:` and `vbscript:` lose their
+  target; links open in a new tab with `rel="noopener noreferrer nofollow"`. `rehype-raw` must not be added.
+- Publish and archive (TC-340) are offered on the list rows and, for publish, in the draft editor,
+  each after a confirmation: `POST /knowledge/articles/{id}/publish|archive` with `{ expectedRevision }`
+  in the body. Author or Admin only, as the use cases do (the contract's Admin-only default, KB-05/06,
+  awaits TC-330). The editor holds publishing back while the form has unsaved changes, and ends on
+  the article's page. 409/422 explain and offer a reload; status and version come from the returned
+  article (version stays 1, gap G3).
+- `/knowledge/manage/:id` (TC-341) is the staff view of one article in any status the backend serves
+  (`GET /knowledge/articles/{id}`): rendered Markdown, status, tags, dates, and the edit, publish and
+  archive actions the user may take. 403 and 404 read the same (UX-04); a failed refresh keeps the
+  article on screen with a retry. List → article → editor carry the list's normalized search in router
+  state (`{ listSearch }`, accepted only as `?…`), so "back" returns to the same filters. The list tells
+  apart an empty base, filters that match nothing, a page past the end and a failed load. Unsaved
+  changes ask before the tab closes or reloads (`beforeunload`); moves inside the app are not
+  intercepted, since `BrowserRouter` has no navigation blocker.
 - The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled

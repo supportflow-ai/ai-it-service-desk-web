@@ -44,7 +44,23 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
       if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
-      if (key === 'GET /api/knowledge/articles') return route.fulfill({ json: articlePage(api.articles) });
+      if (key === 'GET /api/knowledge/articles') {
+        const status = url.searchParams.get('status');
+        return route.fulfill({ json: articlePage(status === null ? api.articles : api.articles.filter((article) => String(article.status) === status)) });
+      }
+      // Publish (Draft → Published) and archive (Published → Archived) need the current revision.
+      const lifecycle = /^POST \/api\/knowledge\/articles\/([0-9a-f-]{36})\/(publish|archive)$/.exec(key);
+      const lifecycleArticle = lifecycle && api.articles.find((article) => article.id === lifecycle[1]);
+      if (lifecycle && lifecycleArticle) {
+        const body = request.postDataJSON() as { expectedRevision: number };
+        api.articleWrites.push({ key, body });
+        if (body.expectedRevision !== lifecycleArticle.revision) return route.fulfill({ status: 409, json: { error: 'stale' } });
+        const publish = lifecycle[2] === 'publish';
+        if (lifecycleArticle.status !== (publish ? 0 : 1)) return route.fulfill({ status: 422, json: { error: 'state' } });
+        const now = new Date().toISOString();
+        Object.assign(lifecycleArticle, publish ? { status: 1, publishedAt: now } : { status: 2, archivedAt: now }, { revision: lifecycleArticle.revision + 1, updatedAt: now });
+        return route.fulfill({ json: lifecycleArticle });
+      }
       // Like backend dev 1506a5b: a create is a Draft by the caller; a draft update needs the current revision.
       if (key === 'POST /api/knowledge/articles') {
         const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'>;

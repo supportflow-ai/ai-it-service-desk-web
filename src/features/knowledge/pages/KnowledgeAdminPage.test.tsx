@@ -15,7 +15,12 @@ let items: object[] = [];
 
 function LocationProbe() {
   const location = useLocation();
-  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+  return (
+    <>
+      <output data-testid="location">{`${location.pathname}${location.search}`}</output>
+      <output data-testid="state">{JSON.stringify(location.state)}</output>
+    </>
+  );
 }
 
 function renderList(roles: string[], entry = '/knowledge/manage') {
@@ -23,7 +28,10 @@ function renderList(roles: string[], entry = '/knowledge/manage') {
   const { Wrapper } = createTestWrapper();
   render(
     <MemoryRouter initialEntries={[entry]}>
-      <Routes><Route path="/knowledge/manage" element={<KnowledgeAdminPage />} /></Routes>
+      <Routes>
+        <Route path="/knowledge/manage" element={<KnowledgeAdminPage />} />
+        <Route path="/knowledge/manage/*" element={<p>opened</p>} />
+      </Routes>
       <LocationProbe />
     </MemoryRouter>,
     { wrapper: Wrapper },
@@ -100,10 +108,48 @@ it('restores the filters from the URL', async () => {
   expect(screen.getByRole('searchbox', { name: 'Lọc theo tag' })).toHaveValue('mail');
 });
 
-it('says so when nothing matches', async () => {
+it('opens an article from its title, carrying the filters to come back to', async () => {
+  renderList(['Agent'], '/knowledge/manage?status=draft&utm=x');
+  await userEvent.click(await screen.findByRole('link', { name: ownDraft.title }));
+  expect(await screen.findByText('opened')).toBeInTheDocument();
+  expect(screen.getByTestId('location')).toHaveTextContent(`/knowledge/manage/${ownDraft.id}`);
+  // Normalized: unknown parameters are not carried along.
+  expect(screen.getByTestId('state')).toHaveTextContent('{"listSearch":"?status=draft"}');
+});
+
+it('says the knowledge base is empty, and offers to write the first article', async () => {
   items = [];
   renderList(['Agent']);
+  expect(await screen.findByText('Kho tri thức chưa có bài viết nào.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Viết bài đầu tiên' }));
+  expect(screen.getByTestId('location')).toHaveTextContent('/knowledge/manage/new');
+});
+
+it('says so when nothing matches, and clears the filters but not the page size', async () => {
+  items = [];
+  renderList(['Agent'], '/knowledge/manage?status=archived&tag=vpn&q=mail&pageSize=20');
   expect(await screen.findByText('Không có bài viết nào phù hợp với bộ lọc.')).toBeInTheDocument();
+  expect(screen.queryByText('Kho tri thức chưa có bài viết nào.')).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Xóa bộ lọc' }));
+  await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '20' }));
+  expect(screen.getByTestId('location')).toHaveTextContent(/^\/knowledge\/manage\?pageSize=20$/);
+});
+
+it('says when a page past the end has no articles, and goes back to the first one', async () => {
+  items = [];
+  renderList(['Agent'], '/knowledge/manage?status=published&page=3');
+  expect(await screen.findByText('Trang 3 không còn bài viết nào.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Về trang đầu' }));
+  await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', status: '1' }));
+});
+
+it('does not call a list that failed to load empty', async () => {
+  listStatus = 500;
+  renderList(['Agent']);
+  expect(await screen.findByText('Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại.')).toBeInTheDocument();
+  expect(screen.getByText('Chưa tải được danh sách bài viết.')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Thử lại' })).toBeInTheDocument();
+  expect(screen.queryByText('Kho tri thức chưa có bài viết nào.')).not.toBeInTheDocument();
 });
 
 it('shows a permission error without any rows', async () => {
@@ -111,4 +157,32 @@ it('shows a permission error without any rows', async () => {
   renderList(['Agent']);
   expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này.')).toBeInTheDocument();
   expect(screen.queryByText(ownDraft.title)).not.toBeInTheDocument();
+  expect(screen.queryByText('Kho tri thức chưa có bài viết nào.')).not.toBeInTheDocument();
+});
+
+it('offers edit, publish and archive on the rows the user may change, and refreshes the list after one', async () => {
+  const published = { ...othersPublished, id: '40000000-0000-0000-0000-000000000004', title: 'Bài đã xuất bản của tôi', authorId: user.userId };
+  items = [ownDraft, published, othersDraft, othersPublished];
+  let posts = 0;
+  server.use(http.post('http://localhost/api/knowledge/articles/:id/publish', () => {
+    posts += 1;
+    items = [{ ...ownDraft, status: 1, revision: ownDraft.revision + 1 }, published, othersDraft, othersPublished];
+    return HttpResponse.json(items[0]);
+  }));
+  renderList(['Agent']);
+  await screen.findByText(ownDraft.title);
+  expect(row(ownDraft.title).getByRole('link', { name: `Sửa bài ${ownDraft.title}` })).toBeInTheDocument();
+  expect(row(ownDraft.title).getByRole('button', { name: /Xuất bản/ })).toBeInTheDocument();
+  expect(row(othersPublished.title).queryByRole('button')).not.toBeInTheDocument();
+  expect(row(othersDraft.title).queryByRole('button')).not.toBeInTheDocument();
+  expect(row(othersDraft.title).queryByRole('link')).not.toBeInTheDocument();
+  expect(row(othersPublished.title).getByRole('link', { name: othersPublished.title })).toBeInTheDocument();
+
+  const before = requests.length;
+  await userEvent.click(row(ownDraft.title).getByRole('button', { name: /Xuất bản/ }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận xuất bản' }));
+  await waitFor(() => expect(posts).toBe(1));
+  await waitFor(() => expect(requests.length).toBeGreaterThan(before));
+  await waitFor(() => expect(row(ownDraft.title).getByText('Đã xuất bản')).toBeInTheDocument());
+  expect(row(ownDraft.title).getByRole('button', { name: /Lưu trữ/ })).toBeInTheDocument();
 });

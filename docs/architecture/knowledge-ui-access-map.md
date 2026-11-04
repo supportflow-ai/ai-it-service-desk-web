@@ -64,12 +64,14 @@ Tìm kiếm: `query` khớp không phân biệt hoa thường trên title hoặc
 | `/knowledge` | Tra cứu kho tri thức (chỉ bài đã xuất bản) | ✓ | ✓ | ✓ | `GET …/search?query&tag&page&pageSize`; với A/M **luôn gửi `status=1`** để không lẫn nháp/lưu trữ |
 | `/knowledge/:id` | Đọc bài | ✓ (Published) | ✓ (Published + bài của mình) | ✓ | `GET …/{id}`; 404 → màn "Không tìm thấy bài viết" không nói bài có tồn tại hay không (UX-04) |
 | `/knowledge/manage` | Quản lý bài viết: tab Nháp / Đã xuất bản / Lưu trữ, lọc tag, tìm | ✗ → trang 403 | ✓ | ✓ | `GET …/articles?status&tag&query&page&pageSize` |
+| `/knowledge/manage/:id` | Xem bài phía staff (mọi trạng thái backend cho đọc) kèm Sửa / Xuất bản / Lưu trữ | ✗ → 403 | ✓ Published + bài của mình | ✓ | `GET …/{id}` |
 | `/knowledge/manage/new` | Tạo bản nháp | ✗ → 403 | ✓ | ✓ | `POST …/articles` |
 | `/knowledge/manage/:id/edit` | Sửa bản nháp | ✗ → 403 | ✓ chỉ tác giả, chỉ Draft | ✓ chỉ Draft | `GET …/{id}` rồi `PUT …/{id}/draft` |
 
 Menu (giữ cách tách góc nhìn hiện có của UI):
 - Requester: thêm **Kho tri thức** → `/knowledge`. Ô "Kho tri thức" ở trang Tổng quan mở `/knowledge?query=…`.
-- Agent/Admin: thêm **Kho tri thức** → `/knowledge/manage`. Từ đây mở được trang đọc `/knowledge/:id`.
+- Agent/Admin: thêm **Kho tri thức** → `/knowledge/manage`. Tiêu đề trên danh sách mở `/knowledge/manage/:id`
+  (TC-341); trang đọc `/knowledge/:id` để dành cho tra cứu bài đã xuất bản.
 - Route guard theo role chỉ là UX; backend vẫn kiểm từng request (ACT-10).
 
 ## 4. Ma trận thao tác
@@ -82,16 +84,18 @@ Mỗi ô ghi: nút có hiện trên UI không / backend trả gì nếu vẫn g�
 | Đọc bài Draft hoặc Archived | `GET …/{id}` | không hiện / 404 | hiện / 200 | không hiện / **404** | hiện / 200 | — |
 | Tạo bản nháp | `POST …/articles` `{ title, content, tags? }` | không hiện / 403 | hiện / 201 | — | hiện / 201 | — |
 | Sửa bản nháp | `PUT …/{id}/draft` `{ title, content, tags?, expectedRevision }` | không hiện / 403 | hiện khi Draft / 200 | không hiện / 403 | hiện khi Draft / 200 | Draft (khác → 422) |
-| Xuất bản | `POST …/{id}/publish?expectedRevision=` | không hiện / 403 | hiện khi Draft / 200 | không hiện / 403 | hiện khi Draft / 200 | Draft (khác → 422) |
-| Lưu trữ | `POST …/{id}/archive?expectedRevision=` | không hiện / 403 | hiện khi Published / 200 | không hiện / 403 | hiện khi Published / 200 | Published (khác → 422) |
+| Xuất bản | `POST …/{id}/publish` `{ expectedRevision }` | không hiện / 403 | hiện khi Draft / 200 | không hiện / 403 | hiện khi Draft / 200 | Draft (khác → 422) |
+| Lưu trữ | `POST …/{id}/archive` `{ expectedRevision }` | không hiện / 403 | hiện khi Published / 200 | không hiện / 403 | hiện khi Published / 200 | Published (khác → 422) |
 | Sửa bài đã xuất bản, tạo phiên bản mới | không có API | — | — | — | — | G3 |
 | Khôi phục bài lưu trữ, xoá bài | không có API | — | — | — | — | — |
 
 Ghi chú:
 - Với bài người khác, Agent bị 403 khi ghi (backend kiểm tác giả trước trạng thái), nhưng 404
   khi đọc chi tiết bài chưa Published. UI dựa vào `authorId === user.userId` để ẩn nút.
-- Publish/archive nhận `expectedRevision` ở query hoặc body (backend dùng body trước). UI gửi qua
-  query, giống các lệnh của vé.
+- Publish/archive nhận `expectedRevision` ở query hoặc body (backend dùng body trước). UI gửi trong
+  body, để không phụ thuộc cách backend xử lý body rỗng.
+- Trong màn sửa nháp, nút Xuất bản bị khoá khi form còn thay đổi chưa lưu: chỉ nội dung đã lưu
+  được xuất bản, và bài đã xuất bản không sửa được nữa (G3).
 - UI luôn gửi revision đang hiển thị dù backend không bắt buộc (G6); revision lấy lúc mở form sửa,
   không lấy lại khi trang tự tải lại ở nền (cùng cách đã làm cho "Sửa yêu cầu").
 

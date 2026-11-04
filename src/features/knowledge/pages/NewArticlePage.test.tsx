@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -13,19 +13,30 @@ const content = ['## Bước 1', '', 'Mở ứng dụng VPN.'].join('\n');
 let sent: unknown[] = [];
 let createStatus = 201;
 
+function ListProbe() {
+  const location = useLocation();
+  return <p>{`article list ${location.search}`}</p>;
+}
+
 function EditProbe() {
   const location = useLocation();
   return <output data-testid="opened">{`${location.pathname} ${JSON.stringify(location.state)}`}</output>;
 }
 
-function renderNew() {
+function unloadPrevented() {
+  const event = new Event('beforeunload', { cancelable: true });
+  window.dispatchEvent(event);
+  return event.defaultPrevented;
+}
+
+function renderNew(state: unknown = null) {
   const { Wrapper } = createTestWrapper();
   render(
-    <MemoryRouter initialEntries={['/knowledge/manage/new']}>
+    <MemoryRouter initialEntries={[{ pathname: '/knowledge/manage/new', state }]}>
       <Routes>
         <Route path="/knowledge/manage/new" element={<NewArticlePage />} />
         <Route path="/knowledge/manage/:id/edit" element={<EditProbe />} />
-        <Route path="/knowledge/manage" element={<p>article list</p>} />
+        <Route path="/knowledge/manage" element={<ListProbe />} />
       </Routes>
     </MemoryRouter>,
     { wrapper: Wrapper },
@@ -62,7 +73,7 @@ it('checks the fields like the backend before sending anything', async () => {
 });
 
 it('creates the draft with trimmed fields and normalized tags, then opens it for editing', async () => {
-  renderNew();
+  renderNew({ listSearch: '?status=draft' });
   await fill('Tiêu đề', '  Kết nối VPN  ');
   // Commas split tags here; Enter is covered in the browser (e2e), where rc-select's popup renders.
   await userEvent.type(screen.getByRole('combobox', { name: 'Tags' }), 'VPN,vpn,Mạng,');
@@ -70,7 +81,7 @@ it('creates the draft with trimmed fields and normalized tags, then opens it for
   await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
   await waitFor(() => expect(sent).toEqual([{ title: 'Kết nối VPN', content, tags: ['vpn', 'mạng'] }]));
   expect(await screen.findByTestId('opened')).toHaveTextContent(
-    `/knowledge/manage/${ownDraft.id}/edit {"createdAt":"${ownDraft.createdAt}"}`,
+    `/knowledge/manage/${ownDraft.id}/edit {"listSearch":"?status=draft","createdAt":"${ownDraft.createdAt}"}`,
   );
 });
 
@@ -84,9 +95,46 @@ it('keeps the form and explains a refusal', async () => {
   expect(screen.getByLabelText('Tiêu đề')).toHaveValue('Kết nối VPN');
 });
 
-it('goes back to the list on cancel without sending anything', async () => {
-  renderNew();
+it('goes back to the list it came from on cancel without sending anything', async () => {
+  renderNew({ listSearch: '?tag=vpn' });
   await userEvent.click(await screen.findByRole('button', { name: 'Hủy' }));
-  expect(await screen.findByText('article list')).toBeInTheDocument();
+  expect(await screen.findByText('article list ?tag=vpn')).toBeInTheDocument();
+  expect(sent).toEqual([]);
+});
+
+it('asks before the tab closes once something is typed, and not after the draft is created', async () => {
+  renderNew();
+  await screen.findByLabelText('Tiêu đề');
+  expect(unloadPrevented()).toBe(false);
+  await fill('Tiêu đề', 'Kết nối VPN');
+  await waitFor(() => expect(unloadPrevented()).toBe(true));
+  await fill('Nội dung', 'Mở ứng dụng VPN rồi đăng nhập.');
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  expect(await screen.findByTestId('opened')).toBeInTheDocument();
+  expect(unloadPrevented()).toBe(false);
+});
+
+it('previews the draft as readers will see it, showing HTML as text instead of running it', async () => {
+  renderNew();
+  await fill('Tiêu đề', 'Kết nối VPN');
+  await userEvent.type(screen.getByRole('combobox', { name: 'Tags' }), 'vpn,');
+  await fill('Nội dung', ['## Bước 1', '', 'Mở **VPN**.', '', '<script>window.__xss = 1</script>'].join('\n'));
+  await userEvent.click(screen.getByRole('tab', { name: 'Xem trước' }));
+  const preview = await screen.findByRole('article', { name: 'Xem trước bài viết' });
+  expect(within(preview).getByRole('heading', { level: 3, name: 'Kết nối VPN' })).toBeInTheDocument();
+  expect(within(preview).getByRole('heading', { level: 2, name: 'Bước 1' })).toBeInTheDocument();
+  expect(within(preview).getByText('VPN', { selector: 'strong' })).toBeInTheDocument();
+  expect(within(preview).getByText('vpn')).toBeInTheDocument();
+  expect(preview.querySelector('script')).toBeNull();
+  expect(preview).toHaveTextContent('<script>window.__xss = 1</script>');
+});
+
+it('says there is nothing to preview yet, and returns to the write tab when a save fails its checks', async () => {
+  renderNew();
+  await userEvent.click(await screen.findByRole('tab', { name: 'Xem trước' }));
+  expect(await screen.findByText('Chưa có nội dung để xem trước.')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu nháp' }));
+  expect(await screen.findByText('Vui lòng nhập nội dung.')).toBeVisible();
+  expect(screen.getByRole('tab', { name: 'Viết' })).toHaveAttribute('aria-selected', 'true');
   expect(sent).toEqual([]);
 });

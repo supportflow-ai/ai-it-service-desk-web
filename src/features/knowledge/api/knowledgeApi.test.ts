@@ -68,3 +68,17 @@ it('reads one article, and creates and updates drafts with the backend payloads'
     { method: 'PUT', path: `/api/knowledge/articles/${ownDraft.id}/draft`, body: { ...payload, expectedRevision: 21 } },
   ]);
 });
+
+it('publishes and archives with the revision in the body', async () => {
+  const sent: { path: string; body: unknown }[] = [];
+  server.use(http.post(`${listUrl}/:id/:action`, async ({ request }) => {
+    sent.push({ path: new URL(request.url).pathname, body: await request.json() });
+    return HttpResponse.json(othersPublished);
+  }));
+  await knowledgeApi.publishArticle(ownDraft.id, 21);
+  await knowledgeApi.archiveArticle(othersPublished.id, 30);
+  expect(sent).toEqual([
+    { path: `/api/knowledge/articles/${ownDraft.id}/publish`, body: { expectedRevision: 21 } },
+    { path: `/api/knowledge/articles/${othersPublished.id}/archive`, body: { expectedRevision: 30 } },
+  ]);
+});

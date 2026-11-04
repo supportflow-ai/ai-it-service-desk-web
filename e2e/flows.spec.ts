@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { ticketA } from '../tests/fixtures';
+import { ownDraft, ticketA } from '../tests/fixtures';
 
 test('login → own tickets → detail → logout', async ({ page, api }) => {
   await page.goto('/requester-dashboard/tickets');
@@ -69,6 +69,8 @@ for (const [role, path, allowed] of [
   ['Admin', '/agent-workspace', true],
   ['Admin', '/admin-panel', true],
   ['Requester', '/knowledge/manage', false],
+  ['Requester', `/knowledge/manage/${ownDraft.id}`, false],
+  ['Requester', `/knowledge/manage/${ownDraft.id}/edit`, false],
   ['Agent', '/knowledge/manage', true],
   ['Admin', '/knowledge/manage', true],
 ] as const) {

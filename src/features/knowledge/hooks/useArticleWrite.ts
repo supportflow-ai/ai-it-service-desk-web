@@ -45,6 +45,14 @@ export function useCreateArticle() {
   return useArticleWrite({ articleId: 'new', action: 'create', write: (payload: ArticleDraftPayload) => knowledgeApi.createDraft(payload) });
 }
 
+export function usePublishArticle(articleId: string) {
+  return useArticleWrite({ articleId, action: 'publish', write: (expectedRevision: number) => knowledgeApi.publishArticle(articleId, expectedRevision) });
+}
+
+export function useArchiveArticle(articleId: string) {
+  return useArticleWrite({ articleId, action: 'archive', write: (expectedRevision: number) => knowledgeApi.archiveArticle(articleId, expectedRevision) });
+}
+
 interface UpdateDraftVariables {
   payload: ArticleDraftPayload;
   expectedRevision: number;

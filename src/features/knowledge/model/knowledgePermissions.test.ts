@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { User } from '@/features/auth';
 import { ArticleStatus } from './knowledge.types';
-import { canEditArticle, canManageKnowledge, canOpenArticle, isArticleAuthor } from './knowledgePermissions';
+import {
+  canArchiveArticle, canEditArticle, canManageKnowledge, canOpenArticle, canPublishArticle, isArticleAuthor,
+} from './knowledgePermissions';
 
 function userWith(roles: User['roles'], userId = `user-${roles.join('-')}`): User {
   return { userId, email: 'synthetic@example.invalid', fullName: null, roles };
@@ -40,6 +42,19 @@ describe('knowledge permissions (backend dev 1506a5b)', () => {
     }
     expect(canEditArticle(requester, article(ArticleStatus.Draft, requester.userId))).toBe(false);
     expect(canEditArticle(null, article(ArticleStatus.Draft))).toBe(false);
+  });
+
+  it('lets the author or an Admin publish a Draft and archive a Published article, as the use cases do', () => {
+    expect(canPublishArticle(agent, article(ArticleStatus.Draft, agent.userId))).toBe(true);
+    expect(canPublishArticle(admin, article(ArticleStatus.Draft))).toBe(true);
+    expect(canPublishArticle(agent, article(ArticleStatus.Draft))).toBe(false);
+    expect(canPublishArticle(admin, article(ArticleStatus.Published))).toBe(false);
+    expect(canArchiveArticle(agent, article(ArticleStatus.Published, agent.userId))).toBe(true);
+    expect(canArchiveArticle(admin, article(ArticleStatus.Published))).toBe(true);
+    expect(canArchiveArticle(agent, article(ArticleStatus.Published))).toBe(false);
+    for (const status of [ArticleStatus.Draft, ArticleStatus.Archived]) expect(canArchiveArticle(admin, article(status))).toBe(false);
+    expect(canPublishArticle(requester, article(ArticleStatus.Draft, requester.userId))).toBe(false);
+    expect(canArchiveArticle(null, article(ArticleStatus.Published))).toBe(false);
   });
 
   it('opens what GetArticleDetail serves to each role', () => {
