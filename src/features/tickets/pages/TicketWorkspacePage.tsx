@@ -2,17 +2,17 @@ import type { ReactNode } from 'react';
 import { Alert, Col, Row, Space } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { normalizeError } from '@/shared/api/httpError';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
 import { queueReturnPath } from '../lib/agentQueueSearch';
+import { isAccessLostError } from '../lib/ticketErrorMessage';
 import { isTicketId } from '../model/ticketId';
 import { isTerminalStatus } from '../model/ticketStatus';
 import type { TicketDto } from '../model/ticket.types';
 import { TicketWorkspaceHeader } from '../components/TicketWorkspaceHeader';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
-import { TicketWorkspaceErrorState } from '../components/TicketWorkspaceErrorState';
+import { TicketErrorState } from '../components/TicketErrorState';
 import { TicketAssignmentPanel } from '../components/TicketAssignmentPanel';
 import { TicketTimeline } from '../components/TicketTimeline';
 import { TicketCommentComposer } from '../components/TicketCommentComposer';
@@ -31,12 +31,10 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
   const backPath = queueReturnPath(location.state);
   const reload = () => { void ticket.refetch(); };
 
-  if (!isTicketId(id)) return <TicketWorkspaceErrorState error={null} backPath={backPath} onRetry={reload} />;
+  if (!isTicketId(id)) return <TicketErrorState error={null} backPath={backPath} backLabel="Quay lại hàng đợi" onRetry={reload} />;
   if (ticket.isPending) return <PageLoader />;
-  // 403/404 means the ticket is no longer ours to show, even if an older copy is cached.
-  const errorStatus = ticket.error ? normalizeError(ticket.error).status : undefined;
-  if (!ticket.data || errorStatus === 403 || errorStatus === 404) {
-    return <TicketWorkspaceErrorState error={ticket.error} backPath={backPath} onRetry={reload} />;
+  if (!ticket.data || isAccessLostError(ticket.error)) {
+    return <TicketErrorState error={ticket.error} backPath={backPath} backLabel="Quay lại hàng đợi" onRetry={reload} />;
   }
 
   return (
@@ -58,7 +56,7 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Alert
           type="info"
           showIcon
-          message="Ticket đã kết thúc: không còn thao tác chuyển trạng thái hay phân công."
+          message="Ticket đã kết thúc: không còn chuyển trạng thái, phân công, phản hồi công khai hay đính kèm tệp. Vẫn ghi chú nội bộ được."
           style={{ marginBottom: 16 }}
         />
       )}
@@ -76,10 +74,10 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Col xs={24} md={16} lg={18} xl={13}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <TicketWorkspaceHeader ticket={ticket.data} />
-            <TicketCommandPanel ticket={ticket.data} onReload={reload} />
-            <TicketTimeline ticketId={ticket.data.id} />
-            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
-            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
+            <TicketCommandPanel ticket={ticket.data} onReload={reload} view="workspace" />
+            <TicketTimeline ticketId={ticket.data.id} view="workspace" />
+            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} status={ticket.data.status} view="workspace" />
+            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} status={ticket.data.status} />
           </Space>
         </Col>
 

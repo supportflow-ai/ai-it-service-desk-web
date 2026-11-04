@@ -18,9 +18,10 @@ All paths below are relative to the build-time API base URL (`/api` by default).
 | POST /tickets | title, description, categoryId | Full TicketDto, status Submitted | All three roles |
 
 TicketDto contains id, ticketNumber, title, description, categoryId, numeric status,
-createdAt and optional/nullable requesterDepartmentId. The UI does not invent priority,
-assignment, resolution, revision or concurrency data. DTOs already suit the current UI;
-there is no identity mapper. Runtime readers validate required response fields.
+createdAt and optional/nullable requesterDepartmentId; since backend dev `007a258` it also
+carries `revision` (see below). The UI does not invent priority, assignment or resolution
+data, and never makes up a revision. DTOs already suit the current UI; there is no identity
+mapper. Runtime readers validate required response fields.
 
 Source files at the pinned SHA:
 - `src/backend/ServiceDesk.Api/Endpoints/{AuthEndpoints,TicketEndpoints}.cs`
@@ -60,32 +61,114 @@ TimelineItemDto contains id, ticketId, authorId, authorName, authorRole, content
 and createdAt. Presigned URLs must be absolute http(s); uploads go straight to storage with
 a separate HTTP client so the API bearer token is never sent there.
 
-Rejected lifecycle transitions return 400, permission failures 401/403 and out-of-scope
-tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
-TicketDto has no requester id, so close/reopen/cancel are shown only to Admin and to Requester
-accounts without a staff role, whose ticket reads the server scopes to their own tickets.
+### Revision and attachment metadata
 
-Known backend gaps at this commit, reflected in the UI rather than papered over:
-- No attachment list/metadata endpoint: the UI lists only files uploaded in the current
-  session and says so.
-- Timeline entries are kept in memory on the server and carry the user id as `authorName`;
-  the UI shows a role label instead of an id. Status transitions are not recorded as
-  timeline events.
-- Claim by an Admin-only account is rejected with 401, so the UI hides claim for Admin.
-- Queue scopes are status-based: `unassigned` returns Submitted tickets and `my` returns every
-  InProgress ticket, not only the caller's. The "Của tôi" tab says so. There is no priority
-  field, priority filter or sort parameter, so the priority filter stays locked and the order
-  is fixed to newest first.
-- TicketDto has no assignee id or name and there is no agent directory endpoint. The UI only
-  offers self-assign (agentId = the signed-in Agent's userId) on Submitted tickets and
-  unassign on Assigned tickets, reads "assigned/unassigned" from those two statuses, and keeps
-  "assign to another agent" locked. The server does not validate agentId, any staff member can
-  unassign, Claim does not record an assignee, and no assignment audit event exists. The
-  historical TC-294 policy (team membership, revision, 409) is not implemented.
+Pinned to backend `dev` commit `007a2589086970157a99f51d7792b9a418ed0487` (2026-11-03), same
+source files plus `ServiceDesk.Application/Ticketing/{Contracts/AttachmentContracts,ConfirmAttachmentUpload/*,GetTicketAttachments/*}.cs`
+and `ServiceDesk.Infrastructure/Storage/MinioObjectStorageService.cs`. This changes the rows above:
+
+| Method/path | Request | Success response | Notes |
+| --- | --- | --- | --- |
+| Every TicketDto response | — | adds `revision` (non-negative integer) | Required by the reader; a ticket without it is an invalid response |
+| POST /tickets/{id}/assign | agentId, expectedRevision (body) | TicketDto | Stale revision → 409 |
+| POST /tickets/{id}/{unassign,claim,resolve,close,reopen,cancel} | `expectedRevision` query, no body | TicketDto | Stale revision → 409 |
+| POST /tickets/{id}/attachments/upload-url | unchanged | adds nullable `formData` (string map) | Present: multipart POST of every field, then `file`. Absent/null: raw PUT |
+| POST /tickets/{id}/attachments/confirm | fileName, fileSizeBytes, contentType, storageKey (as sent to upload-url) | TicketAttachmentDto, 201 | Required: without it the file is not attached to the ticket |
+| GET /tickets/{id}/attachments | None | TicketAttachmentDto[], newest first | All three roles, same ticket scope as detail |
+
+TicketAttachmentDto contains id, ticketId, fileName, fileSizeBytes, contentType, storageKey
+(the confirmed, ticket-owned key used for download-url), uploadedBy and createdAt.
+
+Status and assignment commands send the revision of the ticket on screen. A 409 shows
+"ticket was changed by someone else" with a reload button; reloading clears that error, and the
+write is never retried. The backend's revision is the PostgreSQL `xmin`. An upload is done only
+after confirm succeeds; the list is then refreshed from the server.
+
+### Priority, agent directory and ended tickets
+
+Pinned to backend `dev` commit `f82f0b2` (PR #38, `fix/sprint2-backend-review`, 2026-11-04),
+source `ServiceDesk.Api/Endpoints/{AuthEndpoints,TicketEndpoints}.cs`,
+`ServiceDesk.Application/Identity/GetUsersByRole/*`, `ServiceDesk.Application/Ticketing/*UseCase.cs`
+and `ServiceDesk.Infrastructure/Ticketing/PostgresTicketQueries.cs`. This changes the rows above:
+
+| Method/path | Request | Success response | Notes |
+| --- | --- | --- | --- |
+| Every TicketDto response | — | nullable `priority`: `P1`–`P4` | Computed by the backend (impact × urgency); any other value is an invalid response |
+| GET /tickets/queue | adds optional `priority` (`P1`–`P4`) and `sortByPriority` (bool) | unchanged | Sorted P1 → P4, then newest; unknown priority → 400 |
+| GET /users | `role=Agent` (Agent or Admin only) | `{ userId, fullName }[]`, no email | 403 for a requester; `fullName` may be null |
+| Every status and assignment command | `expectedRevision` now required | unchanged | Missing or 0 → 400 |
+| POST /tickets/{id}/claim | unchanged | unchanged | An Assigned ticket held by another agent → 403, unless Admin |
+| POST /tickets/{id}/unassign | unchanged | unchanged | Only an Assigned ticket |
+| POST /tickets/{id}/comments, attachments/upload-url, attachments/confirm | unchanged | unchanged | Closed or Cancelled ticket → 400. Internal notes and downloads are still accepted |
+| POST /auth/register | unchanged | unchanged | `fullName` is now stored, so it comes back from login and `/auth/me` |
+| POST /tickets | optional `Idempotency-Key` header | unchanged | Same key and content within 10 minutes returns the ticket already created; same key, other content → 409 |
+| POST /tickets/{id}/update | title, description, categoryId, expectedRevision (body) | TicketDto | Owner or Admin; only Submitted (else 400); same field rules as create; stale revision → 409 |
+
+Rejected lifecycle transitions return 400, permission failures 403 and out-of-scope
+tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
+
+How the UI follows backend `007a258` (TicketDto also carries `requesterId` and nullable
+`assignedToId`, both required by the reader):
+- Close/reopen/cancel are shown to the ticket's requester (`requesterId` = the signed-in user,
+  whatever their role) and to Admin, as the use cases allow.
+- Claim and self-assign are shown to Agent and Admin. Claim is offered on Submitted tickets and
+  on Assigned tickets held by the viewer; an Admin may also claim one held by someone else.
+- "Phụ trách" reads `assignedToId`: none → "Chưa phân công", the signed-in user → "Bạn",
+  anyone else → their name from `GET /api/users?role=Agent` (staff only), or "Đã phân công"
+  if they are not listed. An agent without a name is shown with the start of their id.
+- Staff can assign any ticket that has not ended to an agent picked by name from that list.
+- Unassign is offered only on Assigned tickets, as the backend requires.
+- On a Closed or Cancelled ticket the requester screen takes no reply and no new file; the
+  workspace keeps internal notes only. Existing files stay downloadable.
+- Creating a ticket sends an `Idempotency-Key`: the same key while the content is unchanged (so
+  resending after a failure or a lost response cannot create a duplicate), a new one once the
+  content changes or a ticket was created.
+- Login answers a bare 401 for a wrong password and for an account locked after 5 failures (15
+  minutes), so the login page says both in one message.
+- "Sửa yêu cầu" is offered to the requester on their screen and to Admin on the workspace while
+  the ticket is Submitted. The dialog opens on the ticket as loaded and saves with its revision;
+  on 400/409 it keeps the typed changes and offers a reload.
+- Files can be chosen on the create screen (US-062), checked against the upload limits as they
+  are picked. Upload needs a ticket id, so the ticket is created first and each file then goes
+  through upload-url → storage → confirm. A failed file does not undo the ticket: its page names
+  the files to attach again.
+- Queue scopes filter on the assignee and leave out Closed/Cancelled; the tab descriptions say so.
+- Status and assignment changes appear in the timeline as `authorRole: "System"` entries,
+  shown as "Hệ thống". `authorName` of people is the account's user name, today its email.
+- Priority is shown in the queue and the workspace sidebar ("Chưa có" when null). The queue
+  filters by it and can sort highest priority first; both are kept in the URL
+  (`priority=P1`, `sort=priority`). New tickets get the default P3.
+- The historical TC-294 team-membership policy is not implemented.
+
+## Screens and roles
+
+Product source: PRD v1.1 and Implementation Specification v1.2 (baseline 28/08/2026), mapped onto
+what backend `007a258` implements. Every screen shows one perspective, whatever roles the viewer has.
+
+| Screen | Who | What it offers |
+| --- | --- | --- |
+| `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
+| `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (edit/cancel while Submitted, close/reopen when Resolved, when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
+| `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
+| `/admin-panel` | Admin | Not supported yet: no admin endpoints |
+
+The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi; staff: Hàng
+đợi xử lý, Yêu cầu của tôi, Tạo yêu cầu, plus Quản trị hệ thống for Admin) and the sidebar names the
+real roles. Signing out returns to a clean login page, so the next account never lands on the
+previous one's page; only an expired session returns to where it was. Every tab follows a sign-in,
+account switch or sign-out made in another tab.
+
+Required by the PRD/Spec but not implemented by the backend, so not offered in the UI: the Lead
+role and team scope (FR-AUTH-05/06; the queue returns every ticket to any staff member), Draft and
+Submit as separate steps, Triage, Start, Request information/Resume, a required resolution summary
+and reopen reason (FR-TKT-05/06), knowledge base, AI analysis and decisions, attachment delete
+(FR-FILE-05). Accounts created before PR #38 have no stored full name, so they are greeted by
+email.
 
 ## Not enabled
 
-AI HTTP endpoints are not used yet: backend dev 8fe5c43 exposes no triage result or review
+AI HTTP endpoints are not used yet: backend dev f82f0b2 still exposes no triage result or review
 decision endpoint, persists no AIAnalysis/AISuggestion, and its classifier is a NoOp (TC-277
 records "dev integration BLOCKED"). The workspace AI slot (`WorkspaceTriagePanel`, injected by
 the App) therefore shows the not-enabled state. Review decisions (accept, override with a
@@ -112,7 +195,9 @@ is pending, every status and assignment control for it is disabled; a 404 reload
 the workspace shows not-found instead of stale data) and invalidate per `ticketInvalidation` in
 `api/ticketQueries.ts`: a status or assignment change refreshes the ticket, its timeline, the
 requester list and the agent queue; a comment or internal note refreshes only the timeline;
-a new ticket refreshes the two lists.
+a confirmed upload refreshes only the attachment list; a new ticket refreshes the two lists.
+A 403/404 on a ticket, timeline or attachment read hides the cached copy on both the requester
+detail page and the agent workspace.
 
 Feature dependency allowlist: tickets → auth; ai-assistance → tickets. External consumers
 use feature-root index.ts. ESLint Boundaries and TypeScript AST/resolved-module graph checks

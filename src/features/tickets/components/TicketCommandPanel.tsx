@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Popconfirm, Space, Typography } from 'antd';
-import { CheckOutlined, CloseOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EditOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
 import {
   canCancelTicket,
   canClaimTicket,
   canCloseTicket,
+  canEditTicket,
   canReopenTicket,
   canResolveTicket,
 } from '../model/ticketPermissions';
+import type { TicketView } from '../model/ticketPermissions';
 import { useCancelTicket } from '../hooks/useCancelTicket';
 import { useClaimTicket } from '../hooks/useClaimTicket';
 import { useCloseTicket } from '../hooks/useCloseTicket';
@@ -17,20 +19,28 @@ import { useReopenTicket } from '../hooks/useReopenTicket';
 import { useResolveTicket } from '../hooks/useResolveTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
 import { describeTicketError } from '../lib/ticketErrorMessage';
+import { TicketEditDialog } from './TicketEditDialog';
 import { TicketResolveDialog } from './TicketResolveDialog';
 
 interface TicketCommandPanelProps {
   ticket: TicketDto;
   onReload: () => void;
+  /** The requester screen offers the owner's commands only; the workspace the staff commands. */
+  view: TicketView;
 }
 
 const transitionMessages = {
   400: 'Không thể chuyển trạng thái: ticket có thể đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
+  // Staff only ever see staff commands here, so a 403 means the ticket was meanwhile assigned to
+  // another agent (ClaimTicketUseCase), which a reload shows.
+  403: 'Không thể nhận xử lý: ticket vừa được giao cho kỹ thuật viên khác. Hãy tải lại để xem người phụ trách mới.',
 };
+const reloadableStatuses = [400, 403, 409] as const;
 
-export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps) {
+export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPanelProps) {
   const { user } = useAuth();
   const [resolveOpen, setResolveOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const claimMutation = useClaimTicket(ticket.id);
   const resolveMutation = useResolveTicket(ticket.id);
@@ -42,20 +52,27 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   // Also covers assignment writes from the other panel, so two state changes never overlap.
   const isPending = useTicketStateWritePending(ticket.id);
   const failed = mutations.find((mutation) => mutation.isError);
-  const failure = failed ? describeTicketError(failed.error, transitionMessages) : null;
+  const failure = failed ? describeTicketError(failed.error, transitionMessages, reloadableStatuses) : null;
 
-  // Only the latest command's outcome is shown, so earlier errors are cleared first.
+  // Only the latest command's outcome is shown, so earlier errors are cleared first. The command
+  // carries the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).
   const run = (target: typeof claimMutation, onSettled?: () => void) => {
     for (const mutation of mutations) if (mutation !== target) mutation.reset();
-    target.mutate(undefined, onSettled ? { onSettled } : undefined);
+    target.mutate(ticket.revision, onSettled ? { onSettled } : undefined);
+  };
+  // Reloading shows the current ticket, so the error about the old copy no longer applies.
+  const reload = () => {
+    for (const mutation of mutations) mutation.reset();
+    onReload();
   };
 
   const allowed = {
-    claim: canClaimTicket(user, ticket.status),
-    resolve: canResolveTicket(user, ticket.status),
-    close: canCloseTicket(user, ticket.status),
-    reopen: canReopenTicket(user, ticket.status),
-    cancel: canCancelTicket(user, ticket.status),
+    claim: canClaimTicket(user, ticket, view),
+    resolve: canResolveTicket(user, ticket, view),
+    close: canCloseTicket(user, ticket, view),
+    reopen: canReopenTicket(user, ticket, view),
+    cancel: canCancelTicket(user, ticket, view),
+    edit: canEditTicket(user, ticket, view),
   };
   const hasAction = Object.values(allowed).some(Boolean);
 
@@ -70,7 +87,7 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
           type="error"
           showIcon
           message={failure.message}
-          action={failure.reloadable ? <Button size="small" onClick={onReload}>Tải lại</Button> : undefined}
+          action={failure.reloadable ? <Button size="small" onClick={reload}>Tải lại</Button> : undefined}
           style={{ marginBottom: 12 }}
         />
       )}
@@ -139,6 +156,17 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
           </Button>
         )}
 
+        {allowed.edit && (
+          <Button
+            icon={<EditOutlined />}
+            disabled={isPending}
+            onClick={() => setEditOpen(true)}
+            style={{ borderRadius: 6 }}
+          >
+            Sửa yêu cầu
+          </Button>
+        )}
+
         {allowed.cancel && (
           <Popconfirm
             title="Hủy yêu cầu này?"
@@ -159,6 +187,11 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
           </Popconfirm>
         )}
       </Space>
+
+      {/* Unmounted once the ticket can no longer be edited, e.g. after a reload shows it was taken. */}
+      {allowed.edit && (
+        <TicketEditDialog ticket={ticket} open={editOpen} onClose={() => setEditOpen(false)} onReload={reload} />
+      )}
 
       <TicketResolveDialog
         open={resolveOpen}

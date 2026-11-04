@@ -5,6 +5,7 @@ import { AGENT_QUEUE_PAGE_SIZES } from '../model/agentQueue';
 import { ticketCategoryLabels } from '../model/ticketCategories';
 import { workspaceTicketPath } from '../lib/agentQueueSearch';
 import type { QueueReturnState } from '../lib/agentQueueSearch';
+import { TicketPriorityTag } from './TicketPriorityTag';
 import { TicketStatusTag } from './TicketStatusTag';
 
 interface AgentQueueTableProps {
@@ -65,6 +66,7 @@ export function AgentQueueTable({ result, loading, page, pageSize, returnState, 
         },
         { title: 'Danh mục', key: 'category', render: (_, ticket) => ticketCategoryLabels[ticket.categoryId] },
         { title: 'Trạng thái', key: 'status', render: (_, ticket) => <TicketStatusTag status={ticket.status} /> },
+        { title: 'Ưu tiên', key: 'priority', render: (_, ticket) => <TicketPriorityTag priority={ticket.priority} /> },
         { title: 'Ngày tạo', key: 'created', align: 'right', render: (_, ticket) => formatCreatedAt(ticket.createdAt) },
       ]}
       pagination={{

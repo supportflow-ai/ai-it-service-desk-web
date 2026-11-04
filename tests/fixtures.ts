@@ -2,8 +2,14 @@ export const user = { userId: '00000000-0000-0000-0000-000000000001', email: 'sy
 export const ticketA = {
   id: '10000000-0000-0000-0000-000000000001', ticketNumber: 'IT-2026-0001',
   title: 'Ticket A', description: 'Mô tả sự cố A đầy đủ.', categoryId: 'NET', status: 1,
-  createdAt: '2026-10-19T00:00:00Z', requesterDepartmentId: null,
+  createdAt: '2026-10-19T00:00:00Z', requesterDepartmentId: null, revision: 7,
+  // Owned by another account; tests that act as the owner set requesterId: user.userId.
+  requesterId: '00000000-0000-0000-0000-000000000009', assignedToId: null as string | null,
+  priority: 'P3' as 'P1' | 'P2' | 'P3' | 'P4' | null,
 };
+/** GET /api/users?role=Agent: id and name only, never an email. */
+export const namedAgent = { userId: '00000000-0000-0000-0000-000000000005', fullName: 'Trần Thị Bình' };
+export const agentDirectory = [namedAgent, { userId: '00000000-0000-0000-0000-000000000006', fullName: null }];
 export const ticketB = { ...ticketA, id: '10000000-0000-0000-0000-000000000002', ticketNumber: 'IT-2026-0002', title: 'Ticket B' };
 export const timelineItemA = {
   id: '20000000-0000-0000-0000-000000000001',

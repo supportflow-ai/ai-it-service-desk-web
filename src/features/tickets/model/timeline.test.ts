@@ -15,6 +15,12 @@ describe('timeline display rules', () => {
     expect(timelineAuthorLabel({ ...idAsName, authorName: '  ' }, undefined)).toBe('Kỹ thuật viên');
   });
 
+  it('labels status and assignment events as the system, even when the viewer made the change', () => {
+    const event = { ...timelineItemA, authorName: 'Hệ thống', authorRole: 'System', content: 'Yêu cầu đã được hủy bỏ.' };
+    expect(timelineAuthorLabel(event, timelineItemA.authorId)).toBe('Hệ thống');
+    expect(timelineAuthorLabel({ ...event, authorId: otherAuthorId }, undefined)).toBe('Hệ thống');
+  });
+
   it('keeps a real author name', () => {
     expect(timelineAuthorLabel({ ...timelineItemA, authorId: otherAuthorId }, undefined)).toBe(timelineItemA.authorName);
   });

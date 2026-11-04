@@ -5,10 +5,15 @@ import type {
   AddCommentPayload,
   AddInternalNotePayload,
   AgentQueueFilters,
+  ConfirmAttachmentPayload,
   CreateTicketPayload,
   GenerateUploadUrlPayload,
+  UpdateTicketPayload,
 } from '../model/ticket.types';
 import {
+  readAgentDirectory,
+  readAttachment,
+  readAttachments,
   readDownloadUrlResult,
   readTicket,
   readTicketPage,
@@ -17,13 +22,15 @@ import {
   readUploadUrlResult,
 } from './ticketContract';
 
-function agentQueueParams({ scope, status, category, page, pageSize }: AgentQueueFilters) {
+function agentQueueParams({ scope, status, category, priority, sortByPriority, page, pageSize }: AgentQueueFilters) {
   return {
     page,
     pageSize,
     ...(scope === 'all' ? {} : { scope }),
     ...(status === null ? {} : { status }),
     ...(category === null ? {} : { category }),
+    ...(priority === null ? {} : { priority }),
+    ...(sortByPriority ? { sortByPriority: true } : {}),
   };
 }
 
@@ -37,40 +44,52 @@ export const ticketApi = {
     const response = await apiClient.get<unknown>('/tickets/queue', { params: agentQueueParams(filters), signal });
     return readTicketPage(response.data);
   },
+  /** Staff only (403 for a requester): the agents a ticket can be assigned to. */
+  async getAgentDirectory(signal?: AbortSignal) {
+    const response = await apiClient.get<unknown>('/users', { params: { role: 'Agent' }, signal });
+    return readAgentDirectory(response.data);
+  },
   async getTicketById(id: string, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>(`/tickets/${encodeURIComponent(id)}`, { signal });
     return readTicket(response.data);
   },
-  async createTicket(payload: CreateTicketPayload) {
-    const response = await apiClient.post<unknown>('/tickets', payload);
+  /** The same key with the same content returns the ticket already created instead of a duplicate. */
+  async createTicket(payload: CreateTicketPayload, idempotencyKey: string) {
+    const response = await apiClient.post<unknown>('/tickets', payload, { headers: { 'Idempotency-Key': idempotencyKey } });
     return readTicket(response.data);
   },
-  async assignTicket(ticketId: string, agentId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/assign`, { agentId });
+  /** Owner or Admin, only while Submitted. Sends the revision on screen; outdated → 409. */
+  async updateTicket(ticketId: string, payload: UpdateTicketPayload, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/update`, { ...payload, expectedRevision });
     return readTicket(response.data);
   },
-  async unassignTicket(ticketId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/unassign`);
+  // State commands carry the revision the user acted on; the server answers 409 if it is outdated.
+  async assignTicket(ticketId: string, agentId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/assign`, { agentId, expectedRevision });
     return readTicket(response.data);
   },
-  async claimTicket(ticketId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/claim`);
+  async unassignTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/unassign`, undefined, { params: { expectedRevision } });
     return readTicket(response.data);
   },
-  async resolveTicket(ticketId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/resolve`);
+  async claimTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/claim`, undefined, { params: { expectedRevision } });
     return readTicket(response.data);
   },
-  async closeTicket(ticketId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/close`);
+  async resolveTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/resolve`, undefined, { params: { expectedRevision } });
     return readTicket(response.data);
   },
-  async reopenTicket(ticketId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/reopen`);
+  async closeTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/close`, undefined, { params: { expectedRevision } });
     return readTicket(response.data);
   },
-  async cancelTicket(ticketId: string) {
-    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/cancel`);
+  async reopenTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/reopen`, undefined, { params: { expectedRevision } });
+    return readTicket(response.data);
+  },
+  async cancelTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/cancel`, undefined, { params: { expectedRevision } });
     return readTicket(response.data);
   },
   async getTicketTimeline(ticketId: string, signal?: AbortSignal) {
@@ -99,6 +118,14 @@ export const ticketApi = {
       { params: { storageKey } },
     );
     return readDownloadUrlResult(response.data);
+  },
+  async confirmAttachmentUpload(ticketId: string, payload: ConfirmAttachmentPayload) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/attachments/confirm`, payload);
+    return readAttachment(response.data);
+  },
+  async getTicketAttachments(ticketId: string, signal?: AbortSignal) {
+    const response = await apiClient.get<unknown>(`/tickets/${encodeURIComponent(ticketId)}/attachments`, { signal });
+    return readAttachments(response.data);
   },
   async uploadFileToPresignedUrl(uploadUrl: string, file: File, options: Omit<PresignedUploadOptions, 'contentType'> = {}) {
     await uploadToPresignedUrl(uploadUrl, file, { ...options, contentType: file.type || 'application/octet-stream' });

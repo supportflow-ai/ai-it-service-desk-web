@@ -6,15 +6,17 @@ import { parseAgentQueueSearch, queueReturnPath, toAgentQueueSearch, workspaceTi
 describe('agent queue URL state', () => {
   it('uses the defaults for an empty or garbage query', () => {
     expect(parseAgentQueueSearch(new URLSearchParams())).toEqual(defaultAgentQueueFilters);
-    expect(parseAgentQueueSearch(new URLSearchParams('scope=team&status=99&category=nope&page=-2&pageSize=7')))
+    expect(parseAgentQueueSearch(new URLSearchParams('scope=team&status=99&category=nope&priority=P9&sort=oldest&page=-2&pageSize=7')))
       .toEqual(defaultAgentQueueFilters);
     expect(parseAgentQueueSearch(new URLSearchParams('status=1.5&page=2e3'))).toEqual(defaultAgentQueueFilters);
   });
 
   it('round-trips every supported filter and keeps the default URL clean', () => {
-    const filters = { scope: 'all' as const, status: TicketStatus.InProgress, category: 'VPN' as const, page: 3, pageSize: 20 };
+    const filters = {
+      scope: 'all' as const, status: TicketStatus.InProgress, category: 'VPN' as const, priority: 'P1' as const, sortByPriority: true, page: 3, pageSize: 20,
+    };
     const search = toAgentQueueSearch(filters);
-    expect(search.toString()).toBe('scope=all&status=2&category=VPN&page=3&pageSize=20');
+    expect(search.toString()).toBe('scope=all&status=2&category=VPN&priority=P1&sort=priority&page=3&pageSize=20');
     expect(parseAgentQueueSearch(search)).toEqual(filters);
     expect(toAgentQueueSearch(defaultAgentQueueFilters).toString()).toBe('');
   });

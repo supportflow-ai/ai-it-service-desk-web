@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test';
-import { ticketA, user } from '../tests/fixtures';
+import { agentDirectory, ticketA, user } from '../tests/fixtures';
 
 interface ApiFixture {
   roles: string[];
@@ -8,12 +8,17 @@ interface ApiFixture {
   tickets: typeof ticketA[];
   requests: string[];
   createdPayload: unknown;
-  presign: { uploadUrl: string; storageKey: string; expirySeconds: number } | null;
+  presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> } | null;
+  confirmedPayloads: unknown[];
+  attachments: Record<string, unknown>[];
 }
 
 export const test = base.extend<{ api: ApiFixture }>({
   api: async ({ page }, provide) => {
-    const api: ApiFixture = { roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null, presign: null };
+    const api: ApiFixture = {
+      roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null, presign: null,
+      confirmedPayloads: [], attachments: [],
+    };
     const unexpected: string[] = [];
     await page.route('**/api/**', async (route) => {
       const request = route.request();
@@ -32,6 +37,7 @@ export const test = base.extend<{ api: ApiFixture }>({
         const pageSize = Number(url.searchParams.get('pageSize'));
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
+      if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
       if (key === 'GET /api/tickets/queue') {
         const pageNumber = Number(url.searchParams.get('page'));
         const pageSize = Number(url.searchParams.get('pageSize'));
@@ -79,8 +85,24 @@ export const test = base.extend<{ api: ApiFixture }>({
           },
         });
       }
+      const attachmentsTicket = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}/attachments`);
+      if (attachmentsTicket) return route.fulfill({ status: 200, json: api.attachments });
       const uploadTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/attachments/upload-url`);
       if (uploadTicket && api.presign) return route.fulfill({ status: 200, json: api.presign });
+      const confirmTicket = api.tickets.find((ticket) => key === `POST /api/tickets/${ticket.id}/attachments/confirm`);
+      if (confirmTicket && api.presign) {
+        const body = request.postDataJSON() as { fileName: string; fileSizeBytes: number; contentType: string };
+        api.confirmedPayloads.push(body);
+        // Like the backend, the confirmed file moves from the pending key to a ticket-owned key.
+        const attachment = {
+          id: `30000000-0000-0000-0000-${String(api.attachments.length + 1).padStart(12, '0')}`,
+          ticketId: confirmTicket.id, fileName: body.fileName, fileSizeBytes: body.fileSizeBytes, contentType: body.contentType,
+          storageKey: `tickets/${confirmTicket.id}/attachments/${api.attachments.length + 1}`, uploadedBy: user.userId,
+          createdAt: new Date().toISOString(),
+        };
+        api.attachments.unshift(attachment);
+        return route.fulfill({ status: 201, json: attachment });
+      }
       const downloadTicket = api.tickets.find((ticket) => key === `GET /api/tickets/${ticket.id}/attachments/download-url`);
       if (downloadTicket && api.presign) {
         const storageKey = url.searchParams.get('storageKey') ?? '';

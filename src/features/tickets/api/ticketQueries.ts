@@ -6,7 +6,7 @@ const queueAll = (version: number) => ['tickets', version, 'queue'] as const;
 const writes = (version: number, ticketId: string) => ['tickets', version, 'write', ticketId] as const;
 
 /** What a successful write changed, and therefore which cached reads are stale. */
-export type TicketChange = 'state' | 'conversation';
+export type TicketChange = 'state' | 'conversation' | 'attachments';
 
 export const ticketKeys = {
   session: (version: number) => ['tickets', version] as const,
@@ -16,6 +16,8 @@ export const ticketKeys = {
   queue: (version: number, filters: AgentQueueFilters) => [...queueAll(version), { ...filters }] as const,
   detail: (version: number, id: string) => ['tickets', version, 'detail', id] as const,
   timeline: (version: number, id: string) => ['tickets', version, 'timeline', id] as const,
+  attachments: (version: number, id: string) => ['tickets', version, 'attachments', id] as const,
+  agents: (version: number) => ['tickets', version, 'agents'] as const,
   /** Prefix shared by every write to one ticket, so pending writes can be found per ticket. */
   writes,
   /** Prefix of the writes that change status or assignment, which must not overlap. */
@@ -36,6 +38,8 @@ export const ticketInvalidation = {
   ],
   /** A comment or internal note was added: only the conversation changed. */
   conversation: (version: number, ticketId: string): QueryKey[] => [ticketKeys.timeline(version, ticketId)],
+  /** An upload was confirmed: only the attachment list changed; the ticket revision does not. */
+  attachments: (version: number, ticketId: string): QueryKey[] => [ticketKeys.attachments(version, ticketId)],
 };
 
 export async function invalidateTicketQueries(queryClient: QueryClient, keys: QueryKey[]) {
