@@ -4,9 +4,9 @@ import { hasAnyRole } from '@/features/auth';
 
 it.each([
   [['Requester'], ['/', '/tickets/new', '/requester-dashboard/tickets']],
-  [['Agent'], ['/agent-workspace', '/requester-dashboard/tickets', '/tickets/new']],
-  [['Admin'], ['/agent-workspace', '/requester-dashboard/tickets', '/tickets/new', '/admin-panel']],
-  [['Requester', 'Agent'], ['/agent-workspace', '/requester-dashboard/tickets', '/tickets/new']],
+  [['Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
+  [['Admin'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new', '/admin-panel']],
+  [['Requester', 'Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
   [['Unknown'], []],
 ])('derives the menu and its order for %j', (roles, paths) => {
   expect(getNavigation(roles).map((item) => item.key)).toEqual(paths);

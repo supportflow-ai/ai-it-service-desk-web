@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test';
-import { agentDirectory, ticketA, user } from '../tests/fixtures';
+import { agentDirectory, articlePage, ticketA, user } from '../tests/fixtures';
 
 interface ApiFixture {
   roles: string[];
@@ -11,13 +11,14 @@ interface ApiFixture {
   presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> } | null;
   confirmedPayloads: unknown[];
   attachments: Record<string, unknown>[];
+  articles: object[];
 }
 
 export const test = base.extend<{ api: ApiFixture }>({
   api: async ({ page }, provide) => {
     const api: ApiFixture = {
       roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null, presign: null,
-      confirmedPayloads: [], attachments: [],
+      confirmedPayloads: [], attachments: [], articles: [],
     };
     const unexpected: string[] = [];
     await page.route('**/api/**', async (route) => {
@@ -38,6 +39,7 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
       if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
+      if (key === 'GET /api/knowledge/articles') return route.fulfill({ json: articlePage(api.articles) });
       if (key === 'GET /api/tickets/queue') {
         const pageNumber = Number(url.searchParams.get('page'));
         const pageSize = Number(url.searchParams.get('pageSize'));

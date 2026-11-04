@@ -170,8 +170,12 @@ email.
 
 Backend dev `1506a5b` (PR #39) adds `/api/knowledge/articles`. The routes, actions and permissions
 the UI will follow, and the gaps against the team contract, are in
-[knowledge-ui-access-map.md](knowledge-ui-access-map.md) (TC-332). The UI does not call these
-endpoints yet; the dashboard knowledge card stays locked until it does.
+[knowledge-ui-access-map.md](knowledge-ui-access-map.md) (TC-332). The Agent/Admin UI (TC-218) is
+built against them:
+- `/knowledge/manage` (Agent, Admin) lists `GET /knowledge/articles` with status/tag/query filters
+  kept in the URL. The backend returns other authors' unpublished articles to Agents (gap G1); those
+  rows are shown locked, since opening them would only give 404.
+- The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled
 
