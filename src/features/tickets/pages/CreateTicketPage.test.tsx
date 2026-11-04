@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, expect, it } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
@@ -26,7 +26,9 @@ function renderCreate(aiPanel?: ReactNode) {
       <Routes>
         <Route path="/tickets/new" element={<CreateTicketPage aiPanel={aiPanel} />} />
         <Route path="/requester-dashboard/tickets/:id" element={<NewTicketProbe />} />
+        <Route path="/elsewhere" element={<p>another screen</p>} />
       </Routes>
+      <Link to="/elsewhere">Rời màn tạo</Link>
     </MemoryRouter>,
     { wrapper: Wrapper },
   );
@@ -121,4 +123,27 @@ it('keeps the chosen files and uploads nothing when the ticket cannot be created
   expect(await screen.findByText('Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại.')).toBeInTheDocument();
   expect(screen.getByText('log.txt')).toBeInTheDocument();
   expect(calls).toEqual(['create']);
+});
+
+it('does not pull the person back once they left the screen while files were uploading', async () => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  server.use(http.post(`http://localhost/api/tickets/${created.id}/attachments/upload-url`, async () => {
+    calls.push('upload-url (slow)');
+    await held;
+    return HttpResponse.json({ uploadUrl, storageKey: `uploads/pending/${created.id}/log.txt`, expirySeconds: 3600 });
+  }));
+  renderCreate();
+  await fillForm();
+  choose(new File(['log'], 'log.txt', { type: 'text/plain' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Gửi yêu cầu' }));
+  expect(await screen.findByText(/Đang tải tệp 1\/1: log\.txt/)).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('link', { name: 'Rời màn tạo' }));
+  expect(await screen.findByText('another screen')).toBeInTheDocument();
+  release();
+  // The file is still attached to the ticket, but the person stays where they went.
+  await waitFor(() => expect(calls).toContain('confirm log.txt'));
+  expect(screen.getByText('another screen')).toBeInTheDocument();
+  expect(screen.queryByTestId('opened')).not.toBeInTheDocument();
 });
