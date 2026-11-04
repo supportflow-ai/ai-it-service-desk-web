@@ -6,6 +6,7 @@ import { ErrorState } from '@/shared/ui/ErrorState';
 import { useAttachmentDownload } from '../hooks/useAttachmentDownload';
 import { useTicketAttachments } from '../hooks/useTicketAttachments';
 import { useUploadAttachment } from '../hooks/useUploadAttachment';
+import { formatFileSize } from '../lib/formatFileSize';
 import { describeTicketError, isAccessLostError } from '../lib/ticketErrorMessage';
 import type { TicketStatus } from '../model/ticket.types';
 import { canAttachFiles } from '../model/ticketPermissions';
@@ -20,12 +21,6 @@ interface TicketAttachmentSectionProps {
 const attachmentMessages = {
   400: 'Không thể đính kèm tệp: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP tối đa 10 MB, hoặc yêu cầu tải lên đã hết hạn. Vui lòng chọn lại tệp.',
 };
-
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 /** Callers must remount this section (key={ticketId}) when the ticket changes. */
 export function TicketAttachmentSection({ ticketId, status }: TicketAttachmentSectionProps) {

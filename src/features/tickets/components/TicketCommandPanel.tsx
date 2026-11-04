@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Popconfirm, Space, Typography } from 'antd';
-import { CheckOutlined, CloseOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EditOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
 import {
   canCancelTicket,
   canClaimTicket,
   canCloseTicket,
+  canEditTicket,
   canReopenTicket,
   canResolveTicket,
 } from '../model/ticketPermissions';
@@ -18,6 +19,7 @@ import { useReopenTicket } from '../hooks/useReopenTicket';
 import { useResolveTicket } from '../hooks/useResolveTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
 import { describeTicketError } from '../lib/ticketErrorMessage';
+import { TicketEditDialog } from './TicketEditDialog';
 import { TicketResolveDialog } from './TicketResolveDialog';
 
 interface TicketCommandPanelProps {
@@ -38,6 +40,7 @@ const reloadableStatuses = [400, 403, 409] as const;
 export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPanelProps) {
   const { user } = useAuth();
   const [resolveOpen, setResolveOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const claimMutation = useClaimTicket(ticket.id);
   const resolveMutation = useResolveTicket(ticket.id);
@@ -69,6 +72,7 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
     close: canCloseTicket(user, ticket, view),
     reopen: canReopenTicket(user, ticket, view),
     cancel: canCancelTicket(user, ticket, view),
+    edit: canEditTicket(user, ticket, view),
   };
   const hasAction = Object.values(allowed).some(Boolean);
 
@@ -152,6 +156,17 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
           </Button>
         )}
 
+        {allowed.edit && (
+          <Button
+            icon={<EditOutlined />}
+            disabled={isPending}
+            onClick={() => setEditOpen(true)}
+            style={{ borderRadius: 6 }}
+          >
+            Sửa yêu cầu
+          </Button>
+        )}
+
         {allowed.cancel && (
           <Popconfirm
             title="Hủy yêu cầu này?"
@@ -172,6 +187,11 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
           </Popconfirm>
         )}
       </Space>
+
+      {/* Unmounted once the ticket can no longer be edited, e.g. after a reload shows it was taken. */}
+      {allowed.edit && (
+        <TicketEditDialog ticket={ticket} open={editOpen} onClose={() => setEditOpen(false)} onReload={reload} />
+      )}
 
       <TicketResolveDialog
         open={resolveOpen}

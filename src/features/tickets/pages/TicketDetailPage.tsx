@@ -1,10 +1,11 @@
-import { Card, Space } from 'antd';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Alert, Card, Space } from 'antd';
+import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
 import { workspaceTicketPath } from '../lib/agentQueueSearch';
+import { readFailedUploads } from '../lib/createdTicketState';
 import { isAccessLostError } from '../lib/ticketErrorMessage';
 import { isTicketId } from '../model/ticketId';
 import { canOpenWorkspace } from '../model/ticketPermissions';
@@ -21,6 +22,9 @@ const listPath = '/requester-dashboard/tickets';
 export function TicketDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const failedUploads = readFailedUploads(location.state);
   const ticket = useTicket(id ?? '');
   const reload = () => { void ticket.refetch(); };
   if (!isTicketId(id)) return <TicketErrorState error={null} backPath={listPath} backLabel="Quay lại danh sách" onRetry={reload} />;
@@ -41,6 +45,17 @@ export function TicketDetailPage() {
     </Card>
     {/* The requester's own view (PRD US-021): owner commands and public data only, whoever is viewing. */}
     <TicketCommandPanel ticket={ticket.data} onReload={reload} view="requester" />
+    {failedUploads.length > 0 && (
+      <Alert
+        type="warning"
+        showIcon
+        closable={{ closeIcon: true, 'aria-label': 'Đóng thông báo' }}
+        // Dropping the state keeps the notice from coming back on a reload.
+        onClose={() => navigate(location.pathname, { replace: true, state: null })}
+        message="Yêu cầu đã được gửi, nhưng chưa đính kèm được một số tệp"
+        description={`${failedUploads.join(', ')}. Hãy đính kèm lại ở mục Tệp đính kèm bên dưới.`}
+      />
+    )}
     <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} status={ticket.data.status} />
     <TicketTimeline ticketId={ticket.data.id} view="requester" />
     <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} status={ticket.data.status} view="requester" />

@@ -102,6 +102,7 @@ and `ServiceDesk.Infrastructure/Ticketing/PostgresTicketQueries.cs`. This change
 | POST /tickets/{id}/comments, attachments/upload-url, attachments/confirm | unchanged | unchanged | Closed or Cancelled ticket → 400. Internal notes and downloads are still accepted |
 | POST /auth/register | unchanged | unchanged | `fullName` is now stored, so it comes back from login and `/auth/me` |
 | POST /tickets | optional `Idempotency-Key` header | unchanged | Same key and content within 10 minutes returns the ticket already created; same key, other content → 409 |
+| POST /tickets/{id}/update | title, description, categoryId, expectedRevision (body) | TicketDto | Owner or Admin; only Submitted (else 400); same field rules as create; stale revision → 409 |
 
 Rejected lifecycle transitions return 400, permission failures 403 and out-of-scope
 tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
@@ -124,6 +125,13 @@ How the UI follows backend `007a258` (TicketDto also carries `requesterId` and n
   content changes or a ticket was created.
 - Login answers a bare 401 for a wrong password and for an account locked after 5 failures (15
   minutes), so the login page says both in one message.
+- "Sửa yêu cầu" is offered to the requester on their screen and to Admin on the workspace while
+  the ticket is Submitted. The dialog opens on the ticket as loaded and saves with its revision;
+  on 400/409 it keeps the typed changes and offers a reload.
+- Files can be chosen on the create screen (US-062), checked against the upload limits as they
+  are picked. Upload needs a ticket id, so the ticket is created first and each file then goes
+  through upload-url → storage → confirm. A failed file does not undo the ticket: its page names
+  the files to attach again.
 - Queue scopes filter on the assignee and leave out Closed/Cancelled; the tab descriptions say so.
 - Status and assignment changes appear in the timeline as `authorRole: "System"` entries,
   shown as "Hệ thống". `authorName` of people is the account's user name, today its email.
@@ -140,8 +148,8 @@ what backend `007a258` implements. Every screen shows one perspective, whatever 
 | Screen | Who | What it offers |
 | --- | --- | --- |
 | `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
-| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create and list own tickets (PR-01) |
-| `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (cancel/close/reopen when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
+| `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (edit/cancel while Submitted, close/reopen when Resolved, when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
 | `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
 | `/admin-panel` | Admin | Not supported yet: no admin endpoints |
 

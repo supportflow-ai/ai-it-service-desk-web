@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Card, Col, Form, Row, Typography } from 'antd';
+import { Card, Col, Form, Progress, Row, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { useCreateTicket } from '../hooks/useCreateTicket';
+import { useUploadNewTicketFiles } from '../hooks/useUploadNewTicketFiles';
 import { CreateTicketForm } from '../components/CreateTicketForm';
+import type { CreatedTicketState } from '../lib/createdTicketState';
 import type { CreateTicketPayload } from '../model/ticket.types';
 
 const { Title } = Typography;
@@ -16,7 +19,28 @@ interface CreateTicketPageProps {
 export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
   const [form] = Form.useForm<CreateTicketPayload>();
   const create = useCreateTicket();
+  const uploads = useUploadNewTicketFiles();
+  const [files, setFiles] = useState<File[]>([]);
   const navigate = useNavigate();
+
+  // The ticket comes first: a file can only be attached to a ticket that exists. A file that
+  // fails does not undo the ticket; its page says which ones to attach again.
+  const submit = async (payload: CreateTicketPayload) => {
+    let ticketId: string;
+    try {
+      ticketId = (await create.mutateAsync(payload)).id;
+    } catch {
+      return; // The mutation error is rendered above; the chosen files are kept for a retry.
+    }
+    let failedUploads: string[];
+    try {
+      failedUploads = await uploads.uploadAll(ticketId, files);
+    } catch {
+      return; // The session changed: this screen belongs to the previous account.
+    }
+    const state: CreatedTicketState | undefined = failedUploads.length > 0 ? { failedUploads } : undefined;
+    navigate(`/requester-dashboard/tickets/${ticketId}`, { state });
+  };
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -38,17 +62,20 @@ export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
           >
             <CreateTicketForm
               form={form}
-              pending={create.isPending}
+              pending={create.isPending || uploads.progress !== null}
+              files={files}
+              onFilesChange={setFiles}
               onCancel={() => navigate('/requester-dashboard/tickets')}
-              onSubmit={async (payload) => {
-                try {
-                  const ticket = await create.mutateAsync(payload);
-                  navigate(`/requester-dashboard/tickets/${ticket.id}`);
-                } catch {
-                  /* The mutation error is rendered above. */
-                }
-              }}
+              onSubmit={submit}
             />
+            {uploads.progress && (
+              <div style={{ marginTop: 12 }} role="status">
+                <Typography.Text style={{ fontSize: 13 }}>
+                  Đã tạo yêu cầu. Đang tải tệp {uploads.progress.current}/{uploads.progress.total}: {uploads.progress.fileName}
+                </Typography.Text>
+                <Progress percent={uploads.progress.percent} size="small" status="active" />
+              </div>
+            )}
           </Card>
         </Col>
 

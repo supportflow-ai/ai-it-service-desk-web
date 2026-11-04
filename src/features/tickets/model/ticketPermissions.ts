@@ -69,6 +69,11 @@ export function canCancelTicket(user: User | null, ticket: TicketFacts, view: Ti
   return mayActForOwner(user, ticket, view) && ticket.status === TicketStatus.Submitted;
 }
 
+/** UpdateTicketUseCase: the requester or an Admin, and only while nobody has taken it (Submitted). */
+export function canEditTicket(user: User | null, ticket: TicketFacts, view: TicketView) {
+  return mayActForOwner(user, ticket, view) && ticket.status === TicketStatus.Submitted;
+}
+
 /** AssignTicketUseCase accepts any Agent or Admin on every ticket that has not ended. */
 export function canAssignTicket(user: User | null, ticket: Pick<TicketDto, 'status'>) {
   return isStaff(user) && !isTerminalStatus(ticket.status);

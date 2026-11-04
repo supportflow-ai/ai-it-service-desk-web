@@ -121,3 +121,51 @@ it('explains a claim lost to another agent and offers a reload', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
   expect(onReload).toHaveBeenCalledOnce();
 });
+
+it('lets the requester edit their submitted ticket, prefilled, saving with the revision on screen', async () => {
+  const sent: unknown[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/update`, async ({ request }) => {
+    sent.push(await request.json());
+    return HttpResponse.json({ ...ticketA, requesterId: user.userId, title: 'Không vào được VPN' });
+  }));
+  renderPanel(['Requester'], TicketStatus.Submitted, { view: 'requester', requesterId: user.userId });
+  await userEvent.click(await screen.findByRole('button', { name: /Sửa yêu cầu/ }));
+  const title = await screen.findByLabelText(/Tiêu đề yêu cầu/);
+  expect(title).toHaveValue(ticketA.title);
+  expect(screen.getByLabelText('Mô tả chi tiết')).toHaveValue(ticketA.description);
+  await userEvent.clear(title);
+  await userEvent.type(title, 'Không vào được VPN');
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+  await waitFor(() => expect(sent).toEqual([
+    { title: 'Không vào được VPN', categoryId: 'NET', description: ticketA.description, expectedRevision: ticketA.revision },
+  ]));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+it('keeps the typed changes and offers a reload when the ticket changed meanwhile', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/update`, () => (
+    HttpResponse.json({ error: 'Dữ liệu đã bị thay đổi bởi người khác.' }, { status: 409 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Requester'], TicketStatus.Submitted, { view: 'requester', requesterId: user.userId, onReload });
+  await userEvent.click(await screen.findByRole('button', { name: /Sửa yêu cầu/ }));
+  const title = await screen.findByLabelText(/Tiêu đề yêu cầu/);
+  await userEvent.type(title, ' (bổ sung)');
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+  expect(await screen.findByText(/Ticket vừa được người khác cập nhật/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+  expect(screen.getByLabelText(/Tiêu đề yêu cầu/)).toHaveValue(`${ticketA.title} (bổ sung)`);
+});
+
+it('offers edit only while Submitted, and on the workspace only to an admin', async () => {
+  renderPanel(['Requester'], TicketStatus.Assigned, { view: 'requester', requesterId: user.userId });
+  expect(await screen.findByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Sửa yêu cầu/ })).not.toBeInTheDocument();
+});
+
+it.each([['Admin', true], ['Agent', false]] as const)('shows edit on the workspace to %s: %s', async (role, shown) => {
+  renderPanel([role], TicketStatus.Submitted);
+  expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Sửa yêu cầu/ }) !== null).toBe(shown);
+});

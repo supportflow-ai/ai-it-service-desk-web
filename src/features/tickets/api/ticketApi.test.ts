@@ -150,3 +150,14 @@ it('confirms an upload with its metadata and reads the stored attachment list', 
   expect(confirmed).toEqual([payload]);
   await expect(ticketApi.getTicketAttachments(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
 });
+
+it('updates a ticket with its three fields and the revision on screen', async () => {
+  const sent: unknown[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/update`, async ({ request }) => {
+    sent.push(await request.json());
+    return HttpResponse.json({ ...ticketA, title: 'Tiêu đề mới' });
+  }));
+  const payload = { title: 'Tiêu đề mới', categoryId: 'NET' as const, description: ticketA.description };
+  expect((await ticketApi.updateTicket(ticketA.id, payload, ticketA.revision)).title).toBe('Tiêu đề mới');
+  expect(sent).toEqual([{ ...payload, expectedRevision: ticketA.revision }]);
+});

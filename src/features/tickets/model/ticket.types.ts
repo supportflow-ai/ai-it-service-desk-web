@@ -41,6 +41,9 @@ export interface CreateTicketPayload {
   description: string;
 }
 
+/** POST /tickets/{id}/update takes the same three fields, plus the revision on screen. */
+export type UpdateTicketPayload = CreateTicketPayload;
+
 /** The pinned backend TicketDto; the UI never adds fields the server does not send. */
 export interface TicketDto {
   id: string;

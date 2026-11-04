@@ -8,6 +8,7 @@ import type {
   ConfirmAttachmentPayload,
   CreateTicketPayload,
   GenerateUploadUrlPayload,
+  UpdateTicketPayload,
 } from '../model/ticket.types';
 import {
   readAgentDirectory,
@@ -55,6 +56,11 @@ export const ticketApi = {
   /** The same key with the same content returns the ticket already created instead of a duplicate. */
   async createTicket(payload: CreateTicketPayload, idempotencyKey: string) {
     const response = await apiClient.post<unknown>('/tickets', payload, { headers: { 'Idempotency-Key': idempotencyKey } });
+    return readTicket(response.data);
+  },
+  /** Owner or Admin, only while Submitted. Sends the revision on screen; outdated → 409. */
+  async updateTicket(ticketId: string, payload: UpdateTicketPayload, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/update`, { ...payload, expectedRevision });
     return readTicket(response.data);
   },
   // State commands carry the revision the user acted on; the server answers 409 if it is outdated.

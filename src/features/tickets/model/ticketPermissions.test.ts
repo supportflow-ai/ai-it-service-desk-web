@@ -9,6 +9,7 @@ import {
   canCancelTicket,
   canClaimTicket,
   canCloseTicket,
+  canEditTicket,
   canOpenWorkspace,
   canReopenTicket,
   canResolveTicket,
@@ -61,6 +62,17 @@ describe('ticketPermissions', () => {
     }
     expect(canClaimTicket(requester, ticket(TicketStatus.Submitted), 'workspace')).toBe(false);
     expect(canResolveTicket(requester, ticket(TicketStatus.InProgress), 'workspace')).toBe(false);
+  });
+
+  it('lets the requester edit their own ticket, or an admin on the workspace, only while Submitted', () => {
+    expect(canEditTicket(requester, ticket(TicketStatus.Submitted, requester.userId), 'requester')).toBe(true);
+    expect(canEditTicket(agent, ticket(TicketStatus.Submitted, agent.userId), 'requester')).toBe(true);
+    expect(canEditTicket(requester, ticket(TicketStatus.Assigned, requester.userId), 'requester')).toBe(false);
+    expect(canEditTicket(requester, ticket(TicketStatus.Submitted), 'requester')).toBe(false);
+    expect(canEditTicket(admin, ticket(TicketStatus.Submitted), 'workspace')).toBe(true);
+    expect(canEditTicket(admin, ticket(TicketStatus.InProgress), 'workspace')).toBe(false);
+    expect(canEditTicket(agent, ticket(TicketStatus.Submitted), 'workspace')).toBe(false);
+    expect(canEditTicket(null, ticket(TicketStatus.Submitted), 'requester')).toBe(false);
   });
 
   it('lets only an admin claim a ticket assigned to another agent', () => {

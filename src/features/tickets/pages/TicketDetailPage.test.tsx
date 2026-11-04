@@ -164,3 +164,18 @@ it('sends staff to the workspace for a ticket someone else asked for, never the 
   expect(await screen.findByText('workspace page')).toBeInTheDocument();
   expect(screen.queryByRole('textbox', { name: 'Nội dung bình luận' })).not.toBeInTheDocument();
 });
+
+it('names the files the create screen could not attach, until the notice is closed', async () => {
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])));
+  const { Wrapper } = createTestWrapper();
+  render(
+    <MemoryRouter initialEntries={[{ pathname: `/requester-dashboard/tickets/${ticketA.id}`, state: { failedUploads: ['hong.png', 'bao-cao.pdf'] } }]}>
+      <Routes><Route path="/requester-dashboard/tickets/:id" element={<TicketDetailPage />} /></Routes>
+    </MemoryRouter>,
+    { wrapper: Wrapper },
+  );
+  expect(await screen.findByText('Yêu cầu đã được gửi, nhưng chưa đính kèm được một số tệp')).toBeInTheDocument();
+  expect(screen.getByText(/hong\.png, bao-cao\.pdf\. Hãy đính kèm lại/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Đóng thông báo' }));
+  await waitFor(() => expect(screen.queryByText(/chưa đính kèm được một số tệp/)).not.toBeInTheDocument());
+});

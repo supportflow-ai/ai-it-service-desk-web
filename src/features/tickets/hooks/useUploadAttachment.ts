@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { sessionStore, useAuth } from '@/features/auth';
 import { AppError } from '@/shared/api/httpError';
-import { ticketApi } from '../api/ticketApi';
+import { uploadAttachment } from '../lib/uploadAttachment';
 import { validateAttachmentFile } from '../validation/attachmentRules';
 import { useTicketWrite } from './useTicketWrite';
 
@@ -24,19 +24,7 @@ export function useUploadAttachment(ticketId: string) {
     ticketId,
     action: 'upload',
     change: 'attachments',
-    write: async (file: File) => {
-      const metadata = { fileName: file.name, fileSizeBytes: file.size, contentType: file.type || 'application/octet-stream' };
-      // 1. Xin presigned upload URL từ backend
-      const presigned = await ticketApi.generateAttachmentUploadUrl(ticketId, metadata);
-      assertSameSession();
-
-      // 2. Tải tệp trực tiếp lên MinIO/S3 storage qua pre-signed URL
-      await ticketApi.uploadFileToPresignedUrl(presigned.uploadUrl, file, { formData: presigned.formData, onProgress: setProgress });
-      assertSameSession();
-
-      // 3. Xác nhận để backend lưu metadata và gắn tệp vào ticket
-      return ticketApi.confirmAttachmentUpload(ticketId, { ...metadata, storageKey: presigned.storageKey });
-    },
+    write: (file: File) => uploadAttachment(ticketId, file, { onProgress: setProgress, checkpoint: assertSameSession }),
   });
 
   /** Validates locally first, so a rejected file never reaches the API. */

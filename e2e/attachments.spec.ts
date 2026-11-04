@@ -49,3 +49,34 @@ test('requester uploads through the POST policy, confirms the file and still see
   await downloadTab.waitForURL(new RegExp(`/servicedesk/${storageKey}\\?signed=1$`));
   expect(api.requests).toContain(`GET /api/tickets/${ticketA.id}/attachments/download-url?storageKey=${encodeURIComponent(storageKey)}`);
 });
+
+test('a file chosen on the create screen is uploaded through the POST policy once the ticket exists', async ({ page, api }) => {
+  api.presign = { uploadUrl, storageKey: pendingKey, expirySeconds: 3600, formData: policy };
+  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'content-type' };
+  const sent: string[] = [];
+  await page.route(uploadUrl, async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    sent.push(route.request().postDataBuffer()?.toString('utf8') ?? '');
+    return route.fulfill({ status: 204, headers: cors });
+  });
+  const created = page.waitForRequest((request) => request.method() === 'POST' && new URL(request.url()).pathname === '/api/tickets');
+
+  await page.addInitScript(() => localStorage.setItem('token', 'restored'));
+  await page.goto('/tickets/new');
+  await page.getByLabel('Tiêu đề yêu cầu').fill('Không in được báo cáo');
+  await page.getByLabel('Danh mục sự cố').click();
+  await page.getByText('Máy in', { exact: true }).click();
+  await page.getByLabel('Mô tả chi tiết').fill('Máy in tầng 3 báo lỗi kẹt giấy liên tục.');
+  await page.getByTestId('create-attachment-input').setInputFiles({ name: 'loi-may-in.txt', mimeType: 'text/plain', buffer: Buffer.from('paper jam') });
+  await expect(page.getByText('loi-may-in.txt', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Gửi yêu cầu', exact: true }).click();
+
+  await expect(page).toHaveURL(new RegExp(`/requester-dashboard/tickets/${ticketA.id}$`));
+  expect((await created).headers()['idempotency-key']).toMatch(/^[0-9a-f-]{36}$/);
+  expect(api.createdPayload).toEqual({ title: 'Không in được báo cáo', categoryId: 'PRINT', description: 'Máy in tầng 3 báo lỗi kẹt giấy liên tục.' });
+  expect(sent).toHaveLength(1);
+  expect(sent[0]).toContain('paper jam');
+  expect(api.confirmedPayloads).toEqual([{ fileName: 'loi-may-in.txt', fileSizeBytes: 9, contentType: 'text/plain', storageKey: pendingKey }]);
+  await expect(page.getByText('Tệp đính kèm (1)')).toBeVisible();
+  await expect(page.getByText(/chưa đính kèm được một số tệp/)).toHaveCount(0);
+});
