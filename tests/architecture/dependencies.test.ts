@@ -19,6 +19,9 @@ describe('architecture', () => {
     ['src/features/auth/lib/bad.ts', "import { TicketCategory } from '@/features/tickets';", 'outside allowlist'],
     ['src/features/tickets/hooks/bad.ts', "import { useAuth } from '../index';", 'own public index'],
     ['src/features/auth/pages/bad.ts', 'fetch("/api/auth/me");', 'HTTP outside'],
+    ['src/features/knowledge/lib/bad.ts', "import { TicketCategory } from '@/features/tickets';", 'outside allowlist'],
+    ['src/features/knowledge/pages/bad.ts', "import { knowledgeApi } from '../api/knowledgeApi';", 'UI imports'],
+    ['src/features/unregistered/model/bad.ts', 'export const value = 1;', 'explicit dependency policy'],
   ])('rejects %s: %s', (file, source, message) => {
     expect(analyzeArchitecture(new Map([[file, source]])).join('\n')).toContain(message);
   });
@@ -37,6 +40,7 @@ describe('architecture', () => {
     expect(analyzeArchitecture(new Map([
       ['src/features/tickets/model/example.ts', "import type { User } from '@/features/auth';"],
       ['src/app/example.ts', "export { TicketListPage } from '@/features/tickets';"],
+      ['src/features/knowledge/model/example.ts', "import type { User } from '@/features/auth';"],
     ]))).toEqual([]);
   });
   it('ESLint boundaries rejects an alias deep import and a relative upward import', async () => {

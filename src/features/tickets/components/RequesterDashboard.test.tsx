@@ -20,7 +20,7 @@ function serveMine(items: (typeof ticketA)[], totalCount = items.length) {
 
 function renderDashboard() {
   const { Wrapper } = createTestWrapper();
-  render(<MemoryRouter><RequesterDashboard /></MemoryRouter>, { wrapper: Wrapper });
+  render(<MemoryRouter><RequesterDashboard knowledgePanel={<p>knowledge card</p>} /></MemoryRouter>, { wrapper: Wrapper });
 }
 
 function stat(label: string) {
@@ -77,9 +77,10 @@ it('reports a failed load instead of filling the page with sample data', async (
   expect(screen.queryByText('Chờ tiếp nhận')).not.toBeInTheDocument();
 });
 
-it('shows no invented knowledge base articles', async () => {
+it('hosts the knowledge base card it is given, and invents no articles of its own', async () => {
   serveMine([]);
   renderDashboard();
-  expect(await screen.findByText(/Kho tri thức chưa được hỗ trợ/)).toBeInTheDocument();
+  expect(await screen.findByText('knowledge card')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Kho tri thức' })).toBeInTheDocument();
   expect(screen.queryByText(/VPN trên Windows 11/)).not.toBeInTheDocument();
 });

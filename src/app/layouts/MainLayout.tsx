@@ -2,6 +2,7 @@ import { Button, Input, Layout, Menu, Space, Typography } from 'antd';
 import {
   AppstoreOutlined,
   BellOutlined,
+  BookOutlined,
   CheckSquareOutlined,
   LogoutOutlined,
   PlusCircleOutlined,
@@ -26,6 +27,8 @@ const menuIcons: Partial<Record<string, ReactNode>> = {
   [routeConfig.create.path]: <PlusCircleOutlined />,
   [routeConfig.tickets.path]: <CheckSquareOutlined />,
   [routeConfig.workspace.path]: <UnorderedListOutlined />,
+  [routeConfig.knowledge.path]: <BookOutlined />,
+  [routeConfig.knowledgeAdmin.path]: <BookOutlined />,
   [routeConfig.admin.path]: <SettingOutlined />,
 };
 
