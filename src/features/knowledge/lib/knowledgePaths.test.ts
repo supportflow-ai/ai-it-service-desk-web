@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { articlePath, editArticlePath, knowledgeListPath, listStateFrom } from './knowledgePaths';
+import {
+  articlePath, editArticlePath, knowledgeListPath, knowledgeResultsPath, knowledgeTagPath, listStateFrom, publishedArticlePath,
+} from './knowledgePaths';
 
 describe('knowledge paths', () => {
   it('builds the read and edit addresses of an article', () => {
@@ -25,5 +27,19 @@ describe('knowledge paths', () => {
     expect(listStateFrom({ listSearch: '?tag=vpn', createdAt: '2026-11-04T08:00:00Z' })).toEqual({ listSearch: '?tag=vpn' });
     expect(listStateFrom({ createdAt: '2026-11-04T08:00:00Z' })).toBeUndefined();
     expect(listStateFrom(undefined)).toBeUndefined();
+  });
+
+  it('builds the reader addresses: an article, and the search narrowed to a tag', () => {
+    expect(publishedArticlePath('40000000-0000-0000-0000-000000000001')).toBe('/knowledge/40000000-0000-0000-0000-000000000001');
+    expect(publishedArticlePath('a/b')).toBe('/knowledge/a%2Fb');
+    expect(knowledgeTagPath('mạng')).toBe('/knowledge?tag=m%E1%BA%A1ng');
+  });
+
+  it('goes back to the search results the article was opened from, and only to those', () => {
+    expect(knowledgeResultsPath({ resultsSearch: '?q=vpn&page=2' })).toBe('/knowledge?q=vpn&page=2');
+    expect(knowledgeResultsPath({ resultsSearch: '' })).toBe('/knowledge');
+    expect(knowledgeResultsPath({ resultsSearch: '//evil.example' })).toBe('/knowledge');
+    expect(knowledgeResultsPath({ listSearch: '?status=draft' })).toBe('/knowledge');
+    expect(knowledgeResultsPath(null)).toBe('/knowledge');
   });
 });

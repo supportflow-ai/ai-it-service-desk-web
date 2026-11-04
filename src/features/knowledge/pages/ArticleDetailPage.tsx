@@ -6,6 +6,7 @@ import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useArticle } from '../hooks/useArticle';
 import { isArticleAccessLost } from '../lib/articleErrorMessage';
+import { formatArticleDate } from '../lib/formatArticleDate';
 import { editArticlePath, knowledgeListPath, listStateFrom } from '../lib/knowledgePaths';
 import { isArticleId } from '../model/articleId';
 import { ArticleStatus } from '../model/knowledge.types';
@@ -17,14 +18,6 @@ import { ArticleStatusTag } from '../components/ArticleStatusTag';
 import { ArticleUnavailable } from '../components/ArticleUnavailable';
 import { MarkdownPreview } from '../components/MarkdownPreview';
 
-function formatDate(iso: string | null) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
-
 const statusNotes: Partial<Record<ArticleStatus, string>> = {
   [ArticleStatus.Draft]: 'Bản nháp: người dùng chưa đọc được bài này cho tới khi xuất bản.',
   [ArticleStatus.Archived]: 'Đã lưu trữ: người dùng không còn thấy bài này.',
@@ -33,10 +26,10 @@ const statusNotes: Partial<Record<ArticleStatus, string>> = {
 function metaLine(article: ArticleDto, author: string) {
   return [
     `Tác giả: ${author}`,
-    `Tạo lúc ${formatDate(article.createdAt)}`,
-    `Cập nhật ${formatDate(article.updatedAt)}`,
-    article.publishedAt && `Xuất bản ${formatDate(article.publishedAt)}`,
-    article.archivedAt && `Lưu trữ ${formatDate(article.archivedAt)}`,
+    `Tạo lúc ${formatArticleDate(article.createdAt)}`,
+    `Cập nhật ${formatArticleDate(article.updatedAt)}`,
+    article.publishedAt && `Xuất bản ${formatArticleDate(article.publishedAt)}`,
+    article.archivedAt && `Lưu trữ ${formatArticleDate(article.archivedAt)}`,
   ].filter(Boolean).join(' · ');
 }
 

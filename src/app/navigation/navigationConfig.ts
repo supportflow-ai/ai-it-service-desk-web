@@ -3,7 +3,7 @@ import { routeConfig } from '../router/routeConfig';
 import type { RouteDefinition } from '../router/routeConfig';
 
 const staffMenu: readonly RouteDefinition[] = [routeConfig.workspace, routeConfig.knowledgeAdmin, routeConfig.tickets, routeConfig.create, routeConfig.admin];
-const requesterMenu: readonly RouteDefinition[] = [routeConfig.home, routeConfig.create, routeConfig.tickets];
+const requesterMenu: readonly RouteDefinition[] = [routeConfig.home, routeConfig.create, routeConfig.tickets, routeConfig.knowledge];
 
 /** Staff start from the queue (PRD J-02); requesters from their own overview and new request (J-01). */
 export function isStaffAccount(roles: readonly string[]) {

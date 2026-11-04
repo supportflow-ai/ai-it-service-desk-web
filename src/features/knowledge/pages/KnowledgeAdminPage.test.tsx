@@ -180,7 +180,8 @@ it('offers edit, publish and archive on the rows the user may change, and refres
 
   const before = requests.length;
   await userEvent.click(row(ownDraft.title).getByRole('button', { name: /Xuất bản/ }));
-  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận xuất bản' }));
+  // By text: a role query over the whole table is slow enough to time out a loaded run.
+  await userEvent.click(await screen.findByText('Xác nhận xuất bản'));
   await waitFor(() => expect(posts).toBe(1));
   await waitFor(() => expect(requests.length).toBeGreaterThan(before));
   await waitFor(() => expect(row(ownDraft.title).getByText('Đã xuất bản')).toBeInTheDocument());

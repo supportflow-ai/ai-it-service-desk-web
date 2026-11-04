@@ -1,6 +1,6 @@
 import { ARTICLE_PAGE_SIZES, defaultArticleListFilters } from '../model/articleList';
 import { ArticleStatus } from '../model/knowledge.types';
-import type { ArticleListFilters } from '../model/knowledge.types';
+import type { ArticleListFilters, PublishedSearchFilters } from '../model/knowledge.types';
 
 const statusNames: Record<ArticleStatus, string> = {
   [ArticleStatus.Draft]: 'draft',
@@ -38,4 +38,14 @@ export function toKnowledgeSearch(filters: ArticleListFilters): URLSearchParams 
   if (filters.page !== 1) params.set('page', String(filters.page));
   if (filters.pageSize !== defaultArticleListFilters.pageSize) params.set('pageSize', String(filters.pageSize));
   return params;
+}
+
+/** The reader search keeps the list's names (`q`, `tag`, `page`, `pageSize`); a status in the URL is ignored. */
+export function parsePublishedSearch(params: URLSearchParams): PublishedSearchFilters {
+  const { tag, query, page, pageSize } = parseKnowledgeSearch(params);
+  return { tag, query, page, pageSize };
+}
+
+export function toPublishedSearch(filters: PublishedSearchFilters): URLSearchParams {
+  return toKnowledgeSearch({ ...filters, status: null });
 }

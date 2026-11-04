@@ -44,6 +44,20 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
       if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
+      // Like SearchPublishedAsync at backend dev ced117c: Published only, ILIKE on title or content,
+      // the tag lower-cased, newest published first. (Staff here ask with status=1 for the same set.)
+      if (key === 'GET /api/knowledge/articles/search') {
+        const query = url.searchParams.get('query')?.trim().toLowerCase() ?? '';
+        const tag = url.searchParams.get('tag')?.trim().toLowerCase() ?? '';
+        const pageNumber = Number(url.searchParams.get('page'));
+        const pageSize = Number(url.searchParams.get('pageSize'));
+        const found = api.articles
+          .filter((article) => article.status === 1)
+          .filter((article) => !tag || article.tags.includes(tag))
+          .filter((article) => !query || `${article.title}\n${article.content}`.toLowerCase().includes(query))
+          .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
+        return route.fulfill({ json: { ...articlePage(found.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), found.length), page: pageNumber, pageSize } });
+      }
       if (key === 'GET /api/knowledge/articles') {
         const status = url.searchParams.get('status');
         return route.fulfill({ json: articlePage(status === null ? api.articles : api.articles.filter((article) => String(article.status) === status)) });
@@ -54,6 +68,8 @@ export const test = base.extend<{ api: ApiFixture }>({
       if (lifecycle && lifecycleArticle) {
         const body = request.postDataJSON() as { expectedRevision: number };
         api.articleWrites.push({ key, body });
+        // Required since backend dev ced117c: missing or 0 is a 400.
+        if (!body.expectedRevision) return route.fulfill({ status: 400, json: { error: 'Expected revision is required.' } });
         if (body.expectedRevision !== lifecycleArticle.revision) return route.fulfill({ status: 409, json: { error: 'stale' } });
         const publish = lifecycle[2] === 'publish';
         if (lifecycleArticle.status !== (publish ? 0 : 1)) return route.fulfill({ status: 422, json: { error: 'state' } });
@@ -61,7 +77,7 @@ export const test = base.extend<{ api: ApiFixture }>({
         Object.assign(lifecycleArticle, publish ? { status: 1, publishedAt: now } : { status: 2, archivedAt: now }, { revision: lifecycleArticle.revision + 1, updatedAt: now });
         return route.fulfill({ json: lifecycleArticle });
       }
-      // Like backend dev 1506a5b: a create is a Draft by the caller; a draft update needs the current revision.
+      // Like backend dev ced117c: a create is a Draft by the caller; a draft update needs the current revision.
       if (key === 'POST /api/knowledge/articles') {
         const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'>;
         api.articleWrites.push({ key, body });
@@ -74,11 +90,17 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ status: 201, json: created });
       }
       const readArticle = api.articles.find((article) => key === `GET /api/knowledge/articles/${article.id}`);
-      if (readArticle) return route.fulfill({ json: readArticle });
+      if (readArticle) {
+        // GetByIdAsync's read scope: Admin any, Agent Published or their own, anyone else Published only.
+        const readable = api.roles.includes('Admin') || readArticle.status === 1
+          || (api.roles.includes('Agent') && readArticle.authorId === currentUser.userId);
+        return readable ? route.fulfill({ json: readArticle }) : route.fulfill({ status: 404, json: { error: 'Không tìm thấy bài viết.' } });
+      }
       const draftArticle = api.articles.find((article) => key === `PUT /api/knowledge/articles/${draftArticleId(article)}`);
       if (draftArticle) {
         const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'> & { expectedRevision: number };
         api.articleWrites.push({ key, body });
+        if (!body.expectedRevision) return route.fulfill({ status: 400, json: { error: 'Expected revision is required.' } });
         if (body.expectedRevision !== draftArticle.revision) return route.fulfill({ status: 409, json: { error: 'stale' } });
         Object.assign(draftArticle, { title: body.title, content: body.content, tags: body.tags, revision: draftArticle.revision + 1, updatedAt: new Date().toISOString() });
         return route.fulfill({ json: draftArticle });

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultArticleListFilters } from '../model/articleList';
 import { ArticleStatus } from '../model/knowledge.types';
-import { parseKnowledgeSearch, toKnowledgeSearch } from './knowledgeSearch';
+import { parseKnowledgeSearch, parsePublishedSearch, toKnowledgeSearch, toPublishedSearch } from './knowledgeSearch';
 
 describe('knowledge list URL state', () => {
   it('uses the defaults for an empty or garbage query', () => {
@@ -21,5 +21,14 @@ describe('knowledge list URL state', () => {
   it('drops blank text filters', () => {
     expect(toKnowledgeSearch({ ...defaultArticleListFilters, tag: '  ', query: ' ' }).toString()).toBe('');
     expect(parseKnowledgeSearch(new URLSearchParams('tag=%20vpn%20&q=%20'))).toMatchObject({ tag: 'vpn', query: '' });
+  });
+});
+
+describe('reader search URL state', () => {
+  it('has no status: one in the URL is ignored and never written', () => {
+    const filters = parsePublishedSearch(new URLSearchParams('status=draft&q=vpn&tag=mail&page=2&pageSize=20'));
+    expect(filters).toEqual({ query: 'vpn', tag: 'mail', page: 2, pageSize: 20 });
+    expect(toPublishedSearch(filters).toString()).toBe('tag=mail&q=vpn&page=2&pageSize=20');
+    expect(toPublishedSearch(parsePublishedSearch(new URLSearchParams('status=archived'))).toString()).toBe('');
   });
 });
