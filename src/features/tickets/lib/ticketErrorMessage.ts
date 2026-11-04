@@ -21,16 +21,18 @@ export function isAccessLostError(error: unknown) {
 
 /**
  * Maps a failed ticket request to a user-facing message. Returns null for cancellations,
- * which are not user errors. `overrides` lets each use case explain its own 400 rules.
+ * which are not user errors. `overrides` lets each use case explain its own 400 rules, and
+ * `reloadableStatuses` the statuses that mean the ticket changed on the server.
  */
 export function describeTicketError(
   error: unknown,
   overrides: Partial<Record<number, string>> = {},
+  reloadableStatuses: readonly number[] = [400, 409],
 ): TicketErrorView | null {
   const normalized = normalizeError(error);
   if (normalized.kind === 'canceled') return null;
   const status = normalized.status;
   const message = (status !== undefined ? overrides[status] ?? defaultMessages[status] : undefined)
     ?? normalized.message;
-  return { message, reloadable: status === 400 || status === 409 };
+  return { message, reloadable: status !== undefined && reloadableStatuses.includes(status) };
 }

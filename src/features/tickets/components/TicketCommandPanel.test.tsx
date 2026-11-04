@@ -110,10 +110,14 @@ it('sends the revision on screen and asks for a reload when someone else changed
   expect(sent).toHaveLength(1);
 });
 
-it('reports a permission failure without the generic retry message', async () => {
-  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => new HttpResponse(null, { status: 403 })));
-  renderPanel(['Agent'], TicketStatus.Submitted);
+it('explains a claim lost to another agent and offers a reload', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => (
+    HttpResponse.json({ error: 'Vé đã được phân công cho kỹ thuật viên khác.' }, { status: 403 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.Submitted, { onReload });
   await userEvent.click(await screen.findByRole('button', { name: /Nhận xử lý/ }));
-  expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này trên ticket.')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Tải lại' })).not.toBeInTheDocument();
+  expect(await screen.findByText(/ticket vừa được giao cho kỹ thuật viên khác/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
 });

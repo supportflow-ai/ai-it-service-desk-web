@@ -38,8 +38,8 @@ it('shows a new account an empty state, never sample tickets or invented counts'
   renderDashboard();
   expect(await screen.findByText('Bạn chưa có yêu cầu nào.')).toBeInTheDocument();
   expect(screen.queryByText(/INC-2026-/)).not.toBeInTheDocument();
-  expect(stat('Đang mở')).toBe('0');
-  expect(stat('Chờ bạn phản hồi')).toBe('0');
+  expect(stat('Chờ tiếp nhận')).toBe('0');
+  expect(stat('Đang được xử lý')).toBe('0');
   expect(stat('Đã giải quyết gần đây')).toBe('0');
 });
 
@@ -56,8 +56,8 @@ it('lists only the account own tickets and counts them by status', async () => {
   renderDashboard();
   expect(await screen.findByText('IT-2026-0101')).toBeInTheDocument();
   expect(screen.queryByText('IT-2026-0106')).not.toBeInTheDocument();
-  expect(stat('Đang mở')).toBe('3');
-  expect(stat('Chờ bạn phản hồi')).toBe('1');
+  expect(stat('Chờ tiếp nhận')).toBe('1');
+  expect(stat('Đang được xử lý')).toBe('2');
   expect(stat('Đã giải quyết gần đây')).toBe('2');
   expect(requested).toEqual([{ page: '1', pageSize: '100' }]);
 });
@@ -74,7 +74,7 @@ it('reports a failed load instead of filling the page with sample data', async (
   // The list waits for the session restore first, which leaves the error state close to the 1 s default.
   expect(await screen.findByRole('button', { name: 'Thử lại' }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.queryByText(/INC-2026-/)).not.toBeInTheDocument();
-  expect(screen.queryByText('Đang mở')).not.toBeInTheDocument();
+  expect(screen.queryByText('Chờ tiếp nhận')).not.toBeInTheDocument();
 });
 
 it('shows no invented knowledge base articles', async () => {

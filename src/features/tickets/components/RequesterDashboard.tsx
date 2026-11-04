@@ -15,11 +15,16 @@ const { Title, Text } = Typography;
 const COUNTED_TICKETS = 100;
 const RECENT_TICKETS = 5;
 
+/**
+ * Three disjoint groups. "Waiting for you" (PendingUser) is not one of them: the backend has no
+ * request-information step yet, so such a ticket never exists and the card would always read 0.
+ */
 function countByStatus(tickets: readonly TicketDto[]) {
+  const resolved = (t: TicketDto) => t.status === TicketStatus.Resolved || t.status === TicketStatus.Closed;
   return {
-    open: tickets.filter((t) => !isTerminalStatus(t.status) && t.status !== TicketStatus.Resolved).length,
-    waitingForYou: tickets.filter((t) => t.status === TicketStatus.PendingUser).length,
-    resolved: tickets.filter((t) => t.status === TicketStatus.Resolved || t.status === TicketStatus.Closed).length,
+    waiting: tickets.filter((t) => t.status === TicketStatus.Submitted).length,
+    inProgress: tickets.filter((t) => t.status !== TicketStatus.Submitted && !isTerminalStatus(t.status) && !resolved(t)).length,
+    resolved: tickets.filter(resolved).length,
   };
 }
 
@@ -82,8 +87,8 @@ export function RequesterDashboard() {
       ) : ticketsQuery.data && (
         <div style={{ marginBottom: 28 }}>
           <Row gutter={[16, 16]}>
-            <Col xs={24} sm={8}><StatCard value={counts.open} label="Đang mở" color="var(--tx)" /></Col>
-            <Col xs={24} sm={8}><StatCard value={counts.waitingForYou} label="Chờ bạn phản hồi" color="var(--wn)" /></Col>
+            <Col xs={24} sm={8}><StatCard value={counts.waiting} label="Chờ tiếp nhận" color="var(--tx)" /></Col>
+            <Col xs={24} sm={8}><StatCard value={counts.inProgress} label="Đang được xử lý" color="var(--in)" /></Col>
             <Col xs={24} sm={8}><StatCard value={counts.resolved} label="Đã giải quyết gần đây" color="var(--ok)" /></Col>
           </Row>
           {totalCount > tickets.length && (

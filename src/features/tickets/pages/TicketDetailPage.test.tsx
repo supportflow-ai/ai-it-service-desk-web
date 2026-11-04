@@ -17,7 +17,10 @@ function renderRequesterPage() {
   const { Wrapper, queryClient } = createTestWrapper();
   render(
     <MemoryRouter initialEntries={[`/requester-dashboard/tickets/${ticketA.id}`]}>
-      <Routes><Route path="/requester-dashboard/tickets/:id" element={<TicketDetailPage />} /></Routes>
+      <Routes>
+        <Route path="/requester-dashboard/tickets/:id" element={<TicketDetailPage />} />
+        <Route path="/agent-workspace/tickets/:id" element={<p>workspace page</p>} />
+      </Routes>
     </MemoryRouter>,
     { wrapper: Wrapper },
   );
@@ -150,4 +153,14 @@ it('takes no further reply or file from the requester once the ticket is closed'
   expect(screen.queryByRole('textbox', { name: 'Nội dung bình luận' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Đính kèm tệp/ })).not.toBeInTheDocument();
   expect(await screen.findByText(timelineItemA.content)).toBeInTheDocument();
+});
+
+it('sends staff to the workspace for a ticket someone else asked for, never the requester screen', async () => {
+  server.use(
+    http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Agent'] })),
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
+  );
+  renderRequesterPage();
+  expect(await screen.findByText('workspace page')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: 'Nội dung bình luận' })).not.toBeInTheDocument();
 });

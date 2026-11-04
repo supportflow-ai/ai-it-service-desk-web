@@ -29,7 +29,11 @@ interface TicketCommandPanelProps {
 
 const transitionMessages = {
   400: 'Không thể chuyển trạng thái: ticket có thể đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
+  // Staff only ever see staff commands here, so a 403 means the ticket was meanwhile assigned to
+  // another agent (ClaimTicketUseCase), which a reload shows.
+  403: 'Không thể nhận xử lý: ticket vừa được giao cho kỹ thuật viên khác. Hãy tải lại để xem người phụ trách mới.',
 };
+const reloadableStatuses = [400, 403, 409] as const;
 
 export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPanelProps) {
   const { user } = useAuth();
@@ -45,7 +49,7 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
   // Also covers assignment writes from the other panel, so two state changes never overlap.
   const isPending = useTicketStateWritePending(ticket.id);
   const failed = mutations.find((mutation) => mutation.isError);
-  const failure = failed ? describeTicketError(failed.error, transitionMessages) : null;
+  const failure = failed ? describeTicketError(failed.error, transitionMessages, reloadableStatuses) : null;
 
   // Only the latest command's outcome is shown, so earlier errors are cleared first. The command
   // carries the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).

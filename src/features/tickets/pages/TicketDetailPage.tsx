@@ -1,10 +1,13 @@
 import { Card, Space } from 'antd';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useParams } from 'react-router-dom';
+import { useAuth } from '@/features/auth';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { useTicket } from '../hooks/useTicket';
+import { workspaceTicketPath } from '../lib/agentQueueSearch';
 import { isAccessLostError } from '../lib/ticketErrorMessage';
 import { isTicketId } from '../model/ticketId';
+import { canOpenWorkspace } from '../model/ticketPermissions';
 import { TicketHeader } from '../components/TicketHeader';
 import { TicketMetadata } from '../components/TicketMetadata';
 import { TicketCommandPanel } from '../components/TicketCommandPanel';
@@ -17,12 +20,18 @@ const listPath = '/requester-dashboard/tickets';
 
 export function TicketDetailPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const ticket = useTicket(id ?? '');
   const reload = () => { void ticket.refetch(); };
   if (!isTicketId(id)) return <TicketErrorState error={null} backPath={listPath} backLabel="Quay lại danh sách" onRetry={reload} />;
   if (ticket.isPending) return <PageLoader />;
   if (!ticket.data || isAccessLostError(ticket.error)) {
     return <TicketErrorState error={ticket.error} backPath={listPath} backLabel="Quay lại danh sách" onRetry={reload} />;
+  }
+  // Staff can read every ticket, but this screen is the requester's own view: anyone else's
+  // ticket is worked on from the workspace, never answered as if they had asked for it.
+  if (user && canOpenWorkspace(user) && ticket.data.requesterId !== user.userId) {
+    return <Navigate to={workspaceTicketPath(ticket.data.id)} replace />;
   }
   return <Space direction="vertical" style={{ width: '100%' }} size={16}>
     <Card>

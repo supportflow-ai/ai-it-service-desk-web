@@ -52,8 +52,9 @@ export const ticketApi = {
     const response = await apiClient.get<unknown>(`/tickets/${encodeURIComponent(id)}`, { signal });
     return readTicket(response.data);
   },
-  async createTicket(payload: CreateTicketPayload) {
-    const response = await apiClient.post<unknown>('/tickets', payload);
+  /** The same key with the same content returns the ticket already created instead of a duplicate. */
+  async createTicket(payload: CreateTicketPayload, idempotencyKey: string) {
+    const response = await apiClient.post<unknown>('/tickets', payload, { headers: { 'Idempotency-Key': idempotencyKey } });
     return readTicket(response.data);
   },
   // State commands carry the revision the user acted on; the server answers 409 if it is outdated.

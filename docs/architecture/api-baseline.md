@@ -101,6 +101,7 @@ and `ServiceDesk.Infrastructure/Ticketing/PostgresTicketQueries.cs`. This change
 | POST /tickets/{id}/unassign | unchanged | unchanged | Only an Assigned ticket |
 | POST /tickets/{id}/comments, attachments/upload-url, attachments/confirm | unchanged | unchanged | Closed or Cancelled ticket → 400. Internal notes and downloads are still accepted |
 | POST /auth/register | unchanged | unchanged | `fullName` is now stored, so it comes back from login and `/auth/me` |
+| POST /tickets | optional `Idempotency-Key` header | unchanged | Same key and content within 10 minutes returns the ticket already created; same key, other content → 409 |
 
 Rejected lifecycle transitions return 400, permission failures 403 and out-of-scope
 tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
@@ -118,6 +119,11 @@ How the UI follows backend `007a258` (TicketDto also carries `requesterId` and n
 - Unassign is offered only on Assigned tickets, as the backend requires.
 - On a Closed or Cancelled ticket the requester screen takes no reply and no new file; the
   workspace keeps internal notes only. Existing files stay downloadable.
+- Creating a ticket sends an `Idempotency-Key`: the same key while the content is unchanged (so
+  resending after a failure or a lost response cannot create a duplicate), a new one once the
+  content changes or a ticket was created.
+- Login answers a bare 401 for a wrong password and for an account locked after 5 failures (15
+  minutes), so the login page says both in one message.
 - Queue scopes filter on the assignee and leave out Closed/Cancelled; the tab descriptions say so.
 - Status and assignment changes appear in the timeline as `authorRole: "System"` entries,
   shown as "Hệ thống". `authorName` of people is the account's user name, today its email.
@@ -135,7 +141,7 @@ what backend `007a258` implements. Every screen shows one perspective, whatever 
 | --- | --- | --- |
 | `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
 | `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create and list own tickets (PR-01) |
-| `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (cancel/close/reopen when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request |
+| `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (cancel/close/reopen when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
 | `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
 | `/admin-panel` | Admin | Not supported yet: no admin endpoints |
 
@@ -154,7 +160,7 @@ email.
 
 ## Not enabled
 
-AI HTTP endpoints are not used yet: backend dev 8fe5c43 exposes no triage result or review
+AI HTTP endpoints are not used yet: backend dev f82f0b2 still exposes no triage result or review
 decision endpoint, persists no AIAnalysis/AISuggestion, and its classifier is a NoOp (TC-277
 records "dev integration BLOCKED"). The workspace AI slot (`WorkspaceTriagePanel`, injected by
 the App) therefore shows the not-enabled state. Review decisions (accept, override with a

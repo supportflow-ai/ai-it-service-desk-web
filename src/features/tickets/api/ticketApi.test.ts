@@ -21,13 +21,16 @@ it('sends server paging and preserves response metadata', async () => {
   }));
   expect(await ticketApi.getMyTickets(2, 5)).toEqual(result);
 });
-it('creates a Submitted ticket using the exact existing payload', async () => {
+it('creates a Submitted ticket using the exact existing payload and the idempotency key', async () => {
   const payload = { title: ticketA.title, categoryId: 'NET' as const, description: ticketA.description };
+  const keys: (string | null)[] = [];
   server.use(http.post('http://localhost/api/tickets', async ({ request }) => {
     expect(await request.json()).toEqual(payload);
+    keys.push(request.headers.get('Idempotency-Key'));
     return HttpResponse.json(ticketA, { status: 201 });
   }));
-  expect((await ticketApi.createTicket(payload)).status).toBe(TicketStatus.Submitted);
+  expect((await ticketApi.createTicket(payload, 'key-1')).status).toBe(TicketStatus.Submitted);
+  expect(keys).toEqual(['key-1']);
 });
 it('rejects malformed ticket payloads', async () => {
   server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, status: 99 })));

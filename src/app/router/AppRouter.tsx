@@ -37,7 +37,7 @@ export function AppRouter() {
         <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} onTicketChanged={reload} /></Suspense>
       )} />,
     },
-    { ...routes.admin, element: <UnavailablePage title="Admin Panel" /> },
+    { ...routes.admin, element: <UnavailablePage title={routes.admin.label} /> },
   ];
   return (
     <BrowserRouter>
