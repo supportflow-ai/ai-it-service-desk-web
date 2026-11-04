@@ -201,6 +201,18 @@ built against them:
   apart an empty base, filters that match nothing, a page past the end and a failed load. Unsaved
   changes ask before the tab closes or reloads (`beforeunload`); moves inside the app are not
   intercepted, since `BrowserRouter` has no navigation blocker.
+
+The reader side (TC-219) is open to every signed-in role, as `GET /knowledge/articles/search` and
+`GET /knowledge/articles/{id}` are (RequireRequester admits Requester, Agent and Admin):
+- `/knowledge` (TC-342, in the Requester menu) searches `GET /knowledge/articles/search` with
+  `status=1` always: an Agent would otherwise also get their own drafts, and a Requester's status is
+  ignored by the backend. Keyword (`q` in the URL, `query` to the API: ILIKE on title or content), tag
+  and paging live in the URL. Results are cards, newest published first, with a plain-text excerpt
+  (never rendered as Markdown), the tags (each narrowing the search) and the publish date. Empty
+  states tell apart nothing published, nothing matching (clear the search, or ask for help with a
+  request, PRD J-03) and a page past the end; a failed search offers a retry. The requester overview
+  hosts a knowledge card (search box, the 3 newest articles) through a slot, so tickets does not
+  depend on knowledge.
 - The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled

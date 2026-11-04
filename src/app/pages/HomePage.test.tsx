@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { createTestWrapper } from '../../../tests/render';
 import { server } from '../../../tests/mocks/server';
-import { user } from '../../../tests/fixtures';
+import { articlePage, othersPublished, user } from '../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
 import { HomePage } from './HomePage';
 
@@ -13,6 +13,7 @@ function renderHome(roles: string[]) {
   server.use(
     http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles })),
     http.get('http://localhost/api/tickets/me', () => HttpResponse.json({ items: [], page: 1, pageSize: 100, totalCount: 0 })),
+    http.get('http://localhost/api/knowledge/articles/search', () => HttpResponse.json(articlePage([othersPublished]))),
   );
   const { Wrapper } = createTestWrapper();
   render(
@@ -35,4 +36,6 @@ it('shows a requester the overview of their own tickets', async () => {
   renderHome(['Requester']);
   expect(await screen.findByText('Bạn chưa có yêu cầu nào.')).toBeInTheDocument();
   expect(screen.queryByText('queue page')).not.toBeInTheDocument();
+  // The knowledge card loads on its own, after the overview.
+  expect(await screen.findByRole('link', { name: othersPublished.title }, { timeout: 5000 })).toHaveAttribute('href', `/knowledge/${othersPublished.id}`);
 });

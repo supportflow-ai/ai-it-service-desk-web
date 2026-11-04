@@ -16,6 +16,7 @@ const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) 
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
 const TicketWorkspacePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketWorkspacePage })));
 const AgentQueuePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.AgentQueuePage })));
+const KnowledgeSearchPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.KnowledgeSearchPage })));
 const KnowledgeAdminPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.KnowledgeAdminPage })));
 const NewArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.NewArticlePage })));
 const EditArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.EditArticlePage })));
@@ -41,6 +42,8 @@ export function AppRouter() {
         <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} onTicketChanged={reload} /></Suspense>
       )} />,
     },
+    // A reader who found no answer goes on to a request (PRD J-03).
+    { ...routes.knowledge, element: <KnowledgeSearchPage helpPath={routes.create.path} /> },
     { ...routes.knowledgeAdmin, element: <KnowledgeAdminPage /> },
     { ...routes.knowledgeNew, element: <NewArticlePage /> },
     { ...routes.knowledgeRead, element: <ArticleDetailPage /> },

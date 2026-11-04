@@ -1,5 +1,6 @@
-import { Alert, Button, Card, Col, Empty, Input, Row, Skeleton, Typography } from 'antd';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import type { ReactNode } from 'react';
+import { Button, Card, Col, Empty, Row, Skeleton, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -37,8 +38,13 @@ function StatCard({ value, label, color }: { value: number; label: string; color
   );
 }
 
+interface RequesterDashboardProps {
+  /** The knowledge base card, hosted here without this feature depending on knowledge. */
+  knowledgePanel: ReactNode;
+}
+
 /** Only the signed-in account's own tickets are shown; nothing is filled in while they load or fail. */
-export function RequesterDashboard() {
+export function RequesterDashboard({ knowledgePanel }: RequesterDashboardProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const ticketsQuery = useTickets(1, COUNTED_TICKETS);
@@ -171,17 +177,7 @@ export function RequesterDashboard() {
             </Title>
           </div>
 
-          {/* No knowledge base endpoint exists yet: no articles are shown and search stays locked. */}
-          <Card bordered style={{ borderRadius: 8, borderColor: 'var(--bd)' }}>
-            <Input
-              disabled
-              aria-label="Tìm bài viết (chưa hỗ trợ)"
-              prefix={<SearchOutlined style={{ color: 'var(--tx3)' }} />}
-              placeholder="Tìm bài viết hướng dẫn…"
-              style={{ borderRadius: 6, marginBottom: 16 }}
-            />
-            <Alert type="info" showIcon message="Kho tri thức chưa được hỗ trợ: hệ thống chưa có bài viết hướng dẫn." />
-          </Card>
+          {knowledgePanel}
         </Col>
       </Row>
     </div>

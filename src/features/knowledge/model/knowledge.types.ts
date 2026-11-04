@@ -48,3 +48,6 @@ export interface ArticleListFilters {
   page: number;
   pageSize: number;
 }
+
+/** GET /knowledge/articles/search as readers use it (TC-342): Published articles only, so no status. */
+export type PublishedSearchFilters = Omit<ArticleListFilters, 'status'>;

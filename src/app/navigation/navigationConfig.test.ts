@@ -3,7 +3,7 @@ import { getNavigation } from './navigationConfig';
 import { hasAnyRole } from '@/features/auth';
 
 it.each([
-  [['Requester'], ['/', '/tickets/new', '/requester-dashboard/tickets']],
+  [['Requester'], ['/', '/tickets/new', '/requester-dashboard/tickets', '/knowledge']],
   [['Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
   [['Admin'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new', '/admin-panel']],
   [['Requester', 'Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],

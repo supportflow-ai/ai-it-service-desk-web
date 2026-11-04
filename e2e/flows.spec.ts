@@ -73,6 +73,9 @@ for (const [role, path, allowed] of [
   ['Requester', `/knowledge/manage/${ownDraft.id}/edit`, false],
   ['Agent', '/knowledge/manage', true],
   ['Admin', '/knowledge/manage', true],
+  ['Requester', '/knowledge', true],
+  ['Agent', '/knowledge', true],
+  ['Admin', '/knowledge', true],
 ] as const) {
   test(`${role} route policy: ${path}`, async ({ page, api }) => {
     api.roles = [role];
@@ -81,7 +84,7 @@ for (const [role, path, allowed] of [
     await expect(page).toHaveURL(allowed ? path : '/403');
     if (!allowed) await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
     else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
-    else if (path === '/knowledge/manage') await expect(page.getByRole('heading', { name: 'Kho tri thức' })).toBeVisible();
+    else if (path === '/knowledge/manage' || path === '/knowledge') await expect(page.getByRole('heading', { name: 'Kho tri thức' })).toBeVisible();
     else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });
 }

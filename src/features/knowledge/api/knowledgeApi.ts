@@ -1,5 +1,6 @@
 import { apiClient } from '@/shared/api/apiClient';
-import type { ArticleDraftPayload, ArticleListFilters } from '../model/knowledge.types';
+import { ArticleStatus } from '../model/knowledge.types';
+import type { ArticleDraftPayload, ArticleListFilters, PublishedSearchFilters } from '../model/knowledge.types';
 import { readArticle, readArticlePage } from './knowledgeContract';
 
 function listParams({ status, tag, query, page, pageSize }: ArticleListFilters) {
@@ -19,6 +20,15 @@ export const knowledgeApi = {
   /** An Admin gets every article, an Agent Published ones and their own (since ced117c, gap G1 fixed). */
   async listArticles(filters: ArticleListFilters, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>('/knowledge/articles', { params: listParams(filters), signal });
+    return readArticlePage(response.data);
+  },
+  /**
+   * The reader search (TC-342), newest published first. Staff would also get their own drafts here,
+   * so the status is always sent; for a Requester the backend ignores it and serves Published only.
+   */
+  async searchPublished(filters: PublishedSearchFilters, signal?: AbortSignal) {
+    const params = listParams({ ...filters, status: ArticleStatus.Published });
+    const response = await apiClient.get<unknown>('/knowledge/articles/search', { params, signal });
     return readArticlePage(response.data);
   },
   /** Admin: any article; Agent: Published or their own; anyone else Published only (else 404). */

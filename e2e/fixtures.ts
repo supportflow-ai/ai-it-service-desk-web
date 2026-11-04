@@ -44,6 +44,20 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
       if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
+      // Like SearchPublishedAsync at backend dev ced117c: Published only, ILIKE on title or content,
+      // the tag lower-cased, newest published first. (Staff here ask with status=1 for the same set.)
+      if (key === 'GET /api/knowledge/articles/search') {
+        const query = url.searchParams.get('query')?.trim().toLowerCase() ?? '';
+        const tag = url.searchParams.get('tag')?.trim().toLowerCase() ?? '';
+        const pageNumber = Number(url.searchParams.get('page'));
+        const pageSize = Number(url.searchParams.get('pageSize'));
+        const found = api.articles
+          .filter((article) => article.status === 1)
+          .filter((article) => !tag || article.tags.includes(tag))
+          .filter((article) => !query || `${article.title}\n${article.content}`.toLowerCase().includes(query))
+          .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''));
+        return route.fulfill({ json: { ...articlePage(found.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), found.length), page: pageNumber, pageSize } });
+      }
       if (key === 'GET /api/knowledge/articles') {
         const status = url.searchParams.get('status');
         return route.fulfill({ json: articlePage(status === null ? api.articles : api.articles.filter((article) => String(article.status) === status)) });

@@ -6,6 +6,7 @@ import type { ReactNode } from 'react';
 import type { ArticleDto, PagedArticleResult } from '../model/knowledge.types';
 import { ARTICLE_PAGE_SIZES } from '../model/articleList';
 import { canEditArticle, canOpenArticle, isArticleAuthor } from '../model/knowledgePermissions';
+import { formatArticleDate } from '../lib/formatArticleDate';
 import { articlePath, editArticlePath } from '../lib/knowledgePaths';
 import type { KnowledgeListState } from '../lib/knowledgePaths';
 import { ArticleLifecycleActions } from './ArticleLifecycleActions';
@@ -26,13 +27,6 @@ interface KnowledgeTableProps {
 
 // Short columns keep to one line; the table scrolls sideways on narrow screens instead.
 const oneLine = () => ({ style: { whiteSpace: 'nowrap' as const } });
-
-function formatDate(iso: string) {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('vi-VN', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
-}
 
 export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, onReload, listState, emptyText }: KnowledgeTableProps) {
   const { user } = useAuth();
@@ -72,7 +66,7 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, 
         },
         { title: 'Phiên bản', key: 'version', onHeaderCell: oneLine, onCell: oneLine, render: (_, article) => `v${article.version}` },
         { title: 'Tác giả', key: 'author', onCell: oneLine, render: (_, article) => (isArticleAuthor(user, article) ? 'Bạn' : 'Người khác') },
-        { title: 'Cập nhật', key: 'updated', align: 'right', onCell: oneLine, render: (_, article) => formatDate(article.updatedAt) },
+        { title: 'Cập nhật', key: 'updated', align: 'right', onCell: oneLine, render: (_, article) => formatArticleDate(article.updatedAt) },
         {
           title: 'Thao tác',
           key: 'actions',
