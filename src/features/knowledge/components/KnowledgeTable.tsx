@@ -1,9 +1,11 @@
 import { Table, Tag, Tooltip, Typography } from 'antd';
-import { LockOutlined } from '@ant-design/icons';
+import { EditOutlined, LockOutlined } from '@ant-design/icons';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import type { ArticleDto, PagedArticleResult } from '../model/knowledge.types';
 import { ARTICLE_PAGE_SIZES } from '../model/articleList';
-import { canOpenArticle, isArticleAuthor } from '../model/knowledgePermissions';
+import { canEditArticle, canOpenArticle, isArticleAuthor } from '../model/knowledgePermissions';
+import { editArticlePath } from '../lib/knowledgePaths';
 import { ArticleStatusTag } from './ArticleStatusTag';
 
 interface KnowledgeTableProps {
@@ -59,6 +61,14 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange }
         { title: 'Phiên bản', key: 'version', render: (_, article) => `v${article.version}` },
         { title: 'Tác giả', key: 'author', render: (_, article) => (isArticleAuthor(user, article) ? 'Bạn' : 'Người khác') },
         { title: 'Cập nhật', key: 'updated', align: 'right', render: (_, article) => formatDate(article.updatedAt) },
+        {
+          title: 'Thao tác',
+          key: 'actions',
+          align: 'right',
+          render: (_, article) => (canEditArticle(user, article)
+            ? <Link to={editArticlePath(article.id)} aria-label={`Sửa bài ${article.title}`}><EditOutlined /> Sửa</Link>
+            : null),
+        },
       ]}
       pagination={{
         current: page,

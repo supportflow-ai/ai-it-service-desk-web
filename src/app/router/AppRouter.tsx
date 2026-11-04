@@ -17,6 +17,8 @@ const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) 
 const TicketWorkspacePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketWorkspacePage })));
 const AgentQueuePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.AgentQueuePage })));
 const KnowledgeAdminPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.KnowledgeAdminPage })));
+const NewArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.NewArticlePage })));
+const EditArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.EditArticlePage })));
 const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceTriagePanel })));
 const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.RequesterAIPanel })));
 
@@ -39,6 +41,8 @@ export function AppRouter() {
       )} />,
     },
     { ...routes.knowledgeAdmin, element: <KnowledgeAdminPage /> },
+    { ...routes.knowledgeNew, element: <NewArticlePage /> },
+    { ...routes.knowledgeEdit, element: <EditArticlePage /> },
     { ...routes.admin, element: <UnavailablePage title={routes.admin.label} /> },
   ];
   return (

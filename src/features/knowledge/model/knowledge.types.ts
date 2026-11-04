@@ -32,6 +32,14 @@ export interface PagedArticleResult {
   totalPages: number;
 }
 
+/** POST /knowledge/articles and PUT /knowledge/articles/{id}/draft take these fields. */
+export interface ArticleDraftPayload {
+  title: string;
+  /** Markdown. */
+  content: string;
+  tags: string[];
+}
+
 /** GET /knowledge/articles: staff get every status unless one is chosen. */
 export interface ArticleListFilters {
   status: ArticleStatus | null;

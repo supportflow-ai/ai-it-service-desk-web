@@ -1,14 +1,18 @@
-import { Card, Typography } from 'antd';
+import { Button, Card, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { normalizeError } from '@/shared/api/httpError';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { useKnowledgeArticles } from '../hooks/useKnowledgeArticles';
 import { useKnowledgeFilters } from '../hooks/useKnowledgeFilters';
 import { KnowledgeToolbar } from '../components/KnowledgeToolbar';
 import { KnowledgeTable } from '../components/KnowledgeTable';
+import { NEW_ARTICLE_PATH } from '../lib/knowledgePaths';
 import type { ArticleListFilters } from '../model/knowledge.types';
 
 /** Agent/Admin list of every article (TC-337); the route guard keeps requesters out. */
 export function KnowledgeAdminPage() {
+  const navigate = useNavigate();
   const { filters, setFilters } = useKnowledgeFilters();
   const articles = useKnowledgeArticles(filters);
   const errorStatus = articles.error ? normalizeError(articles.error).status : undefined;
@@ -20,9 +24,14 @@ export function KnowledgeAdminPage() {
 
   return (
     <div style={{ maxWidth: 1300, margin: '0 auto' }}>
-      <Typography.Title level={2} style={{ margin: '0 0 12px', fontWeight: 700 }}>
-        Kho tri thức
-      </Typography.Title>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, margin: '0 0 12px' }}>
+        <Typography.Title level={2} style={{ margin: 0, fontWeight: 700 }}>
+          Kho tri thức
+        </Typography.Title>
+        <Button type="primary" icon={<PlusOutlined />} onClick={() => navigate(NEW_ARTICLE_PATH)} style={{ borderRadius: 6 }}>
+          Viết bài mới
+        </Button>
+      </div>
 
       <KnowledgeToolbar filters={filters} totalCount={result?.totalCount} onChange={changeFilters} />
 

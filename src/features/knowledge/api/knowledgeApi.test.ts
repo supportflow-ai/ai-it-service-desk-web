@@ -47,3 +47,24 @@ it('rejects a page without paging metadata', async () => {
   server.use(http.get(listUrl, () => HttpResponse.json({ items: [ownDraft] })));
   await expect(knowledgeApi.listArticles(filters)).rejects.toMatchObject({ kind: 'invalid-response' });
 });
+
+it('reads one article, and creates and updates drafts with the backend payloads', async () => {
+  const sent: { method: string; path: string; body: unknown }[] = [];
+  const record = async (request: Request) => {
+    sent.push({ method: request.method, path: new URL(request.url).pathname, body: request.method === 'GET' ? null : await request.json() });
+  };
+  server.use(
+    http.get(`${listUrl}/${ownDraft.id}`, async ({ request }) => { await record(request); return HttpResponse.json(ownDraft); }),
+    http.post(listUrl, async ({ request }) => { await record(request); return HttpResponse.json(ownDraft, { status: 201 }); }),
+    http.put(`${listUrl}/${ownDraft.id}/draft`, async ({ request }) => { await record(request); return HttpResponse.json({ ...ownDraft, revision: 22 }); }),
+  );
+  const payload = { title: 'Kết nối VPN', content: 'Mở ứng dụng VPN rồi đăng nhập.', tags: ['vpn'] };
+  expect((await knowledgeApi.getArticle(ownDraft.id)).id).toBe(ownDraft.id);
+  expect((await knowledgeApi.createDraft(payload)).status).toBe(ArticleStatus.Draft);
+  expect((await knowledgeApi.updateDraft(ownDraft.id, payload, 21)).revision).toBe(22);
+  expect(sent).toEqual([
+    { method: 'GET', path: `/api/knowledge/articles/${ownDraft.id}`, body: null },
+    { method: 'POST', path: '/api/knowledge/articles', body: payload },
+    { method: 'PUT', path: `/api/knowledge/articles/${ownDraft.id}/draft`, body: { ...payload, expectedRevision: 21 } },
+  ]);
+});

@@ -2,8 +2,6 @@ import { ARTICLE_PAGE_SIZES, defaultArticleListFilters } from '../model/articleL
 import { ArticleStatus } from '../model/knowledge.types';
 import type { ArticleListFilters } from '../model/knowledge.types';
 
-export const KNOWLEDGE_ADMIN_PATH = '/knowledge/manage';
-
 const statusNames: Record<ArticleStatus, string> = {
   [ArticleStatus.Draft]: 'draft',
   [ArticleStatus.Published]: 'published',

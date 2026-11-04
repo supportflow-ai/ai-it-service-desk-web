@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { User } from '@/features/auth';
 import { ArticleStatus } from './knowledge.types';
-import { canManageKnowledge, canOpenArticle, isArticleAuthor } from './knowledgePermissions';
+import { canEditArticle, canManageKnowledge, canOpenArticle, isArticleAuthor } from './knowledgePermissions';
 
 function userWith(roles: User['roles'], userId = `user-${roles.join('-')}`): User {
   return { userId, email: 'synthetic@example.invalid', fullName: null, roles };
@@ -28,6 +28,18 @@ describe('knowledge permissions (backend dev 1506a5b)', () => {
     expect(isArticleAuthor(agent, article(ArticleStatus.Draft, agent.userId))).toBe(true);
     expect(isArticleAuthor(agent, article(ArticleStatus.Draft))).toBe(false);
     expect(isArticleAuthor(null, article(ArticleStatus.Draft))).toBe(false);
+  });
+
+  it('lets the author or an Admin edit a Draft, and nobody edit anything else', () => {
+    expect(canEditArticle(agent, article(ArticleStatus.Draft, agent.userId))).toBe(true);
+    expect(canEditArticle(admin, article(ArticleStatus.Draft))).toBe(true);
+    expect(canEditArticle(agent, article(ArticleStatus.Draft))).toBe(false);
+    for (const status of [ArticleStatus.Published, ArticleStatus.Archived]) {
+      expect(canEditArticle(admin, article(status))).toBe(false);
+      expect(canEditArticle(agent, article(status, agent.userId))).toBe(false);
+    }
+    expect(canEditArticle(requester, article(ArticleStatus.Draft, requester.userId))).toBe(false);
+    expect(canEditArticle(null, article(ArticleStatus.Draft))).toBe(false);
   });
 
   it('opens what GetArticleDetail serves to each role', () => {

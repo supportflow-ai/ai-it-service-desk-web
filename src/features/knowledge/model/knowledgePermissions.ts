@@ -22,6 +22,15 @@ export function isArticleAuthor(user: User | null, article: Pick<ArticleDto, 'au
 }
 
 /**
+ * UpdateDraftArticleUseCase: the author (an Agent) or an Admin, and only while the article is a
+ * Draft; anything else is refused with 403 or 422.
+ */
+export function canEditArticle(user: User | null, article: ArticleFacts) {
+  if (!canManageKnowledge(user) || article.status !== ArticleStatus.Draft) return false;
+  return !!user && (isAdmin(user) || isArticleAuthor(user, article));
+}
+
+/**
  * GetArticleDetail: an Admin reads every article; an Agent reads Published ones and their own;
  * anyone else Published ones only. The staff list returns more than this (gap G1), so the list
  * uses it to lock the rows that would only open on a "not found" page.
