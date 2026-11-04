@@ -30,6 +30,23 @@ export function canEditArticle(user: User | null, article: ArticleFacts) {
   return !!user && (isAdmin(user) || isArticleAuthor(user, article));
 }
 
+function mayChangeLifecycle(user: User | null, article: ArticleFacts) {
+  return canManageKnowledge(user) && !!user && (isAdmin(user) || isArticleAuthor(user, article));
+}
+
+/**
+ * PublishArticleUseCase: the author (an Agent) or an Admin, from Draft only. The team contract
+ * (KB-05) would leave this to Admin by default; TC-330 has not decided, so the UI follows the code.
+ */
+export function canPublishArticle(user: User | null, article: ArticleFacts) {
+  return article.status === ArticleStatus.Draft && mayChangeLifecycle(user, article);
+}
+
+/** ArchiveArticleUseCase: the author (an Agent) or an Admin, from Published only (KB-06, same open question). */
+export function canArchiveArticle(user: User | null, article: ArticleFacts) {
+  return article.status === ArticleStatus.Published && mayChangeLifecycle(user, article);
+}
+
 /**
  * GetArticleDetail: an Admin reads every article; an Agent reads Published ones and their own;
  * anyone else Published ones only. The staff list returns more than this (gap G1), so the list

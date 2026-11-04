@@ -1,4 +1,4 @@
-import { Table, Tag, Tooltip, Typography } from 'antd';
+import { Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { EditOutlined, LockOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
@@ -6,6 +6,7 @@ import type { ArticleDto, PagedArticleResult } from '../model/knowledge.types';
 import { ARTICLE_PAGE_SIZES } from '../model/articleList';
 import { canEditArticle, canOpenArticle, isArticleAuthor } from '../model/knowledgePermissions';
 import { editArticlePath } from '../lib/knowledgePaths';
+import { ArticleLifecycleActions } from './ArticleLifecycleActions';
 import { ArticleStatusTag } from './ArticleStatusTag';
 
 interface KnowledgeTableProps {
@@ -14,7 +15,12 @@ interface KnowledgeTableProps {
   page: number;
   pageSize: number;
   onPageChange: (page: number, pageSize: number) => void;
+  /** Refetches the list, e.g. after a row's action found the article changed meanwhile. */
+  onReload: () => void;
 }
+
+// Short columns keep to one line; the table scrolls sideways on narrow screens instead.
+const oneLine = () => ({ style: { whiteSpace: 'nowrap' as const } });
 
 function formatDate(iso: string) {
   const date = new Date(iso);
@@ -23,7 +29,7 @@ function formatDate(iso: string) {
   });
 }
 
-export function KnowledgeTable({ result, loading, page, pageSize, onPageChange }: KnowledgeTableProps) {
+export function KnowledgeTable({ result, loading, page, pageSize, onPageChange, onReload }: KnowledgeTableProps) {
   const { user } = useAuth();
   return (
     <Table<ArticleDto>
@@ -31,6 +37,7 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange }
       size="middle"
       dataSource={result?.items ?? []}
       loading={loading}
+      scroll={{ x: 960 }}
       locale={{ emptyText: 'Không có bài viết nào phù hợp với bộ lọc.' }}
       columns={[
         {
@@ -50,7 +57,7 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange }
             </>
           ),
         },
-        { title: 'Trạng thái', key: 'status', render: (_, article) => <ArticleStatusTag status={article.status} /> },
+        { title: 'Trạng thái', key: 'status', onCell: oneLine, render: (_, article) => <ArticleStatusTag status={article.status} /> },
         {
           title: 'Tags',
           key: 'tags',
@@ -58,16 +65,25 @@ export function KnowledgeTable({ result, loading, page, pageSize, onPageChange }
             ? article.tags.map((tag) => <Tag key={tag}>{tag}</Tag>)
             : <Typography.Text type="secondary">—</Typography.Text>),
         },
-        { title: 'Phiên bản', key: 'version', render: (_, article) => `v${article.version}` },
-        { title: 'Tác giả', key: 'author', render: (_, article) => (isArticleAuthor(user, article) ? 'Bạn' : 'Người khác') },
-        { title: 'Cập nhật', key: 'updated', align: 'right', render: (_, article) => formatDate(article.updatedAt) },
+        { title: 'Phiên bản', key: 'version', onHeaderCell: oneLine, onCell: oneLine, render: (_, article) => `v${article.version}` },
+        { title: 'Tác giả', key: 'author', onCell: oneLine, render: (_, article) => (isArticleAuthor(user, article) ? 'Bạn' : 'Người khác') },
+        { title: 'Cập nhật', key: 'updated', align: 'right', onCell: oneLine, render: (_, article) => formatDate(article.updatedAt) },
         {
           title: 'Thao tác',
           key: 'actions',
           align: 'right',
-          render: (_, article) => (canEditArticle(user, article)
-            ? <Link to={editArticlePath(article.id)} aria-label={`Sửa bài ${article.title}`}><EditOutlined /> Sửa</Link>
-            : null),
+          onCell: oneLine,
+          render: (_, article) => (
+            <Space size={12} align="start">
+              {canEditArticle(user, article) && (
+                <Link to={editArticlePath(article.id)} aria-label={`Sửa bài ${article.title}`} style={{ lineHeight: '24px' }}>
+                  <EditOutlined /> Sửa
+                </Link>
+              )}
+              {/* The row's revision: a list older than the article is refused (409) and offers a reload. */}
+              <ArticleLifecycleActions article={article} expectedRevision={article.revision} onReload={onReload} size="small" />
+            </Space>
+          ),
         },
       ]}
       pagination={{

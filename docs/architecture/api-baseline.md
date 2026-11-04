@@ -187,6 +187,12 @@ built against them:
   HTML is shown as text (not dropped, so "Nhấn <Enter>" keeps its words); links and images keep only
   http(s), mailto, irc(s), xmpp and relative URLs, so `javascript:`, `data:` and `vbscript:` lose their
   target; links open in a new tab with `rel="noopener noreferrer nofollow"`. `rehype-raw` must not be added.
+- Publish and archive (TC-340) are offered on the list rows and, for publish, in the draft editor,
+  each after a confirmation: `POST /knowledge/articles/{id}/publish|archive` with `{ expectedRevision }`
+  in the body. Author or Admin only, as the use cases do (the contract's Admin-only default, KB-05/06,
+  awaits TC-330). The editor holds publishing back while the form has unsaved changes, and ends on
+  the Published list. 409/422 explain and offer a reload; status and version come from the returned
+  article (version stays 1, gap G3).
 - The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
 
 ## Not enabled

@@ -48,6 +48,7 @@ export function KnowledgeAdminPage() {
           page={filters.page}
           pageSize={filters.pageSize}
           onPageChange={(page, pageSize) => setFilters({ ...filters, page: pageSize === filters.pageSize ? page : 1, pageSize })}
+          onReload={() => { void articles.refetch(); }}
         />
       </Card>
     </div>

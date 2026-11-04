@@ -36,4 +36,15 @@ export const knowledgeApi = {
     const response = await apiClient.put<unknown>(`/knowledge/articles/${encodeURIComponent(id)}/draft`, { ...payload, expectedRevision });
     return readArticle(response.data);
   },
+  // Publish and archive take the revision in the body (the backend reads it before the query).
+  /** Draft → Published; author or Admin (else 403); not a Draft → 422. */
+  async publishArticle(id: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/knowledge/articles/${encodeURIComponent(id)}/publish`, { expectedRevision });
+    return readArticle(response.data);
+  },
+  /** Published → Archived; author or Admin (else 403); not Published → 422. */
+  async archiveArticle(id: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/knowledge/articles/${encodeURIComponent(id)}/archive`, { expectedRevision });
+    return readArticle(response.data);
+  },
 };

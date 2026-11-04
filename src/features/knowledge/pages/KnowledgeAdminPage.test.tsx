@@ -112,3 +112,29 @@ it('shows a permission error without any rows', async () => {
   expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này.')).toBeInTheDocument();
   expect(screen.queryByText(ownDraft.title)).not.toBeInTheDocument();
 });
+
+it('offers edit, publish and archive on the rows the user may change, and refreshes the list after one', async () => {
+  const published = { ...othersPublished, id: '40000000-0000-0000-0000-000000000004', title: 'Bài đã xuất bản của tôi', authorId: user.userId };
+  items = [ownDraft, published, othersDraft, othersPublished];
+  let posts = 0;
+  server.use(http.post('http://localhost/api/knowledge/articles/:id/publish', () => {
+    posts += 1;
+    items = [{ ...ownDraft, status: 1, revision: ownDraft.revision + 1 }, published, othersDraft, othersPublished];
+    return HttpResponse.json(items[0]);
+  }));
+  renderList(['Agent']);
+  await screen.findByText(ownDraft.title);
+  expect(row(ownDraft.title).getByRole('link', { name: `Sửa bài ${ownDraft.title}` })).toBeInTheDocument();
+  expect(row(ownDraft.title).getByRole('button', { name: /Xuất bản/ })).toBeInTheDocument();
+  expect(row(othersPublished.title).queryByRole('button')).not.toBeInTheDocument();
+  expect(row(othersDraft.title).queryByRole('button')).not.toBeInTheDocument();
+  expect(row(othersDraft.title).queryByRole('link')).not.toBeInTheDocument();
+
+  const before = requests.length;
+  await userEvent.click(row(ownDraft.title).getByRole('button', { name: /Xuất bản/ }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận xuất bản' }));
+  await waitFor(() => expect(posts).toBe(1));
+  await waitFor(() => expect(requests.length).toBeGreaterThan(before));
+  await waitFor(() => expect(row(ownDraft.title).getByText('Đã xuất bản')).toBeInTheDocument());
+  expect(row(ownDraft.title).getByRole('button', { name: /Lưu trữ/ })).toBeInTheDocument();
+});

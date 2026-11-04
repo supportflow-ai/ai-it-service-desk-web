@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Result } from 'antd';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
@@ -6,6 +7,8 @@ import { PageLoader } from '@/shared/ui/PageLoader';
 import { useArticle } from '../hooks/useArticle';
 import { isArticleAccessLost } from '../lib/articleErrorMessage';
 import { KNOWLEDGE_ADMIN_PATH } from '../lib/knowledgePaths';
+import { toKnowledgeSearch } from '../lib/knowledgeSearch';
+import { defaultArticleListFilters } from '../model/articleList';
 import { isArticleId } from '../model/articleId';
 import { ArticleStatus } from '../model/knowledge.types';
 import { canEditArticle } from '../model/knowledgePermissions';
@@ -26,6 +29,13 @@ export function EditArticlePage() {
   const { user } = useAuth();
   const article = useArticle(id ?? '');
   const reload = () => { void article.refetch(); };
+  // A publish still finishing after the person left this page must not pull them to the list.
+  const left = useRef(false);
+  useEffect(() => {
+    left.current = false;
+    return () => { left.current = true; };
+  }, []);
+  const publishedListPath = `${KNOWLEDGE_ADMIN_PATH}?${toKnowledgeSearch({ ...defaultArticleListFilters, status: ArticleStatus.Published }).toString()}`;
 
   if (!isArticleId(id)) return <ArticleUnavailable error={null} backPath={KNOWLEDGE_ADMIN_PATH} onRetry={reload} />;
   if (article.isPending) return <PageLoader />;
@@ -64,6 +74,8 @@ export function EditArticlePage() {
         article={data}
         onReload={reload}
         onCancel={() => navigate(KNOWLEDGE_ADMIN_PATH)}
+        // A published article cannot be edited, so editing ends on the list of published articles.
+        onPublished={() => { if (!left.current) navigate(publishedListPath); }}
         createdAt={createdAtOf(location.state)}
       />
     </div>

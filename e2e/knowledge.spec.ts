@@ -41,3 +41,40 @@ test('an Agent writes a new article, saves the draft, then saves it again with i
   await page.getByRole('link', { name: /Quay lại danh sách/ }).click();
   await expect(page.getByRole('link', { name: 'Sửa bài Cách kết nối VPN' })).toBeVisible();
 });
+
+test('TC-218 demo: create an article, preview it, publish it and find it under Published', async ({ page, api }) => {
+  api.roles = ['Agent'];
+  await page.addInitScript(() => localStorage.setItem('token', 'restored'));
+  await page.goto('/knowledge/manage/new');
+  await page.getByLabel('Tiêu đề').fill('Đổi mật khẩu Wi-Fi văn phòng');
+  await page.getByLabel('Nội dung').fill('## Các bước\n\n1. Mở **Cài đặt**\n2. Chọn mạng `SupportFlow`');
+  await page.getByRole('tab', { name: 'Xem trước' }).click();
+  await expect(page.getByRole('article', { name: 'Xem trước bài viết' }).getByRole('heading', { level: 2, name: 'Các bước' })).toBeVisible();
+  await page.getByRole('button', { name: 'Lưu nháp' }).click();
+  await expect(page.getByRole('heading', { name: 'Sửa bản nháp' })).toBeVisible();
+
+  // Unsaved changes hold publishing back, so only saved content is ever published.
+  await page.getByRole('tab', { name: 'Viết' }).click();
+  await page.getByLabel('Nội dung').fill('## Các bước\n\n1. Mở **Cài đặt**\n2. Chọn mạng `SupportFlow`\n3. Nhập mật khẩu mới');
+  await expect(page.getByRole('button', { name: /Xuất bản/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Lưu nháp' }).click();
+  await expect(page.getByText(/Đã lưu bản nháp lúc/)).toBeVisible();
+
+  await page.getByRole('button', { name: /Xuất bản/ }).click();
+  await page.getByRole('button', { name: 'Xác nhận xuất bản' }).click();
+  await expect(page).toHaveURL('/knowledge/manage?status=published');
+  await expect(page.getByRole('tab', { name: /Đã xuất bản/ })).toHaveAttribute('aria-selected', 'true');
+  const row = page.getByRole('row', { name: /Đổi mật khẩu Wi-Fi văn phòng/ });
+  await expect(row.getByText('Đã xuất bản')).toBeVisible();
+  await expect(row.getByRole('button', { name: /Lưu trữ/ })).toBeVisible();
+
+  const created = api.articles[0];
+  if (!created) throw new Error('No article was created');
+  expect(api.articleWrites.map((write) => write.key)).toEqual([
+    'POST /api/knowledge/articles',
+    `PUT /api/knowledge/articles/${created.id}/draft`,
+    `POST /api/knowledge/articles/${created.id}/publish`,
+  ]);
+  expect(api.articleWrites[2]?.body).toEqual({ expectedRevision: 2 });
+  expect(api.requests).toContain('GET /api/knowledge/articles?page=1&pageSize=10&status=1');
+});

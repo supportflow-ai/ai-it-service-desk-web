@@ -82,16 +82,18 @@ Mỗi ô ghi: nút có hiện trên UI không / backend trả gì nếu vẫn g�
 | Đọc bài Draft hoặc Archived | `GET …/{id}` | không hiện / 404 | hiện / 200 | không hiện / **404** | hiện / 200 | — |
 | Tạo bản nháp | `POST …/articles` `{ title, content, tags? }` | không hiện / 403 | hiện / 201 | — | hiện / 201 | — |
 | Sửa bản nháp | `PUT …/{id}/draft` `{ title, content, tags?, expectedRevision }` | không hiện / 403 | hiện khi Draft / 200 | không hiện / 403 | hiện khi Draft / 200 | Draft (khác → 422) |
-| Xuất bản | `POST …/{id}/publish?expectedRevision=` | không hiện / 403 | hiện khi Draft / 200 | không hiện / 403 | hiện khi Draft / 200 | Draft (khác → 422) |
-| Lưu trữ | `POST …/{id}/archive?expectedRevision=` | không hiện / 403 | hiện khi Published / 200 | không hiện / 403 | hiện khi Published / 200 | Published (khác → 422) |
+| Xuất bản | `POST …/{id}/publish` `{ expectedRevision }` | không hiện / 403 | hiện khi Draft / 200 | không hiện / 403 | hiện khi Draft / 200 | Draft (khác → 422) |
+| Lưu trữ | `POST …/{id}/archive` `{ expectedRevision }` | không hiện / 403 | hiện khi Published / 200 | không hiện / 403 | hiện khi Published / 200 | Published (khác → 422) |
 | Sửa bài đã xuất bản, tạo phiên bản mới | không có API | — | — | — | — | G3 |
 | Khôi phục bài lưu trữ, xoá bài | không có API | — | — | — | — | — |
 
 Ghi chú:
 - Với bài người khác, Agent bị 403 khi ghi (backend kiểm tác giả trước trạng thái), nhưng 404
   khi đọc chi tiết bài chưa Published. UI dựa vào `authorId === user.userId` để ẩn nút.
-- Publish/archive nhận `expectedRevision` ở query hoặc body (backend dùng body trước). UI gửi qua
-  query, giống các lệnh của vé.
+- Publish/archive nhận `expectedRevision` ở query hoặc body (backend dùng body trước). UI gửi trong
+  body, để không phụ thuộc cách backend xử lý body rỗng.
+- Trong màn sửa nháp, nút Xuất bản bị khoá khi form còn thay đổi chưa lưu: chỉ nội dung đã lưu
+  được xuất bản, và bài đã xuất bản không sửa được nữa (G3).
 - UI luôn gửi revision đang hiển thị dù backend không bắt buộc (G6); revision lấy lúc mở form sửa,
   không lấy lại khi trang tự tải lại ở nền (cùng cách đã làm cho "Sửa yêu cầu").
 

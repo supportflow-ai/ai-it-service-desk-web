@@ -14,12 +14,14 @@ interface ArticleEditorFormProps {
   onCancel: () => void;
   /** Shown beside the buttons, e.g. when the draft was last saved. */
   status?: ReactNode;
+  /** Further actions after the save button, e.g. publish. */
+  actions?: ReactNode;
 }
 
 /** Title, tags and Markdown content of a draft, checked like the backend Article domain. */
 type EditorTab = 'write' | 'preview';
 
-export function ArticleEditorForm({ form, initialValues, pending, onSubmit, onCancel, status }: ArticleEditorFormProps) {
+export function ArticleEditorForm({ form, initialValues, pending, onSubmit, onCancel, status, actions }: ArticleEditorFormProps) {
   const [tab, setTab] = useState<EditorTab>('write');
   const title = Form.useWatch('title', form) ?? '';
   const tags = Form.useWatch('tags', form) ?? [];
@@ -89,9 +91,10 @@ export function ArticleEditorForm({ form, initialValues, pending, onSubmit, onCa
         <Typography.Text type="secondary" style={{ fontSize: 12 }}>{status}</Typography.Text>
         <Space>
           <Button onClick={onCancel}>Hủy</Button>
-          <Button type="primary" htmlType="submit" loading={pending} style={{ borderRadius: 6, minWidth: 120 }}>
+          <Button type={actions ? 'default' : 'primary'} htmlType="submit" loading={pending} style={{ borderRadius: 6, minWidth: 120 }}>
             Lưu nháp
           </Button>
+          {actions}
         </Space>
       </div>
     </Form>

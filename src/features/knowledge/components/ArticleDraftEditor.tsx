@@ -2,13 +2,17 @@ import { useState } from 'react';
 import { Alert, Button, Card, Form } from 'antd';
 import type { ArticleDraftPayload, ArticleDto } from '../model/knowledge.types';
 import { useUpdateDraft } from '../hooks/useArticleWrite';
+import { useArticleWritePending } from '../hooks/useArticleWritePending';
 import { describeArticleError } from '../lib/articleErrorMessage';
+import { normalizeTags } from '../validation/articleRules';
 import { ArticleEditorForm } from './ArticleEditorForm';
+import { ArticleLifecycleActions } from './ArticleLifecycleActions';
 
 interface ArticleDraftEditorProps {
   article: ArticleDto;
   onReload: () => void;
   onCancel: () => void;
+  onPublished: (article: ArticleDto) => void;
   /** When the draft was created, for the screen opened right after creating it. */
   createdAt?: string | null;
 }
@@ -17,6 +21,13 @@ const editMessages = {
   403: 'Chỉ tác giả hoặc Admin được sửa bản nháp này.',
   422: 'Bài viết không còn là bản nháp, có thể vừa được xuất bản, nên không sửa được nữa. Hãy tải lại để xem trạng thái mới nhất.',
 };
+
+const snapshot = (source: ArticleDto): ArticleDraftPayload => ({ title: source.title, content: source.content, tags: source.tags });
+
+function sameContent(values: { title?: string; content?: string; tags?: string[] }, saved: ArticleDraftPayload) {
+  const sameTags = normalizeTags(values.tags ?? []).join(',') === saved.tags.join(',');
+  return (values.title ?? '').trim() === saved.title && (values.content ?? '').trim() === saved.content && sameTags;
+}
 
 function timeOf(iso: string) {
   const date = new Date(iso);
@@ -29,13 +40,22 @@ function timeOf(iso: string) {
  * overwritten; a background refetch never moves that revision, only this user's own save or the
  * reload they ask for after a conflict does. Typed changes stay through that reload.
  */
-export function ArticleDraftEditor({ article, onReload, onCancel, createdAt = null }: ArticleDraftEditorProps) {
+export function ArticleDraftEditor({ article, onReload, onCancel, onPublished, createdAt = null }: ArticleDraftEditorProps) {
   const [form] = Form.useForm<ArticleDraftPayload>();
   const update = useUpdateDraft(article.id);
-  const [base, setBase] = useState({ revision: article.revision, adoptReloaded: false });
+  const writing = useArticleWritePending(article.id);
+  // `saved` is the server copy the form is based on: its revision goes with every write, and
+  // publishing waits until the form matches it, since only saved content can be published.
+  const [base, setBase] = useState({ revision: article.revision, saved: snapshot(article), adoptReloaded: false });
   if (base.adoptReloaded && article.revision !== base.revision) {
-    setBase({ revision: article.revision, adoptReloaded: false });
+    setBase({ revision: article.revision, saved: snapshot(article), adoptReloaded: false });
   }
+  const values = {
+    title: Form.useWatch('title', form),
+    content: Form.useWatch('content', form),
+    tags: Form.useWatch('tags', form),
+  };
+  const unsaved = !sameContent(values, base.saved);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const failure = update.isError ? describeArticleError(update.error, editMessages) : null;
 
@@ -43,7 +63,7 @@ export function ArticleDraftEditor({ article, onReload, onCancel, createdAt = nu
     setBase((value) => ({ ...value, adoptReloaded: false }));
     update.mutate({ payload, expectedRevision: base.revision }, {
       onSuccess: (saved) => {
-        setBase({ revision: saved.revision, adoptReloaded: false });
+        setBase({ revision: saved.revision, saved: snapshot(saved), adoptReloaded: false });
         setSavedAt(saved.updatedAt);
       },
     });
@@ -71,10 +91,19 @@ export function ArticleDraftEditor({ article, onReload, onCancel, createdAt = nu
       <ArticleEditorForm
         form={form}
         initialValues={{ title: article.title, content: article.content, tags: article.tags }}
-        pending={update.isPending}
+        pending={update.isPending || writing}
         onSubmit={save}
         onCancel={onCancel}
         status={status}
+        actions={(
+          <ArticleLifecycleActions
+            article={article}
+            expectedRevision={base.revision}
+            onReload={reload}
+            onPublished={onPublished}
+            publishBlockedReason={unsaved ? 'Lưu nháp trước khi xuất bản: chỉ nội dung đã lưu mới được xuất bản.' : null}
+          />
+        )}
       />
     </Card>
   );
