@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Card, Col, Form, Progress, Row, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
@@ -22,6 +22,12 @@ export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
   const uploads = useUploadNewTicketFiles();
   const [files, setFiles] = useState<File[]>([]);
   const navigate = useNavigate();
+  // A submit still running after the person has left this screen must not pull them back to it.
+  const left = useRef(false);
+  useEffect(() => {
+    left.current = false;
+    return () => { left.current = true; };
+  }, []);
 
   // The ticket comes first: a file can only be attached to a ticket that exists. A file that
   // fails does not undo the ticket; its page says which ones to attach again.
@@ -38,6 +44,7 @@ export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
     } catch {
       return; // The session changed: this screen belongs to the previous account.
     }
+    if (left.current) return; // The files were still attached; the person is elsewhere now.
     const state: CreatedTicketState | undefined = failedUploads.length > 0 ? { failedUploads } : undefined;
     navigate(`/requester-dashboard/tickets/${ticketId}`, { state });
   };
