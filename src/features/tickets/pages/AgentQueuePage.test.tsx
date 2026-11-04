@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, expect, it } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
-import { ticketA, ticketB, user } from '../../../../tests/fixtures';
+import { agentDirectory, ticketA, ticketB, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
 import { AgentQueuePage } from './AgentQueuePage';
 import { TicketWorkspacePage } from './TicketWorkspacePage';
@@ -72,10 +72,20 @@ it('switches scope and filters by status, restarting from page 1', async () => {
   expect(screen.getByText(/Ticket đang giao cho bạn/)).toBeInTheDocument();
 });
 
-it('keeps the unsupported priority filter locked', async () => {
+it('shows the priority of each ticket, filters by it and sorts highest priority first', async () => {
   renderQueue();
-  await screen.findByText(ticketA.ticketNumber);
-  expect(screen.getByRole('combobox', { name: 'Ưu tiên' })).toBeDisabled();
+  const row = (await screen.findByText(ticketA.ticketNumber)).closest('tr');
+  if (!row) throw new Error('Queue row is missing');
+  expect(within(row).getByText('P3 · Trung bình')).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole('combobox', { name: 'Ưu tiên' }));
+  await userEvent.click(await screen.findByTitle('P1 · Khẩn cấp'));
+  await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', scope: 'unassigned', priority: 'P1' }));
+
+  await userEvent.click(screen.getByRole('combobox', { name: 'Sắp xếp' }));
+  await userEvent.click(await screen.findByTitle('Sắp xếp: ưu tiên cao trước'));
+  await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', scope: 'unassigned', priority: 'P1', sortByPriority: 'true' }));
+  expect(screen.getByTestId('location')).toHaveTextContent('/agent-workspace?priority=P1&sort=priority');
 });
 
 it('opens the ticket workspace from a row', async () => {
@@ -108,6 +118,7 @@ it('returns from the workspace to the same filtered queue', async () => {
     http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json(ticketA)),
     http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([])),
     http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json([])),
+    http.get('http://localhost/api/users', () => HttpResponse.json(agentDirectory)),
   );
   renderQueue('/agent-workspace?scope=all&category=NET', <TicketWorkspacePage />);
   await userEvent.click(await screen.findByRole('link', { name: `Mở ticket ${ticketA.ticketNumber}` }));

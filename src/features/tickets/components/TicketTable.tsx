@@ -1,6 +1,7 @@
 import { Table } from 'antd';
 import { Link } from 'react-router-dom';
 import type { PagedTicketResult } from '../model/ticket.types';
+import { ticketCategoryLabels } from '../model/ticketCategories';
 import { TicketStatusTag } from './TicketStatusTag';
 
 export function TicketTable({ result, loading, page, pageSize, onPageChange }: {
@@ -12,7 +13,7 @@ export function TicketTable({ result, loading, page, pageSize, onPageChange }: {
     columns={[
       { title: 'Mã Ticket', key: 'number', render: (_, ticket) => <Link to={`/requester-dashboard/tickets/${ticket.id}`}>{ticket.ticketNumber}</Link> },
       { title: 'Tiêu đề', dataIndex: 'title' },
-      { title: 'Danh mục', dataIndex: 'categoryId' },
+      { title: 'Danh mục', key: 'category', render: (_, ticket) => ticketCategoryLabels[ticket.categoryId] },
       { title: 'Trạng thái', key: 'status', render: (_, ticket) => <TicketStatusTag status={ticket.status} /> },
     ]}
     pagination={{ current: page, pageSize, total: result?.totalCount ?? 0, showSizeChanger: true, onChange: onPageChange }} />;

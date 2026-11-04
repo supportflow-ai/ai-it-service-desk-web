@@ -81,9 +81,26 @@ TicketAttachmentDto contains id, ticketId, fileName, fileSizeBytes, contentType,
 
 Status and assignment commands send the revision of the ticket on screen. A 409 shows
 "ticket was changed by someone else" with a reload button; reloading clears that error, and the
-write is never retried. The backend's revision is the PostgreSQL `xmin` and it skips the check
-when the expected or current revision is 0, so 0 gives no conflict protection: a backend gap.
-An upload is done only after confirm succeeds; the list is then refreshed from the server.
+write is never retried. The backend's revision is the PostgreSQL `xmin`. An upload is done only
+after confirm succeeds; the list is then refreshed from the server.
+
+### Priority, agent directory and ended tickets
+
+Pinned to backend `dev` commit `f82f0b2` (PR #38, `fix/sprint2-backend-review`, 2026-11-04),
+source `ServiceDesk.Api/Endpoints/{AuthEndpoints,TicketEndpoints}.cs`,
+`ServiceDesk.Application/Identity/GetUsersByRole/*`, `ServiceDesk.Application/Ticketing/*UseCase.cs`
+and `ServiceDesk.Infrastructure/Ticketing/PostgresTicketQueries.cs`. This changes the rows above:
+
+| Method/path | Request | Success response | Notes |
+| --- | --- | --- | --- |
+| Every TicketDto response | — | nullable `priority`: `P1`–`P4` | Computed by the backend (impact × urgency); any other value is an invalid response |
+| GET /tickets/queue | adds optional `priority` (`P1`–`P4`) and `sortByPriority` (bool) | unchanged | Sorted P1 → P4, then newest; unknown priority → 400 |
+| GET /users | `role=Agent` (Agent or Admin only) | `{ userId, fullName }[]`, no email | 403 for a requester; `fullName` may be null |
+| Every status and assignment command | `expectedRevision` now required | unchanged | Missing or 0 → 400 |
+| POST /tickets/{id}/claim | unchanged | unchanged | An Assigned ticket held by another agent → 403, unless Admin |
+| POST /tickets/{id}/unassign | unchanged | unchanged | Only an Assigned ticket |
+| POST /tickets/{id}/comments, attachments/upload-url, attachments/confirm | unchanged | unchanged | Closed or Cancelled ticket → 400. Internal notes and downloads are still accepted |
+| POST /auth/register | unchanged | unchanged | `fullName` is now stored, so it comes back from login and `/auth/me` |
 
 Rejected lifecycle transitions return 400, permission failures 403 and out-of-scope
 tickets 404. The UI explains each case and offers a reload for 400/409; it never retries a write.
@@ -92,19 +109,48 @@ How the UI follows backend `007a258` (TicketDto also carries `requesterId` and n
 `assignedToId`, both required by the reader):
 - Close/reopen/cancel are shown to the ticket's requester (`requesterId` = the signed-in user,
   whatever their role) and to Admin, as the use cases allow.
-- Claim and self-assign are shown to Agent and Admin. Claim is offered on Submitted and
-  Assigned tickets, like the backend, which does not check who holds an Assigned ticket.
+- Claim and self-assign are shown to Agent and Admin. Claim is offered on Submitted tickets and
+  on Assigned tickets held by the viewer; an Admin may also claim one held by someone else.
 - "Phụ trách" reads `assignedToId`: none → "Chưa phân công", the signed-in user → "Bạn",
-  anyone else → "Đã phân công". The backend sends no assignee name; `GET /api/users` exists
-  but returns emails, so it is not used and "assign to another agent" stays locked.
-- Unassign is offered only on Assigned tickets: the backend also accepts InProgress but then
-  leaves the ticket in progress with nobody holding it.
+  anyone else → their name from `GET /api/users?role=Agent` (staff only), or "Đã phân công"
+  if they are not listed. An agent without a name is shown with the start of their id.
+- Staff can assign any ticket that has not ended to an agent picked by name from that list.
+- Unassign is offered only on Assigned tickets, as the backend requires.
+- On a Closed or Cancelled ticket the requester screen takes no reply and no new file; the
+  workspace keeps internal notes only. Existing files stay downloadable.
 - Queue scopes filter on the assignee and leave out Closed/Cancelled; the tab descriptions say so.
 - Status and assignment changes appear in the timeline as `authorRole: "System"` entries,
   shown as "Hệ thống". `authorName` of people is the account's user name, today its email.
-- TicketDto has `priority`, but every new ticket gets the default P3 and the queue cannot
-  filter or sort by it, so priority is not shown and its filter stays locked.
+- Priority is shown in the queue and the workspace sidebar ("Chưa có" when null). The queue
+  filters by it and can sort highest priority first; both are kept in the URL
+  (`priority=P1`, `sort=priority`). New tickets get the default P3.
 - The historical TC-294 team-membership policy is not implemented.
+
+## Screens and roles
+
+Product source: PRD v1.1 and Implementation Specification v1.2 (baseline 28/08/2026), mapped onto
+what backend `007a258` implements. Every screen shows one perspective, whatever roles the viewer has.
+
+| Screen | Who | What it offers |
+| --- | --- | --- |
+| `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create and list own tickets (PR-01) |
+| `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (cancel/close/reopen when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request |
+| `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
+| `/admin-panel` | Admin | Not supported yet: no admin endpoints |
+
+The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi; staff: Hàng
+đợi xử lý, Yêu cầu của tôi, Tạo yêu cầu, plus Quản trị hệ thống for Admin) and the sidebar names the
+real roles. Signing out returns to a clean login page, so the next account never lands on the
+previous one's page; only an expired session returns to where it was. Every tab follows a sign-in,
+account switch or sign-out made in another tab.
+
+Required by the PRD/Spec but not implemented by the backend, so not offered in the UI: the Lead
+role and team scope (FR-AUTH-05/06; the queue returns every ticket to any staff member), Draft and
+Submit as separate steps, Triage, Start, Request information/Resume, a required resolution summary
+and reopen reason (FR-TKT-05/06), knowledge base, AI analysis and decisions, attachment delete
+(FR-FILE-05). Accounts created before PR #38 have no stored full name, so they are greeted by
+email.
 
 ## Not enabled
 

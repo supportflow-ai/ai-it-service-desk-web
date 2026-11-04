@@ -7,6 +7,8 @@ export const defaultAgentQueueFilters: AgentQueueFilters = {
   scope: 'unassigned',
   status: null,
   category: null,
+  priority: null,
+  sortByPriority: false,
   page: 1,
   pageSize: 10,
 };

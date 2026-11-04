@@ -1,5 +1,5 @@
 import { test as base, expect } from '@playwright/test';
-import { ticketA, user } from '../tests/fixtures';
+import { agentDirectory, ticketA, user } from '../tests/fixtures';
 
 interface ApiFixture {
   roles: string[];
@@ -37,6 +37,7 @@ export const test = base.extend<{ api: ApiFixture }>({
         const pageSize = Number(url.searchParams.get('pageSize'));
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
+      if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
       if (key === 'GET /api/tickets/queue') {
         const pageNumber = Number(url.searchParams.get('page'));
         const pageSize = Number(url.searchParams.get('pageSize'));

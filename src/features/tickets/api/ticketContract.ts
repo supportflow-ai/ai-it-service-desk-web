@@ -1,7 +1,8 @@
 import { AppError } from '@/shared/api/httpError';
 import { isRecord } from '@/shared/lib/guards';
-import { TicketCategory, TicketStatus } from '../model/ticket.types';
+import { TicketCategory, TicketPriority, TicketStatus } from '../model/ticket.types';
 import type {
+  AgentDirectoryEntry,
   DownloadUrlResult,
   PagedTicketResult,
   TicketAttachmentDto,
@@ -19,7 +20,9 @@ function isTicket(value: unknown): value is TicketDto {
     && (value.requesterDepartmentId === undefined || value.requesterDepartmentId === null || typeof value.requesterDepartmentId === 'string')
     && typeof value.requesterId === 'string'
     && (value.assignedToId === null || typeof value.assignedToId === 'string')
-    && typeof value.revision === 'number' && Number.isInteger(value.revision) && value.revision >= 0;
+    && typeof value.revision === 'number' && Number.isInteger(value.revision) && value.revision >= 0
+    && (value.priority === undefined || value.priority === null
+      || Object.values(TicketPriority).some((priority) => priority === value.priority));
 }
 
 export function readTicket(value: unknown): TicketDto {
@@ -117,4 +120,18 @@ function isDownloadUrlResult(value: unknown): value is DownloadUrlResult {
 export function readDownloadUrlResult(value: unknown): DownloadUrlResult {
   if (!isDownloadUrlResult(value)) throw new AppError('Phản hồi download URL không hợp lệ.', 'invalid-response');
   return value;
+}
+
+// No email is sent, so the name is the only thing a person can be recognized by.
+function isAgentDirectoryEntry(value: unknown): value is AgentDirectoryEntry {
+  return isRecord(value)
+    && typeof value.userId === 'string' && value.userId.length > 0
+    && (value.fullName === undefined || value.fullName === null || typeof value.fullName === 'string');
+}
+
+export function readAgentDirectory(value: unknown): AgentDirectoryEntry[] {
+  if (!Array.isArray(value) || !value.every(isAgentDirectoryEntry)) {
+    throw new AppError('Phản hồi danh sách kỹ thuật viên không hợp lệ.', 'invalid-response');
+  }
+  return value.map(({ userId, fullName }) => ({ userId, fullName: fullName?.trim() || null }));
 }

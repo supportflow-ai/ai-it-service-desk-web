@@ -7,6 +7,7 @@ import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
 import { ticketA, timelineItemA, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
+import { TicketStatus } from '../model/ticket.types';
 import { TicketDetailPage } from './TicketDetailPage';
 
 const leakedNote = { ...timelineItemA, id: '20000000-0000-0000-0000-000000000009', content: 'Ghi chú bí mật', isInternal: true };
@@ -40,6 +41,19 @@ it('lets the requester read the public timeline, but never internal notes or the
   expect(screen.queryByRole('button', { name: 'Ghi chú nội bộ' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Hủy vé/ })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Đính kèm tệp/ })).toBeInTheDocument();
+});
+
+it('shows a staff member their own request as a requester: no internal notes, internal composer or staff commands', async () => {
+  server.use(
+    http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Agent'] })),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([timelineItemA, leakedNote])),
+  );
+  renderRequesterPage();
+  expect(await screen.findByText(timelineItemA.content)).toBeInTheDocument();
+  expect(screen.queryByText(leakedNote.content)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Ghi chú nội bộ' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Nhận xử lý|Giải quyết/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Hủy vé/ })).toBeInTheDocument();
 });
 
 it('validates the comment length, sends a trimmed comment and refreshes the timeline', async () => {
@@ -124,4 +138,16 @@ it('hides cached timeline entries once access to the ticket is lost', async () =
   )));
   await userEvent.click(screen.getByRole('button', { name: 'Gửi bình luận' }));
   await waitFor(() => expect(screen.queryByText(timelineItemA.content)).not.toBeInTheDocument());
+});
+
+it('takes no further reply or file from the requester once the ticket is closed', async () => {
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ownTicket, status: TicketStatus.Closed })),
+    http.get(`http://localhost/api/tickets/${ticketA.id}/timeline`, () => HttpResponse.json([timelineItemA])),
+  );
+  renderRequesterPage();
+  expect(await screen.findByText('Yêu cầu đã kết thúc nên không thể gửi thêm phản hồi.')).toBeInTheDocument();
+  expect(screen.queryByRole('textbox', { name: 'Nội dung bình luận' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Đính kèm tệp/ })).not.toBeInTheDocument();
+  expect(await screen.findByText(timelineItemA.content)).toBeInTheDocument();
 });

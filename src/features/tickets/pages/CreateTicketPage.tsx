@@ -1,21 +1,22 @@
+import type { ReactNode } from 'react';
 import { Card, Col, Form, Row, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { useCreateTicket } from '../hooks/useCreateTicket';
 import { CreateTicketForm } from '../components/CreateTicketForm';
-import { CreateTicketAIPanel } from '../components/CreateTicketAIPanel';
-import type { CreateTicketPayload, TicketCategory } from '../model/ticket.types';
+import type { CreateTicketPayload } from '../model/ticket.types';
 
 const { Title } = Typography;
 
-export function CreateTicketPage() {
+interface CreateTicketPageProps {
+  /** Composed by the App: tickets must not depend on ai-assistance, so the AI side panel is injected. */
+  aiPanel?: ReactNode;
+}
+
+export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
   const [form] = Form.useForm<CreateTicketPayload>();
   const create = useCreateTicket();
   const navigate = useNavigate();
-
-  const handleApplyCategory = (category: TicketCategory) => {
-    form.setFieldsValue({ categoryId: category });
-  };
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
@@ -26,7 +27,7 @@ export function CreateTicketPage() {
       {create.error && <ErrorState error={create.error} />}
 
       <Row gutter={[24, 24]} align="top">
-        <Col xs={24} lg={15}>
+        <Col xs={24} lg={aiPanel ? 15 : 24}>
           <Card
             bordered
             style={{
@@ -51,9 +52,8 @@ export function CreateTicketPage() {
           </Card>
         </Col>
 
-        <Col xs={24} lg={9}>
-          <CreateTicketAIPanel onApplyCategory={handleApplyCategory} />
-        </Col>
+        {/* AI is side assistance (PRD UX-02): submitting never depends on it. */}
+        {aiPanel && <Col xs={24} lg={9}>{aiPanel}</Col>}
       </Row>
     </div>
   );

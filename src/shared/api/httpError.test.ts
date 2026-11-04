@@ -15,6 +15,12 @@ describe('HTTP normalization', () => {
   it('preserves validated field errors', () => {
     expect(normalizeError(httpError(400, { errors: { title: ['Required'], unsafe: 42 } })).fieldErrors).toEqual({ title: ['Required'] });
   });
+  it('keeps server messages sent as a plain list, but never as the shown message', () => {
+    const normalized = normalizeError(httpError(400, { errors: ['Email is already registered.', 42] }));
+    expect(normalized.serverMessages).toEqual(['Email is already registered.']);
+    expect(normalized.fieldErrors).toBeUndefined();
+    expect(normalized.message).toBe('Thông tin chưa hợp lệ. Vui lòng kiểm tra lại.');
+  });
   it('recognizes network and cancellation separately', () => {
     expect(normalizeError(new AxiosError('offline')).kind).toBe('network');
     expect(normalizeError(new CanceledError()).kind).toBe('canceled');

@@ -17,13 +17,18 @@ const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) 
 const TicketWorkspacePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketWorkspacePage })));
 const AgentQueuePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.AgentQueuePage })));
 const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceTriagePanel })));
+const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.RequesterAIPanel })));
 
 export function AppRouter() {
   const protectedPages = [
     { ...routes.home, element: <HomePage /> },
     { ...routes.tickets, element: <TicketListPage /> },
     { ...routes.ticket, element: <TicketDetailPage /> },
-    { ...routes.create, element: <CreateTicketPage /> },
+    {
+      ...routes.create,
+      // No requester analysis endpoint exists yet, so the panel shows its not-enabled state and sends no request.
+      element: <CreateTicketPage aiPanel={<Suspense fallback={null}><RequesterAIPanel result={null} /></Suspense>} />,
+    },
     { ...routes.workspace, element: <AgentQueuePage /> },
     {
       ...routes.workspaceTicket,

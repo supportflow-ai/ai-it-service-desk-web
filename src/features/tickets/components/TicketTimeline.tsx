@@ -3,11 +3,14 @@ import { useAuth } from '@/features/auth';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { useTicketTimeline } from '../hooks/useTicketTimeline';
 import { isAccessLostError } from '../lib/ticketErrorMessage';
-import { canAddInternalNote } from '../model/ticketPermissions';
+import { canSeeInternalNotes } from '../model/ticketPermissions';
+import type { TicketView } from '../model/ticketPermissions';
 import { timelineAuthorLabel, timelineRoleLabel, visibleTimelineItems } from '../model/timeline';
 
 interface TicketTimelineProps {
   ticketId: string;
+  /** The requester screen shows only public entries, whoever is viewing. */
+  view: TicketView;
 }
 
 function formatDate(isoString: string) {
@@ -16,11 +19,11 @@ function formatDate(isoString: string) {
   return `${date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })} ${date.toLocaleDateString('vi-VN')}`;
 }
 
-export function TicketTimeline({ ticketId }: TicketTimelineProps) {
+export function TicketTimeline({ ticketId, view }: TicketTimelineProps) {
   const { user } = useAuth();
   const timeline = useTicketTimeline(ticketId);
   const items = timeline.data && !isAccessLostError(timeline.error)
-    ? visibleTimelineItems(timeline.data, canAddInternalNote(user))
+    ? visibleTimelineItems(timeline.data, canSeeInternalNotes(user, view))
     : [];
 
   return (

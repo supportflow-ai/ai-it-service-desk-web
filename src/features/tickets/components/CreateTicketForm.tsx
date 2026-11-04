@@ -1,4 +1,4 @@
-import { Button, Col, Form, Input, Row, Select } from 'antd';
+import { Button, Form, Input, Select } from 'antd';
 import type { FormInstance } from 'antd';
 import type { CreateTicketPayload } from '../model/ticket.types';
 import { ticketCategoryLabels } from '../model/ticketCategories';
@@ -28,32 +28,20 @@ export function CreateTicketForm({ form, pending, onSubmit, onCancel }: CreateTi
         <Input placeholder="Mô tả tóm tắt sự cố" />
       </Form.Item>
 
-      <Row gutter={16}>
-        <Col xs={24} sm={12}>
-          <Form.Item
-            name="categoryId"
-            label={<span style={{ fontWeight: 600 }}>Danh mục sự cố</span>}
-            rules={createTicketRules.categoryId}
-            style={{ marginBottom: 16 }}
-          >
-            <Select
-              options={Object.entries(ticketCategoryLabels).map(([value, label]) => ({
-                value,
-                label,
-              }))}
-            />
-          </Form.Item>
-        </Col>
-
-        <Col xs={24} sm={12}>
-          <Form.Item
-            label={<span style={{ fontWeight: 600 }}>Phòng ban</span>}
-            style={{ marginBottom: 16 }}
-          >
-            <Input value="Phòng Công nghệ / Hà Nội" readOnly style={{ background: 'var(--sf2)' }} />
-          </Form.Item>
-        </Col>
-      </Row>
+      {/* No department is sent or known yet: the backend takes no department on create. */}
+      <Form.Item
+        name="categoryId"
+        label={<span style={{ fontWeight: 600 }}>Danh mục sự cố</span>}
+        rules={createTicketRules.categoryId}
+        style={{ marginBottom: 16 }}
+      >
+        <Select
+          options={Object.entries(ticketCategoryLabels).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+        />
+      </Form.Item>
 
       <Form.Item
         name="description"

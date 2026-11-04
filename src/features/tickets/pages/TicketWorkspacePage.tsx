@@ -56,7 +56,7 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Alert
           type="info"
           showIcon
-          message="Ticket đã kết thúc: không còn thao tác chuyển trạng thái hay phân công."
+          message="Ticket đã kết thúc: không còn chuyển trạng thái, phân công, phản hồi công khai hay đính kèm tệp. Vẫn ghi chú nội bộ được."
           style={{ marginBottom: 16 }}
         />
       )}
@@ -74,10 +74,10 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Col xs={24} md={16} lg={18} xl={13}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <TicketWorkspaceHeader ticket={ticket.data} />
-            <TicketCommandPanel ticket={ticket.data} onReload={reload} />
-            <TicketTimeline ticketId={ticket.data.id} />
-            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
-            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
+            <TicketCommandPanel ticket={ticket.data} onReload={reload} view="workspace" />
+            <TicketTimeline ticketId={ticket.data.id} view="workspace" />
+            <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} status={ticket.data.status} view="workspace" />
+            <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} status={ticket.data.status} />
           </Space>
         </Col>
 

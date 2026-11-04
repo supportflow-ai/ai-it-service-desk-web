@@ -10,6 +10,7 @@ import {
   canReopenTicket,
   canResolveTicket,
 } from '../model/ticketPermissions';
+import type { TicketView } from '../model/ticketPermissions';
 import { useCancelTicket } from '../hooks/useCancelTicket';
 import { useClaimTicket } from '../hooks/useClaimTicket';
 import { useCloseTicket } from '../hooks/useCloseTicket';
@@ -22,13 +23,15 @@ import { TicketResolveDialog } from './TicketResolveDialog';
 interface TicketCommandPanelProps {
   ticket: TicketDto;
   onReload: () => void;
+  /** The requester screen offers the owner's commands only; the workspace the staff commands. */
+  view: TicketView;
 }
 
 const transitionMessages = {
   400: 'Không thể chuyển trạng thái: ticket có thể đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
 };
 
-export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps) {
+export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPanelProps) {
   const { user } = useAuth();
   const [resolveOpen, setResolveOpen] = useState(false);
 
@@ -57,11 +60,11 @@ export function TicketCommandPanel({ ticket, onReload }: TicketCommandPanelProps
   };
 
   const allowed = {
-    claim: canClaimTicket(user, ticket),
-    resolve: canResolveTicket(user, ticket),
-    close: canCloseTicket(user, ticket),
-    reopen: canReopenTicket(user, ticket),
-    cancel: canCancelTicket(user, ticket),
+    claim: canClaimTicket(user, ticket, view),
+    resolve: canResolveTicket(user, ticket, view),
+    close: canCloseTicket(user, ticket, view),
+    reopen: canReopenTicket(user, ticket, view),
+    cancel: canCancelTicket(user, ticket, view),
   };
   const hasAction = Object.values(allowed).some(Boolean);
 

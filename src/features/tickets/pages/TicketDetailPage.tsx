@@ -26,13 +26,14 @@ export function TicketDetailPage() {
   }
   return <Space direction="vertical" style={{ width: '100%' }} size={16}>
     <Card>
-      <Link to={listPath}>Quay lại danh sách</Link>
+      <div style={{ marginBottom: 8 }}><Link to={listPath}>Quay lại danh sách</Link></div>
       {ticket.error && <ErrorState error={ticket.error} onRetry={reload} />}
       <TicketHeader ticket={ticket.data} /><TicketMetadata ticket={ticket.data} />
     </Card>
-    <TicketCommandPanel ticket={ticket.data} onReload={reload} />
-    <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} />
-    <TicketTimeline ticketId={ticket.data.id} />
-    <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} />
+    {/* The requester's own view (PRD US-021): owner commands and public data only, whoever is viewing. */}
+    <TicketCommandPanel ticket={ticket.data} onReload={reload} view="requester" />
+    <TicketAttachmentSection key={ticket.data.id} ticketId={ticket.data.id} status={ticket.data.status} />
+    <TicketTimeline ticketId={ticket.data.id} view="requester" />
+    <TicketCommentComposer key={`composer-${ticket.data.id}`} ticketId={ticket.data.id} status={ticket.data.status} view="requester" />
   </Space>;
 }

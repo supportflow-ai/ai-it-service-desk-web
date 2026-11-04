@@ -8,8 +8,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: shouldRetryQuery,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      refetchOnWindowFocus: false,
+      // Several agents work the same tickets: keep reads fresh, so a queue or ticket seen again
+      // (or a tab brought back) shows other people's changes instead of a copy up to minutes old.
+      staleTime: 30 * 1000,
+      refetchOnWindowFocus: true,
     },
     mutations: { retry: false },
   },

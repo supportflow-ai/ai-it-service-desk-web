@@ -39,12 +39,38 @@ it('sends agent queue filters and omits the ones that are not set', async () => 
     seen.push(Object.fromEntries(new URL(request.url).searchParams));
     return HttpResponse.json({ items: [ticketA], page: 1, pageSize: 10, totalCount: 1 });
   }));
-  await ticketApi.getAgentQueue({ scope: 'unassigned', status: TicketStatus.Submitted, category: 'NET', page: 2, pageSize: 20 });
-  await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, page: 1, pageSize: 10 });
+  await ticketApi.getAgentQueue({ scope: 'unassigned', status: TicketStatus.Submitted, category: 'NET', priority: 'P1', sortByPriority: true, page: 2, pageSize: 20 });
+  await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, priority: null, sortByPriority: false, page: 1, pageSize: 10 });
   expect(seen).toEqual([
-    { page: '2', pageSize: '20', scope: 'unassigned', status: '1', category: 'NET' },
+    { page: '2', pageSize: '20', scope: 'unassigned', status: '1', category: 'NET', priority: 'P1', sortByPriority: 'true' },
     { page: '1', pageSize: '10' },
   ]);
+});
+
+it('reads the priority the backend computed and rejects one it never sends', async () => {
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, priority: 'P2' })));
+  expect((await ticketApi.getTicketById(ticketA.id)).priority).toBe('P2');
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, priority: null })));
+  expect((await ticketApi.getTicketById(ticketA.id)).priority).toBeNull();
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, priority: 'Urgent' })));
+  await expect(ticketApi.getTicketById(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
+});
+
+it('reads the agent directory by id and name, without requiring an email', async () => {
+  const seen: string[] = [];
+  server.use(http.get('http://localhost/api/users', ({ request }) => {
+    seen.push(new URL(request.url).search);
+    return HttpResponse.json([{ userId: 'agent-1', fullName: 'Trần Thị Bình' }, { userId: 'agent-2', fullName: null }, { userId: 'agent-3', fullName: '  ' }]);
+  }));
+  expect(await ticketApi.getAgentDirectory()).toEqual([
+    { userId: 'agent-1', fullName: 'Trần Thị Bình' },
+    { userId: 'agent-2', fullName: null },
+    { userId: 'agent-3', fullName: null },
+  ]);
+  expect(seen).toEqual(['?role=Agent']);
+
+  server.use(http.get('http://localhost/api/users', () => HttpResponse.json([{ fullName: 'Không có id' }])));
+  await expect(ticketApi.getAgentDirectory()).rejects.toMatchObject({ kind: 'invalid-response' });
 });
 it('assigns with the backend agentId payload and unassigns without a body', async () => {
   const calls: unknown[] = [];

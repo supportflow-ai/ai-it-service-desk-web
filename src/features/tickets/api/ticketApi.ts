@@ -10,6 +10,7 @@ import type {
   GenerateUploadUrlPayload,
 } from '../model/ticket.types';
 import {
+  readAgentDirectory,
   readAttachment,
   readAttachments,
   readDownloadUrlResult,
@@ -20,13 +21,15 @@ import {
   readUploadUrlResult,
 } from './ticketContract';
 
-function agentQueueParams({ scope, status, category, page, pageSize }: AgentQueueFilters) {
+function agentQueueParams({ scope, status, category, priority, sortByPriority, page, pageSize }: AgentQueueFilters) {
   return {
     page,
     pageSize,
     ...(scope === 'all' ? {} : { scope }),
     ...(status === null ? {} : { status }),
     ...(category === null ? {} : { category }),
+    ...(priority === null ? {} : { priority }),
+    ...(sortByPriority ? { sortByPriority: true } : {}),
   };
 }
 
@@ -39,6 +42,11 @@ export const ticketApi = {
   async getAgentQueue(filters: AgentQueueFilters, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>('/tickets/queue', { params: agentQueueParams(filters), signal });
     return readTicketPage(response.data);
+  },
+  /** Staff only (403 for a requester): the agents a ticket can be assigned to. */
+  async getAgentDirectory(signal?: AbortSignal) {
+    const response = await apiClient.get<unknown>('/users', { params: { role: 'Agent' }, signal });
+    return readAgentDirectory(response.data);
   },
   async getTicketById(id: string, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>(`/tickets/${encodeURIComponent(id)}`, { signal });

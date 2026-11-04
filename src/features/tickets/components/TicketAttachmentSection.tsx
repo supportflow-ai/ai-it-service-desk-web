@@ -7,10 +7,14 @@ import { useAttachmentDownload } from '../hooks/useAttachmentDownload';
 import { useTicketAttachments } from '../hooks/useTicketAttachments';
 import { useUploadAttachment } from '../hooks/useUploadAttachment';
 import { describeTicketError, isAccessLostError } from '../lib/ticketErrorMessage';
+import type { TicketStatus } from '../model/ticket.types';
+import { canAttachFiles } from '../model/ticketPermissions';
 import { ATTACHMENT_ACCEPT } from '../validation/attachmentRules';
 
 interface TicketAttachmentSectionProps {
   ticketId: string;
+  /** An ended ticket keeps its files downloadable but takes no new ones. */
+  status: TicketStatus;
 }
 
 const attachmentMessages = {
@@ -24,7 +28,8 @@ function formatFileSize(bytes: number) {
 }
 
 /** Callers must remount this section (key={ticketId}) when the ticket changes. */
-export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionProps) {
+export function TicketAttachmentSection({ ticketId, status }: TicketAttachmentSectionProps) {
+  const allowUpload = canAttachFiles({ status });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const attachments = useTicketAttachments(ticketId);
   const upload = useUploadAttachment(ticketId);
@@ -50,7 +55,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
           <span>Tệp đính kèm ({items.length})</span>
         </div>
       }
-      extra={
+      extra={allowUpload ? (
         <>
           <input
             type="file"
@@ -71,7 +76,9 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
             Đính kèm tệp
           </Button>
         </>
-      }
+      ) : (
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>Ticket đã kết thúc: không đính kèm thêm được</Typography.Text>
+      )}
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
       {attachments.error && (
@@ -113,7 +120,7 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
 
       {!attachments.isPending && !attachments.error && items.length === 0 && (
         <Empty
-          description="Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP)."
+          description={allowUpload ? 'Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP).' : 'Chưa có tệp đính kèm nào.'}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       )}

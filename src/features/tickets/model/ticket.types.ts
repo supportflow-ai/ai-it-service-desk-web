@@ -26,6 +26,15 @@ export enum TicketStatus {
   PendingExternal = 9,
 }
 
+/** Computed by the backend from impact × urgency (ITIL); the client never sets it. */
+export const TicketPriority = {
+  P1: 'P1',
+  P2: 'P2',
+  P3: 'P3',
+  P4: 'P4',
+} as const;
+export type TicketPriority = (typeof TicketPriority)[keyof typeof TicketPriority];
+
 export interface CreateTicketPayload {
   title: string;
   categoryId: TicketCategory;
@@ -48,6 +57,8 @@ export interface TicketDto {
   assignedToId: string | null;
   /** Sent back as expectedRevision, so a write based on an outdated copy is rejected with 409. */
   revision: number;
+  /** Null (or absent) while the backend has not set one. */
+  priority?: TicketPriority | null;
 }
 
 export interface PagedTicketResult {
@@ -64,8 +75,17 @@ export interface AgentQueueFilters {
   scope: AgentQueueScope;
   status: TicketStatus | null;
   category: TicketCategory | null;
+  priority: TicketPriority | null;
+  /** Highest priority first (P1 → P4), then newest; otherwise newest first. */
+  sortByPriority: boolean;
   page: number;
   pageSize: number;
+}
+
+/** GET /api/users?role=Agent returns only the id and the name, never the email. */
+export interface AgentDirectoryEntry {
+  userId: string;
+  fullName: string | null;
 }
 
 export interface TimelineItemDto {

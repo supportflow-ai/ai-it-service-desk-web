@@ -9,6 +9,8 @@ export class AppError extends Error {
     public readonly kind: ErrorKind,
     public readonly status?: number,
     public readonly fieldErrors?: Record<string, string[]>,
+    /** Server messages sent as `errors: string[]`; features map known ones, never show them raw. */
+    public readonly serverMessages?: string[],
   ) {
     super(message);
     this.name = 'AppError';
@@ -31,13 +33,16 @@ export function normalizeError(error: unknown): AppError {
     if (!status) return new AppError('Không thể kết nối. Vui lòng thử lại.', 'network');
     const data: unknown = error.response?.data;
     let fieldErrors: Record<string, string[]> | undefined;
+    let serverMessages: string[] | undefined;
     if (isRecord(data) && isRecord(data.errors)) {
       fieldErrors = {};
       for (const [field, errors] of Object.entries(data.errors)) {
         if (Array.isArray(errors) && errors.every((item): item is string => typeof item === 'string')) fieldErrors[field] = errors;
       }
+    } else if (isRecord(data) && Array.isArray(data.errors)) {
+      serverMessages = data.errors.filter((item): item is string => typeof item === 'string');
     }
-    return new AppError(messages[status] ?? 'Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại.', 'http', status, fieldErrors);
+    return new AppError(messages[status] ?? 'Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại.', 'http', status, fieldErrors, serverMessages);
   }
   return new AppError('Có lỗi xảy ra. Vui lòng thử lại.', 'unknown');
 }

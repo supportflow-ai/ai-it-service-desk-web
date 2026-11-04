@@ -6,6 +6,7 @@ import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
 import { ticketA, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
+import { TicketStatus } from '../model/ticket.types';
 import { TicketAttachmentSection } from './TicketAttachmentSection';
 
 const uploadUrl = 'https://storage.example.com/servicedesk';
@@ -22,9 +23,9 @@ const listUrl = `http://localhost/api/tickets/${ticketA.id}/attachments`;
 let stored: (typeof attachment)[] = [];
 let listReads = 0;
 
-function renderSection() {
+function renderSection(status = TicketStatus.Submitted) {
   const { Wrapper, queryClient } = createTestWrapper();
-  render(<TicketAttachmentSection ticketId={ticketA.id} />, { wrapper: Wrapper });
+  render(<TicketAttachmentSection ticketId={ticketA.id} status={status} />, { wrapper: Wrapper });
   return queryClient;
 }
 
@@ -157,4 +158,14 @@ it('hides cached attachments once access to the ticket is lost', async () => {
   await act(() => queryClient.invalidateQueries());
   await waitFor(() => expect(screen.queryByText('log.txt')).not.toBeInTheDocument());
   expect(screen.getByText('Tệp đính kèm (0)')).toBeInTheDocument();
+});
+
+it('keeps files of an ended ticket downloadable but takes no new ones', async () => {
+  stored = [attachment];
+  renderSection(TicketStatus.Closed);
+  expect(await screen.findByText('log.txt')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Tải xuống/ })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: /Đính kèm tệp/ })).not.toBeInTheDocument();
+  expect(screen.queryByTestId('attachment-input')).not.toBeInTheDocument();
+  expect(screen.getByText(/Ticket đã kết thúc: không đính kèm thêm được/)).toBeInTheDocument();
 });

@@ -17,6 +17,7 @@ export const ticketKeys = {
   detail: (version: number, id: string) => ['tickets', version, 'detail', id] as const,
   timeline: (version: number, id: string) => ['tickets', version, 'timeline', id] as const,
   attachments: (version: number, id: string) => ['tickets', version, 'attachments', id] as const,
+  agents: (version: number) => ['tickets', version, 'agents'] as const,
   /** Prefix shared by every write to one ticket, so pending writes can be found per ticket. */
   writes,
   /** Prefix of the writes that change status or assignment, which must not overlap. */
