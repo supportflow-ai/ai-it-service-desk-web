@@ -9,5 +9,9 @@ export const routeConfig = {
   create: { path: '/tickets/new', roles: ['Requester', 'Agent', 'Admin'], label: 'Tạo yêu cầu' },
   workspace: { path: '/agent-workspace', roles: ['Agent', 'Admin'], label: 'Hàng đợi xử lý' },
   workspaceTicket: { path: '/agent-workspace/tickets/:id', roles: ['Agent', 'Admin'] },
+  // Knowledge authoring needs Agent or Admin (RequireAgent at backend dev 1506a5b).
+  knowledgeAdmin: { path: '/knowledge/manage', roles: ['Agent', 'Admin'], label: 'Kho tri thức' },
+  knowledgeNew: { path: '/knowledge/manage/new', roles: ['Agent', 'Admin'] },
+  knowledgeEdit: { path: '/knowledge/manage/:id/edit', roles: ['Agent', 'Admin'] },
   admin: { path: '/admin-panel', roles: ['Admin'], label: 'Quản trị hệ thống' },
 } as const satisfies Record<string, RouteDefinition>;

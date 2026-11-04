@@ -166,6 +166,23 @@ and reopen reason (FR-TKT-05/06), knowledge base, AI analysis and decisions, att
 (FR-FILE-05). Accounts created before PR #38 have no stored full name, so they are greeted by
 email.
 
+## Knowledge Base
+
+Backend dev `1506a5b` (PR #39) adds `/api/knowledge/articles`. The routes, actions and permissions
+the UI will follow, and the gaps against the team contract, are in
+[knowledge-ui-access-map.md](knowledge-ui-access-map.md) (TC-332). The Agent/Admin UI (TC-218) is
+built against them:
+- `/knowledge/manage` (Agent, Admin) lists `GET /knowledge/articles` with status/tag/query filters
+  kept in the URL. The backend returns other authors' unpublished articles to Agents (gap G1); those
+  rows are shown locked, since opening them would only give 404.
+- `/knowledge/manage/new` and `/knowledge/manage/:id/edit` (TC-338) create with `POST /knowledge/articles`
+  and save with `PUT /knowledge/articles/{id}/draft`, checked like the Article domain (title ≤ 200,
+  content ≥ 10, ≤ 10 tags of ≤ 50, tags lower case without duplicates). The revision is always sent
+  although the backend does not require it (gap G6); it is the one the form opened on, so a background
+  refetch cannot turn a save into an overwrite. 409 and 422 offer a reload that keeps the typed text.
+  Only the author or an Admin edits, and only a Draft: published articles cannot be versioned (gap G3).
+- The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
+
 ## Not enabled
 
 AI HTTP endpoints are not used yet: backend dev f82f0b2 still exposes no triage result or review

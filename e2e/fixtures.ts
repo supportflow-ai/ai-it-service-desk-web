@@ -1,5 +1,8 @@
 import { test as base, expect } from '@playwright/test';
-import { agentDirectory, ticketA, user } from '../tests/fixtures';
+import { agentDirectory, articlePage, ownDraft, ticketA, user } from '../tests/fixtures';
+
+type Article = typeof ownDraft;
+const draftArticleId = (article: Article) => `${article.id}/draft`;
 
 interface ApiFixture {
   roles: string[];
@@ -11,13 +14,16 @@ interface ApiFixture {
   presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> } | null;
   confirmedPayloads: unknown[];
   attachments: Record<string, unknown>[];
+  articles: Article[];
+  /** Bodies of knowledge writes, in order: `METHOD path` + the JSON sent. */
+  articleWrites: { key: string; body: unknown }[];
 }
 
 export const test = base.extend<{ api: ApiFixture }>({
   api: async ({ page }, provide) => {
     const api: ApiFixture = {
       roles: ['Requester'], meStatus: 200, detailStatus: 200, tickets: [ticketA], requests: [], createdPayload: null, presign: null,
-      confirmedPayloads: [], attachments: [],
+      confirmedPayloads: [], attachments: [], articles: [], articleWrites: [],
     };
     const unexpected: string[] = [];
     await page.route('**/api/**', async (route) => {
@@ -38,6 +44,29 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
       if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
+      if (key === 'GET /api/knowledge/articles') return route.fulfill({ json: articlePage(api.articles) });
+      // Like backend dev 1506a5b: a create is a Draft by the caller; a draft update needs the current revision.
+      if (key === 'POST /api/knowledge/articles') {
+        const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'>;
+        api.articleWrites.push({ key, body });
+        const now = new Date().toISOString();
+        const created: Article = {
+          ...ownDraft, ...body, id: `40000000-0000-0000-0000-${String(api.articles.length + 100).padStart(12, '0')}`,
+          status: 0, authorId: currentUser.userId, version: 1, revision: 1, createdAt: now, updatedAt: now, publishedAt: null, archivedAt: null,
+        };
+        api.articles.unshift(created);
+        return route.fulfill({ status: 201, json: created });
+      }
+      const readArticle = api.articles.find((article) => key === `GET /api/knowledge/articles/${article.id}`);
+      if (readArticle) return route.fulfill({ json: readArticle });
+      const draftArticle = api.articles.find((article) => key === `PUT /api/knowledge/articles/${draftArticleId(article)}`);
+      if (draftArticle) {
+        const body = request.postDataJSON() as Pick<Article, 'title' | 'content' | 'tags'> & { expectedRevision: number };
+        api.articleWrites.push({ key, body });
+        if (body.expectedRevision !== draftArticle.revision) return route.fulfill({ status: 409, json: { error: 'stale' } });
+        Object.assign(draftArticle, { title: body.title, content: body.content, tags: body.tags, revision: draftArticle.revision + 1, updatedAt: new Date().toISOString() });
+        return route.fulfill({ json: draftArticle });
+      }
       if (key === 'GET /api/tickets/queue') {
         const pageNumber = Number(url.searchParams.get('page'));
         const pageSize = Number(url.searchParams.get('pageSize'));
