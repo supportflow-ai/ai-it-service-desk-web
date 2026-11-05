@@ -15,6 +15,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import type { Role } from '@/features/auth';
 import { getNavigation } from '../navigation/navigationConfig';
+import { ThemeSwitch } from './ThemeSwitch';
 import { routeConfig } from '../router/routeConfig';
 
 const { Sider, Header, Content } = Layout;
@@ -111,7 +112,7 @@ export function MainLayout() {
       <Layout style={{ background: 'var(--bg)' }}>
         <Header
           style={{
-            background: '#FFFFFF',
+            background: 'var(--sf)',
             borderBottom: '1px solid var(--bd)',
             padding: '0 28px',
             height: '60px',
@@ -135,6 +136,7 @@ export function MainLayout() {
           </div>
 
           <Space size="middle" align="center">
+            <ThemeSwitch />
             <Button
               type="text"
               disabled

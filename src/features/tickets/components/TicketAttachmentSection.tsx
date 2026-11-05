@@ -93,6 +93,22 @@ export function TicketAttachmentSection({ ticketId, status }: TicketAttachmentSe
         />
       )}
 
+      {upload.unconfirmed && (
+        <Alert
+          type="warning"
+          showIcon
+          message={`Tệp ${upload.unconfirmed.fileName} đã tải lên nhưng chưa được xác nhận`}
+          description="Tệp chỉ thuộc ticket sau khi được xác nhận. Bạn có thể xác nhận lại mà không phải tải tệp lên lần nữa."
+          action={(
+            <Space>
+              <Button size="small" type="primary" loading={upload.isConfirming} onClick={upload.retryConfirm}>Xác nhận lại</Button>
+              <Button size="small" disabled={upload.isConfirming} onClick={upload.discardUnconfirmed}>Bỏ qua</Button>
+            </Space>
+          )}
+          style={{ marginBottom: 12 }}
+        />
+      )}
+
       {downloadFailure && (
         <Alert
           type="error"
