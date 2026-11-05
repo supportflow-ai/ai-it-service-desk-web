@@ -26,6 +26,34 @@
   color-scheme: light;
 }
 
+/* Dark mode, set by ThemeModeProvider. Lighter tones keep text pairs at 4.5:1 on slate surfaces. */
+:root[data-theme="dark"] {
+  --bg: #0F172A;
+  --sf: #1E293B;
+  --sf2: #273449;
+  --sel: #1E3352;
+  --tx: #E2E8F0;
+  --tx2: #94A3B8;
+  --tx3: #8B9AB0;
+  --bd: #334155;
+  --bd2: #475569;
+  --pr: #60A5FA;
+  --prh: #93C5FD;
+  --prs: #1E3A5F;
+  --ok: #4ADE80;
+  --oks: #14532D;
+  --wn: #FBBF24;
+  --wns: #422006;
+  --er: #F87171;
+  --ers: #450A0A;
+  --in: #93C5FD;
+  --note: #2B2410;
+  --noteb: #6B5414;
+  --onpr: #0F172A;
+  --sh: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   background-color: var(--bg);
