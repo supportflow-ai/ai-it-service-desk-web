@@ -7,18 +7,17 @@ export const defaultAgentQueueFilters: AgentQueueFilters = {
   scope: 'unassigned',
   status: null,
   category: null,
+  priority: null,
+  sortByPriority: false,
   page: 1,
   pageSize: 10,
 };
 
-// Descriptions follow GetAgentQueueAsync on backend `dev`: scopes are status-based there.
+// Descriptions follow GetAgentQueueAsync on backend `dev`: scopes filter on the assignee and
+// leave out Closed and Cancelled tickets.
 export const agentQueueScopes: readonly { scope: AgentQueueScope; label: string; description: string }[] = [
-  { scope: 'unassigned', label: 'Chưa phân công', description: 'Ticket mới gửi, chưa có ai nhận xử lý.' },
-  {
-    scope: 'my',
-    label: 'Của tôi',
-    description: 'Hiện gồm mọi ticket đang xử lý; hệ thống chưa lọc riêng theo người phụ trách.',
-  },
+  { scope: 'unassigned', label: 'Chưa phân công', description: 'Ticket chưa có người phụ trách, trừ ticket đã đóng hoặc đã hủy.' },
+  { scope: 'my', label: 'Của tôi', description: 'Ticket đang giao cho bạn, trừ ticket đã đóng hoặc đã hủy.' },
   { scope: 'all', label: 'Tất cả', description: 'Toàn bộ ticket trong hệ thống.' },
 ];
 

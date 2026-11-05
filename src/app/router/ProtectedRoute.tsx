@@ -9,7 +9,9 @@ export function ProtectedRoute({ roles = [] }: { roles?: readonly Role[] }) {
   const location = useLocation();
   if (auth.status === 'restoring') return <PageLoader />;
   if (auth.status === 'unavailable') return <ErrorState error={auth.error} onRetry={auth.retrySession} />;
-  if (auth.status === 'anonymous') return <Navigate to="/login" replace state={{ from: location }} />;
+  // Return to this page only after a first visit or an expired session. After a sign-out the next
+  // person may be someone else, who must not be sent to the previous account's page.
+  if (auth.status === 'anonymous') return <Navigate to="/login" replace state={auth.signedOut ? null : { from: location }} />;
   if (roles.length > 0 && !hasAnyRole(auth.user?.roles ?? [], roles)) return <Navigate to="/403" replace />;
   return <Outlet />;
 }

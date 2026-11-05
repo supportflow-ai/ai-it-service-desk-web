@@ -1,36 +1,35 @@
 import { useRef } from 'react';
 import type { ChangeEvent } from 'react';
-import { Alert, Button, Card, Empty, Progress, Space, Typography } from 'antd';
+import { Alert, Button, Card, Empty, Progress, Skeleton, Space, Typography } from 'antd';
 import { DownloadOutlined, PaperClipOutlined, UploadOutlined } from '@ant-design/icons';
+import { ErrorState } from '@/shared/ui/ErrorState';
 import { useAttachmentDownload } from '../hooks/useAttachmentDownload';
+import { useTicketAttachments } from '../hooks/useTicketAttachments';
 import { useUploadAttachment } from '../hooks/useUploadAttachment';
-import { useAttachments } from '../hooks/useAttachments';
-import { normalizeError } from '@/shared/api/httpError';
-import { describeTicketError } from '../lib/ticketErrorMessage';
+import { formatFileSize } from '../lib/formatFileSize';
+import { describeTicketError, isAccessLostError } from '../lib/ticketErrorMessage';
+import type { TicketStatus } from '../model/ticket.types';
+import { canAttachFiles } from '../model/ticketPermissions';
 import { ATTACHMENT_ACCEPT } from '../validation/attachmentRules';
 
 interface TicketAttachmentSectionProps {
   ticketId: string;
+  /** An ended ticket keeps its files downloadable but takes no new ones. */
+  status: TicketStatus;
 }
 
 const attachmentMessages = {
-  400: 'Tệp không hợp lệ: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP và tối đa 10 MB.',
+  400: 'Không thể đính kèm tệp: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP tối đa 10 MB, hoặc yêu cầu tải lên đã hết hạn. Vui lòng chọn lại tệp.',
 };
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
 /** Callers must remount this section (key={ticketId}) when the ticket changes. */
-export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionProps) {
+export function TicketAttachmentSection({ ticketId, status }: TicketAttachmentSectionProps) {
+  const allowUpload = canAttachFiles({ status });
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const files = useAttachments(ticketId);
-  const accessLost = files.isError && [403, 404].includes(normalizeError(files.error).status ?? 0);
-  const attachments = accessLost ? [] : files.data ?? [];
+  const attachments = useTicketAttachments(ticketId);
   const upload = useUploadAttachment(ticketId);
   const download = useAttachmentDownload(ticketId);
+  const items = attachments.data && !isAccessLostError(attachments.error) ? attachments.data : [];
 
   const uploadFailure = upload.validationError
     ?? (upload.error ? describeTicketError(upload.error, attachmentMessages)?.message ?? null : null);
@@ -48,10 +47,10 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <PaperClipOutlined style={{ color: 'var(--pr)' }} />
-          <span>Tệp đính kèm ({attachments.length})</span>
+          <span>Tệp đính kèm ({items.length})</span>
         </div>
       }
-      extra={
+      extra={allowUpload ? (
         <>
           <input
             type="file"
@@ -66,23 +65,22 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
             size="small"
             icon={<UploadOutlined />}
             loading={upload.isUploading}
-            disabled={!!upload.pendingConfirmation || accessLost}
             onClick={() => fileInputRef.current?.click()}
             style={{ borderRadius: 6 }}
           >
             Đính kèm tệp
           </Button>
         </>
-      }
+      ) : (
+        <Typography.Text type="secondary" style={{ fontSize: 12 }}>Ticket đã kết thúc: không đính kèm thêm được</Typography.Text>
+      )}
       style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}
     >
-      {files.isPending && <Typography.Paragraph>Đang tải danh sách tệp…</Typography.Paragraph>}
-      {files.isError && <Alert type="error" showIcon message="Không tải được danh sách tệp đính kèm."
-        action={<Button onClick={() => { void files.refetch(); }}>Thử lại</Button>} style={{ marginBottom: 12 }} />}
-      {upload.pendingConfirmation && !upload.isUploading && <Alert type="warning" showIcon
-        message="Tệp đã tải lên nhưng chưa xác nhận lưu. Hãy thử xác nhận lại."
-        action={<Space><Button onClick={upload.retryConfirmation}>Xác nhận lại</Button>
-          <Button onClick={upload.discardConfirmation}>Chọn tệp khác</Button></Space>} style={{ marginBottom: 12 }} />}
+      {attachments.error && (
+        <div style={{ marginBottom: 12 }}>
+          <ErrorState error={attachments.error} onRetry={() => { void attachments.refetch(); }} />
+        </div>
+      )}
 
       {uploadFailure && (
         <Alert
@@ -113,16 +111,20 @@ export function TicketAttachmentSection({ ticketId }: TicketAttachmentSectionPro
         </div>
       )}
 
-      {attachments.length === 0 && !files.isPending && !files.isError ? (
+      {attachments.isPending && <Skeleton active paragraph={{ rows: 1 }} />}
+
+      {!attachments.isPending && !attachments.error && items.length === 0 && (
         <Empty
-          description="Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP)."
+          description={allowUpload ? 'Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP).' : 'Chưa có tệp đính kèm nào.'}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
-      ) : (
+      )}
+
+      {items.length > 0 && (
         <Space direction="vertical" style={{ width: '100%' }} size={8}>
-          {attachments.map((att) => (
+          {items.map((att) => (
             <div
-              key={att.storageKey}
+              key={att.id}
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',

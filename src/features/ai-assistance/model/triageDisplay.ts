@@ -19,3 +19,22 @@ export const triageOutcomeMessages: Record<Exclude<TriageOutcome, 'Success'>, st
 export function needsReview(band: ConfidenceBand | null) {
   return band === null || band === 'Low';
 }
+
+/** What a reviewer should do with a suggestion, by band (TC-367). */
+export interface ReviewHint {
+  label: string;
+  color: string;
+  detail: string;
+}
+
+/**
+ * Follows the meaning backend ConfidenceBand gives each band: Low "cần xem xét kỹ lưỡng trước khi
+ * áp dụng", Medium "khuyến nghị kỹ thuật viên rà soát", High no flag. A missing band (no score, or
+ * one ConfidencePolicy rejects) is treated like Low, and says why.
+ */
+export function reviewHint(band: ConfidenceBand | null): ReviewHint | null {
+  if (band === null) return { label: 'Cần xem xét kỹ', color: 'warning', detail: 'AI không có điểm tin cậy cho gợi ý này.' };
+  if (band === 'Low') return { label: 'Cần xem xét kỹ', color: 'warning', detail: 'Độ tin cậy thấp: kiểm tra kỹ trước khi áp dụng.' };
+  if (band === 'Medium') return { label: 'Nên rà soát', color: 'default', detail: 'Độ tin cậy trung bình: nên đối chiếu với nội dung ticket.' };
+  return null;
+}

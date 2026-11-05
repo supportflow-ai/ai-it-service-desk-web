@@ -11,6 +11,9 @@ on:
         default: false
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   frontend:
     runs-on: ubuntu-latest
@@ -35,7 +38,7 @@ jobs:
           path: |
             playwright-report/
             test-results/
-      - run: docker build -t service-desk-web:ci .
+      - run: docker build -t servicedesk-web:ci .
 
   publish:
     name: Phát hành image bất biến

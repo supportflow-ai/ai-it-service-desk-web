@@ -3,12 +3,17 @@ import { Alert, Button, Card, Input, Space, Typography } from 'antd';
 import { useAuth } from '@/features/auth';
 import { useAddComment } from '../hooks/useAddComment';
 import { useAddInternalNote } from '../hooks/useAddInternalNote';
-import { canAddInternalNote } from '../model/ticketPermissions';
+import type { TicketStatus } from '../model/ticket.types';
+import { canAddPublicComment, canSeeInternalNotes } from '../model/ticketPermissions';
+import type { TicketView } from '../model/ticketPermissions';
 import { describeTicketError } from '../lib/ticketErrorMessage';
 import { COMMENT_MAX_LENGTH, canSendComment, validateCommentContent } from '../validation/commentRules';
 
 interface TicketCommentComposerProps {
   ticketId: string;
+  status: TicketStatus;
+  /** Internal notes are written only from the workspace (PRD UX-05), never from the requester screen. */
+  view: TicketView;
 }
 
 type ComposerTab = 'public' | 'internal';
@@ -28,17 +33,19 @@ function tabStyle(active: boolean) {
   };
 }
 
-export function TicketCommentComposer({ ticketId }: TicketCommentComposerProps) {
+export function TicketCommentComposer({ ticketId, status, view }: TicketCommentComposerProps) {
   const { user } = useAuth();
-  const allowInternal = canAddInternalNote(user);
+  const allowInternal = canSeeInternalNotes(user, view);
+  const allowPublic = canAddPublicComment({ status });
   const [selectedTab, setSelectedTab] = useState<ComposerTab>('public');
   const [content, setContent] = useState('');
 
   const addCommentMutation = useAddComment(ticketId);
   const addInternalNoteMutation = useAddInternalNote(ticketId);
 
-  // A requester can never end up on the internal tab, even if the role changes mid-session.
-  const activeTab: ComposerTab = allowInternal ? selectedTab : 'public';
+  // A requester can never end up on the internal tab, even if the role changes mid-session; an
+  // ended ticket only takes internal notes.
+  const activeTab: ComposerTab = !allowInternal ? 'public' : !allowPublic ? 'internal' : selectedTab;
   const activeMutation = activeTab === 'public' ? addCommentMutation : addInternalNoteMutation;
   const isPending = addCommentMutation.isPending || addInternalNoteMutation.isPending;
   const failure = activeMutation.isError ? describeTicketError(activeMutation.error, composerMessages) : null;
@@ -55,6 +62,14 @@ export function TicketCommentComposer({ ticketId }: TicketCommentComposerProps) 
     // Input is kept on failure so the user can retry without retyping.
     activeMutation.mutate({ ticketId, content: content.trim() }, { onSuccess: () => setContent('') });
   };
+
+  if (!allowPublic && !allowInternal) {
+    return (
+      <Card title="Soạn phản hồi" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}>
+        <Typography.Text type="secondary">Yêu cầu đã kết thúc nên không thể gửi thêm phản hồi.</Typography.Text>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -75,6 +90,7 @@ export function TicketCommentComposer({ ticketId }: TicketCommentComposerProps) 
           <Button
             type="text"
             aria-pressed={activeTab === 'public'}
+            disabled={!allowPublic}
             onClick={() => switchTab('public')}
             style={tabStyle(activeTab === 'public')}
           >
@@ -90,6 +106,11 @@ export function TicketCommentComposer({ ticketId }: TicketCommentComposerProps) 
           </Button>
         </div>
       )}
+      {!allowPublic && (
+        <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
+          Ticket đã kết thúc: không gửi được phản hồi công khai, chỉ còn ghi chú nội bộ.
+        </Typography.Text>
+      )}
 
       <Input.TextArea
         rows={4}
@@ -101,9 +122,11 @@ export function TicketCommentComposer({ ticketId }: TicketCommentComposerProps) 
         aria-label={activeTab === 'public' ? 'Nội dung bình luận' : 'Nội dung ghi chú nội bộ'}
         status={validationMessage ? 'error' : undefined}
         placeholder={
-          activeTab === 'public'
-            ? 'Phản hồi này người yêu cầu sẽ nhìn thấy'
-            : 'Ghi chú chỉ hiển thị với các kỹ thuật viên IT'
+          activeTab === 'internal'
+            ? 'Ghi chú chỉ hiển thị với các kỹ thuật viên IT'
+            : view === 'requester'
+              ? 'Phản hồi này đội hỗ trợ IT sẽ nhìn thấy'
+              : 'Phản hồi này người yêu cầu sẽ nhìn thấy'
         }
         style={{ borderRadius: 6 }}
       />

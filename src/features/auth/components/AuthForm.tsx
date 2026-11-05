@@ -1,4 +1,5 @@
 import { Button, Form, Input } from 'antd';
+import { PASSWORD_POLICY_MESSAGE } from '../lib/registerErrorMessage';
 
 export interface AuthFormValues { email: string; password: string; fullName?: string }
 
@@ -16,7 +17,8 @@ export function AuthForm({ register = false, pending, onSubmit }: {
     </Form.Item>
     <Form.Item name="password" label="Mật khẩu" rules={[
       { required: true, message: 'Vui lòng nhập mật khẩu.' },
-      ...(register ? [{ min: 6, message: 'Mật khẩu phải có ít nhất 6 ký tự.' }] : []),
+      // Mirrors the backend Identity password options: 8+ characters with upper, lower and a digit.
+      ...(register ? [{ pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, message: PASSWORD_POLICY_MESSAGE }] : []),
     ]}>
       <Input.Password autoComplete={register ? 'new-password' : 'current-password'} />
     </Form.Item>

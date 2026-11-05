@@ -8,6 +8,27 @@ export type AddInternalNoteRequest = {
   "content"?: string | null;
 };
 
+export type ArchiveArticleRequest = {
+  "expectedRevision"?: number | null;
+};
+
+export type ArticleDto = {
+  "id"?: string;
+  "title"?: string | null;
+  "content"?: string | null;
+  "status"?: ArticleStatus;
+  "authorId"?: string;
+  "version"?: number;
+  "revision"?: number;
+  "tags"?: Array<string> | null;
+  "createdAt"?: string;
+  "updatedAt"?: string;
+  "publishedAt"?: string | null;
+  "archivedAt"?: string | null;
+};
+
+export type ArticleStatus = 0 | 1 | 2;
+
 export type AssignTicketRequest = {
   "agentId"?: string;
   "expectedRevision"?: number | null;
@@ -18,6 +39,12 @@ export type ConfirmAttachmentUploadRequest = {
   "fileSizeBytes"?: number;
   "contentType"?: string | null;
   "storageKey"?: string | null;
+};
+
+export type CreateDraftArticleRequest = {
+  "title"?: string | null;
+  "content"?: string | null;
+  "tags"?: Array<string> | null;
 };
 
 export type CreateTicketCommand = {
@@ -41,11 +68,23 @@ export type LoginRequest = {
   "password": string | null;
 };
 
+export type PagedArticleResult = {
+  "items"?: Array<ArticleDto> | null;
+  "page"?: number;
+  "pageSize"?: number;
+  "totalCount"?: number;
+  "totalPages"?: number;
+};
+
 export type PagedTicketResult = {
   "items"?: Array<TicketDto> | null;
   "page"?: number;
   "pageSize"?: number;
   "totalCount"?: number;
+};
+
+export type PublishArticleRequest = {
+  "expectedRevision"?: number | null;
 };
 
 export type RegisterRequest = {
@@ -96,6 +135,13 @@ export type TimelineItemDto = {
   "createdAt"?: string;
 };
 
+export type UpdateDraftArticleRequest = {
+  "title"?: string | null;
+  "content"?: string | null;
+  "tags"?: Array<string> | null;
+  "expectedRevision"?: number | null;
+};
+
 export type UpdateTicketRequest = {
   "title"?: string | null;
   "description"?: string | null;
@@ -108,11 +154,4 @@ export type UploadUrlResult = {
   "storageKey"?: string | null;
   "expirySeconds"?: number;
   "formData"?: Record<string, string> | null;
-};
-
-export type UserInfo = {
-  "userId": string | null;
-  "email": string | null;
-  "fullName"?: string | null;
-  "roles"?: Array<string> | null;
 };

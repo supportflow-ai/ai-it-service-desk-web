@@ -1,16 +1,23 @@
-import type { TicketDto } from './ticket.types';
-import { TicketStatus } from './ticket.types';
+import type { AgentDirectoryEntry, TicketDto } from './ticket.types';
 
-export interface AssignmentView {
-  label: string;
-  /** False when the server data cannot tell whether someone is assigned. */
-  known: boolean;
+export const UNNAMED_AGENT = 'Kỹ thuật viên chưa có tên';
+
+/** The directory sends no email: an agent without a name is told apart by the start of their id. */
+export function agentName(entry: AgentDirectoryEntry) {
+  return entry.fullName ?? `${UNNAMED_AGENT} (${entry.userId.slice(0, 8)})`;
 }
 
-/** Older API responses without assignedToId retain a conservative status-only fallback. */
-export function assignmentView(status: TicketStatus, assignedToId?: TicketDto['assignedToId']): AssignmentView {
-  if (assignedToId !== undefined) return assignedToId ? { label: assignedToId, known: true } : { label: 'Chưa phân công', known: true };
-  if (status === TicketStatus.Submitted) return { label: 'Chưa phân công', known: true };
-  if (status === TicketStatus.Assigned) return { label: 'Đã phân công', known: true };
-  return { label: 'Chưa có thông tin', known: false };
+/**
+ * The ticket carries only the assignee's id; the name comes from the agent directory, which only
+ * staff can read. Without it, only who holds the ticket relative to the viewer is shown.
+ */
+export function assignmentLabel(
+  ticket: Pick<TicketDto, 'assignedToId'>,
+  currentUserId: string | undefined,
+  directory: readonly AgentDirectoryEntry[] = [],
+) {
+  if (ticket.assignedToId === null) return 'Chưa phân công';
+  if (ticket.assignedToId === currentUserId) return 'Bạn';
+  const assignee = directory.find((entry) => entry.userId === ticket.assignedToId);
+  return assignee ? agentName(assignee) : 'Đã phân công';
 }

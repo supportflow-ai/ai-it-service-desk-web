@@ -1,6 +1,6 @@
 import { ticketApi } from '../api/ticketApi';
 import { useTicketWrite } from './useTicketWrite';
 
-export function useReopenTicket(ticketId: string, expectedRevision?: number) {
-  return useTicketWrite({ ticketId, expectedRevision, action: 'reopen', write: (_: void, revision?: number) => ticketApi.reopenTicket(ticketId, revision), change: 'state' });
+export function useReopenTicket(ticketId: string) {
+  return useTicketWrite({ ticketId, action: 'reopen', write: (expectedRevision: number) => ticketApi.reopenTicket(ticketId, expectedRevision), change: 'state' });
 }

@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures';
-import { ticketA } from '../tests/fixtures';
+import { ownDraft, ticketA } from '../tests/fixtures';
 
 test('login → own tickets → detail → logout', async ({ page, api }) => {
   await page.goto('/requester-dashboard/tickets');
@@ -57,7 +57,8 @@ test('resource 403 preserves the session', async ({ page, api }) => {
   api.detailStatus = 403;
   await page.addInitScript(() => localStorage.setItem('token', 'restored'));
   await page.goto(`/requester-dashboard/tickets/${ticketA.id}`);
-  await expect(page.getByRole('alert')).toContainText('không có quyền');
+  await expect(page.getByText('Bạn không có quyền xem ticket này')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Quay lại danh sách/ })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('token'))).toBe('restored');
 });
 
@@ -67,6 +68,14 @@ for (const [role, path, allowed] of [
   ['Agent', '/admin-panel', false],
   ['Admin', '/agent-workspace', true],
   ['Admin', '/admin-panel', true],
+  ['Requester', '/knowledge/manage', false],
+  ['Requester', `/knowledge/manage/${ownDraft.id}`, false],
+  ['Requester', `/knowledge/manage/${ownDraft.id}/edit`, false],
+  ['Agent', '/knowledge/manage', true],
+  ['Admin', '/knowledge/manage', true],
+  ['Requester', '/knowledge', true],
+  ['Agent', '/knowledge', true],
+  ['Admin', '/knowledge', true],
 ] as const) {
   test(`${role} route policy: ${path}`, async ({ page, api }) => {
     api.roles = [role];
@@ -75,6 +84,7 @@ for (const [role, path, allowed] of [
     await expect(page).toHaveURL(allowed ? path : '/403');
     if (!allowed) await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
     else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
+    else if (path === '/knowledge/manage' || path === '/knowledge') await expect(page.getByRole('heading', { name: 'Kho tri thức' })).toBeVisible();
     else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });
 }
@@ -85,12 +95,19 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
   await page.goto(`/agent-workspace/tickets/${ticketA.id}`);
   await expect(page.getByRole('heading', { name: ticketA.title })).toBeVisible();
   await expect(page.getByText('Chưa có trao đổi nào cho ticket này.')).toBeVisible();
-  // Backend ClaimTicketUseCase only accepts the Agent role; Admin may cancel a submitted ticket instead.
+  // Backend ClaimTicketUseCase accepts Agent or Admin, and Admin may also cancel a submitted ticket.
   await expect(page.getByRole('button', { name: /Hủy vé/i })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Nhận xử lý/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Nhận xử lý/i })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Gửi bình luận', exact: true })).toBeDisabled();
   await expect(page.getByText('Ticket được tạo mới')).toHaveCount(0);
   await expect(page.getByText('Gợi ý AI chưa được bật cho ticket này.')).toBeVisible();
   await expect(page.getByText(/92%/)).toHaveCount(0);
-  expect(api.requests).toEqual(['GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, `GET /api/tickets/${ticketA.id}/timeline`]);
+  const expectedRequests = [
+    'GET /api/auth/me',
+    `GET /api/tickets/${ticketA.id}`,
+    'GET /api/users?role=Agent',
+    `GET /api/tickets/${ticketA.id}/timeline`,
+    `GET /api/tickets/${ticketA.id}/attachments`,
+  ];
+  expect([...api.requests].sort()).toEqual([...expectedRequests].sort());
 });

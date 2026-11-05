@@ -184,3 +184,63 @@ body {
   background: var(--pr);
   border-radius: 2px;
 }
+
+/* Knowledge article Markdown (features/knowledge MarkdownPreview). */
+.kb-markdown {
+  color: var(--tx);
+  font-size: 14px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+.kb-markdown > :first-child { margin-top: 0; }
+.kb-markdown h1, .kb-markdown h2, .kb-markdown h3, .kb-markdown h4 {
+  margin: 1.2em 0 0.5em;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.kb-markdown h1 { font-size: 22px; }
+/* The heading a semantic result pointed at (TC-362); clear of the sticky header when scrolled to. */
+.kb-markdown .kb-source-section {
+  scroll-margin-top: 80px;
+  background: var(--wns);
+  box-shadow: 0 0 0 6px var(--wns);
+  border-radius: 4px;
+  outline: none;
+}
+.kb-markdown h2 { font-size: 18px; }
+.kb-markdown h3 { font-size: 16px; }
+.kb-markdown p, .kb-markdown ul, .kb-markdown ol, .kb-markdown blockquote, .kb-markdown pre, .kb-markdown table {
+  margin: 0 0 0.9em;
+}
+.kb-markdown ul, .kb-markdown ol { padding-left: 1.5em; }
+.kb-markdown li + li { margin-top: 0.25em; }
+.kb-markdown a { color: var(--pr); text-decoration: underline; }
+/* A link whose unsafe URL was removed reads as plain text, since it no longer goes anywhere. */
+.kb-markdown a:not([href]) { color: inherit; text-decoration: none; cursor: text; }
+.kb-markdown blockquote {
+  padding: 4px 12px;
+  border-left: 3px solid var(--bd2);
+  color: var(--tx2);
+}
+.kb-markdown code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--sf2);
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.9em;
+}
+.kb-markdown pre {
+  padding: 12px;
+  border-radius: 6px;
+  background: var(--sf2);
+  overflow-x: auto;
+}
+.kb-markdown pre code { padding: 0; background: none; }
+.kb-markdown table { border-collapse: collapse; display: block; overflow-x: auto; }
+.kb-markdown th, .kb-markdown td { padding: 6px 10px; border: 1px solid var(--bd); text-align: left; }
+.kb-markdown th { background: var(--sf2); font-weight: 600; }
+.kb-markdown img { max-width: 100%; height: auto; border-radius: 4px; }
+.kb-markdown hr { border: 0; border-top: 1px solid var(--bd); margin: 1.2em 0; }
+.kb-markdown .contains-task-list { padding-left: 0.25em; }
+.kb-markdown .task-list-item { list-style: none; }
+.kb-markdown input[type="checkbox"] { margin-right: 6px; }

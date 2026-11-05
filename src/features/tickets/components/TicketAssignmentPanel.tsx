@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Popconfirm, Select, Space, Typography } from 'antd';
-import { UserAddOutlined, UserDeleteOutlined } from '@ant-design/icons';
+import { UserAddOutlined, UserDeleteOutlined, UserSwitchOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
-import { TicketStatus } from '../model/ticket.types';
 import type { TicketDto } from '../model/ticket.types';
-import { assignmentView } from '../model/assignment';
-import { canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
-import { useAgents } from '../hooks/useAgents';
+import { agentName, assignmentLabel } from '../model/assignment';
+import { canAssignTicket, canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
+import { useAgentDirectory } from '../hooks/useAgentDirectory';
 import { useAssignTicket } from '../hooks/useAssignTicket';
 import { useUnassignTicket } from '../hooks/useUnassignTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
@@ -18,58 +17,74 @@ interface TicketAssignmentPanelProps {
 }
 
 const assignmentMessages = {
-  400: 'Không thể thay đổi phân công: ticket có thể đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
+  400: 'Không thể thay đổi phân công: kỹ thuật viên không hợp lệ hoặc ticket đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
 };
 
 export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPanelProps) {
   const { user } = useAuth();
-  const agents = useAgents();
-  const [selectedAgent, setSelectedAgent] = useState<string | undefined>();
-  const assignMutation = useAssignTicket(ticket.id, ticket.revision);
-  const unassignMutation = useUnassignTicket(ticket.id, ticket.revision);
+  const agents = useAgentDirectory();
+  const [chosenAgentId, setChosenAgentId] = useState<string>();
+  const assignMutation = useAssignTicket(ticket.id);
+  const unassignMutation = useUnassignTicket(ticket.id);
   // Also covers status writes from the other panel, so two state changes never overlap.
-  const isPending = useTicketStateWritePending(ticket.id) || !ticket.revision;
+  const isPending = useTicketStateWritePending(ticket.id);
   const failedError = assignMutation.isError ? assignMutation.error : unassignMutation.isError ? unassignMutation.error : null;
   const failure = failedError ? describeTicketError(failedError, assignmentMessages) : null;
 
-  const assignment = assignmentView(ticket.status, ticket.assignedToId);
-  const allowSelfAssign = canSelfAssignTicket(user, ticket.status);
-  const allowUnassign = canUnassignTicket(user, ticket.status, ticket.assignedToId);
-  const canAssign = !!user?.roles.some((role) => role === 'Agent' || role === 'Admin') && ![TicketStatus.Closed, TicketStatus.Cancelled].includes(ticket.status);
-  const assignee = agents.data?.find((agent) => agent.userId === ticket.assignedToId);
-  const assignmentLabel = assignee?.fullName || assignee?.email || assignment.label;
+  const allowSelfAssign = canSelfAssignTicket(user, ticket);
+  const allowUnassign = canUnassignTicket(user, ticket);
+  const allowAssign = canAssignTicket(user, ticket);
+  const assigningTo = assignMutation.isPending ? assignMutation.variables?.agentId : undefined;
+  const agentOptions = (agents.data ?? []).map((entry) => ({
+    value: entry.userId,
+    label: agentName(entry),
+    disabled: entry.userId === ticket.assignedToId,
+  }));
 
+  // Both carry the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).
   const selfAssign = () => {
     if (!user) return;
     unassignMutation.reset();
-    assignMutation.mutate(user.userId);
+    assignMutation.mutate({ agentId: user.userId, expectedRevision: ticket.revision });
+  };
+  const assignChosen = () => {
+    if (!chosenAgentId) return;
+    unassignMutation.reset();
+    assignMutation.mutate(
+      { agentId: chosenAgentId, expectedRevision: ticket.revision },
+      { onSuccess: () => setChosenAgentId(undefined) },
+    );
   };
   const unassign = () => {
     assignMutation.reset();
-    unassignMutation.mutate();
+    unassignMutation.mutate(ticket.revision);
+  };
+  // Reloading shows the current ticket, so the error about the old copy no longer applies.
+  const reload = () => {
+    assignMutation.reset();
+    unassignMutation.reset();
+    onReload();
   };
 
   return (
     <Card title="Phân công" size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)' }}>
-      {!ticket.revision && <Alert type="warning" message="Cần tải lại ticket để lấy phiên bản hiện tại trước khi thao tác." />}
       {failure && (
         <Alert
           type="error"
           showIcon
           message={failure.message}
-          action={failure.reloadable ? <Button size="small" onClick={onReload}>Tải lại</Button> : undefined}
+          action={failure.reloadable ? <Button size="small" onClick={reload}>Tải lại</Button> : undefined}
           style={{ marginBottom: 12 }}
         />
       )}
 
       <Typography.Paragraph style={{ marginBottom: 12 }}>
-        Phụ trách:{' '}
-        {assignment.known ? <strong>{assignmentLabel}</strong> : <Typography.Text type="secondary">{assignment.label}</Typography.Text>}
+        Phụ trách: <strong>{assignmentLabel(ticket, user?.userId, agents.data)}</strong>
       </Typography.Paragraph>
 
       <Space direction="vertical" style={{ width: '100%' }}>
         {allowSelfAssign && (
-          <Button type="primary" block icon={<UserAddOutlined />} loading={assignMutation.isPending} disabled={isPending} onClick={selfAssign}>
+          <Button type="primary" block icon={<UserAddOutlined />} loading={!!user && assigningTo === user.userId} disabled={isPending} onClick={selfAssign}>
             Nhận về tôi
           </Button>
         )}
@@ -86,24 +101,44 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
             </Button>
           </Popconfirm>
         )}
-        {!allowSelfAssign && !allowUnassign && (
+        {allowAssign && (
+          <>
+            <Select
+              aria-label="Giao cho kỹ thuật viên"
+              placeholder="Chọn kỹ thuật viên"
+              showSearch
+              optionFilterProp="label"
+              virtual={false}
+              loading={agents.isPending}
+              disabled={isPending || !!agents.error}
+              value={chosenAgentId}
+              options={agentOptions}
+              notFoundContent="Chưa có kỹ thuật viên nào."
+              onChange={setChosenAgentId}
+              style={{ width: '100%' }}
+            />
+            {agents.error && (
+              <Typography.Text type="danger" style={{ fontSize: 12 }}>
+                Không tải được danh sách kỹ thuật viên.
+              </Typography.Text>
+            )}
+            <Button
+              block
+              icon={<UserSwitchOutlined />}
+              loading={!!assigningTo && assigningTo === chosenAgentId}
+              disabled={isPending || !chosenAgentId}
+              onClick={assignChosen}
+            >
+              Giao việc
+            </Button>
+          </>
+        )}
+
+        {!allowSelfAssign && !allowUnassign && !allowAssign && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             Không có thao tác phân công với trạng thái hiện tại và vai trò của bạn.
           </Typography.Text>
         )}
-
-        <Select aria-label="Giao cho kỹ thuật viên khác" placeholder="Giao cho kỹ thuật viên khác"
-          value={selectedAgent} onChange={setSelectedAgent} loading={agents.isPending}
-          disabled={!canAssign || isPending || agents.isError || !agents.data?.length}
-          options={(agents.data ?? []).map((agent) => ({ value: agent.userId, label: agent.fullName || agent.email }))}
-          style={{ width: '100%' }} />
-        <Button disabled={!canAssign || isPending || !selectedAgent} loading={assignMutation.isPending}
-          onClick={() => { if (selectedAgent) assignMutation.mutate(selectedAgent, { onSuccess: () => setSelectedAgent(undefined) }); }}>
-          Xác nhận phân công
-        </Button>
-        {agents.isError && <Alert type="error" message="Không tải được danh sách kỹ thuật viên."
-          action={<Button onClick={() => { void agents.refetch(); }}>Thử lại</Button>} />}
-        {agents.isSuccess && agents.data.length === 0 && <Typography.Text type="secondary">Chưa có kỹ thuật viên trong danh sách.</Typography.Text>}
       </Space>
     </Card>
   );

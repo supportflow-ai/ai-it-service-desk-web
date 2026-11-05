@@ -1,6 +1,16 @@
 import { ticketApi } from '../api/ticketApi';
 import { useTicketWrite } from './useTicketWrite';
 
-export function useAssignTicket(ticketId: string, expectedRevision?: number) {
-  return useTicketWrite({ ticketId, expectedRevision, action: 'assign', write: (agentId: string, revision?: number) => ticketApi.assignTicket(ticketId, agentId, revision), change: 'state' });
+interface AssignTicketVariables {
+  agentId: string;
+  expectedRevision: number;
+}
+
+export function useAssignTicket(ticketId: string) {
+  return useTicketWrite({
+    ticketId,
+    action: 'assign',
+    write: ({ agentId, expectedRevision }: AssignTicketVariables) => ticketApi.assignTicket(ticketId, agentId, expectedRevision),
+    change: 'state',
+  });
 }

@@ -1,5 +1,5 @@
 import { Alert, Button, Card, Space, Tag, Typography } from 'antd';
-import { RobotOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, RobotOutlined } from '@ant-design/icons';
 import { ticketCategoryLabels } from '@/features/tickets';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import type { AgentTriageView, ConfidenceBand, SuggestionDto, SuggestionType } from '../model/ai.types';
@@ -8,6 +8,7 @@ import { impactLabels, needsReview, triageOutcomeMessages, urgencyLabels } from 
 import { useSuggestionDecision } from '../hooks/useSuggestionDecision';
 import type { DecisionHandler } from '../hooks/useSuggestionDecision';
 import { ConfidenceTag } from './ConfidenceTag';
+import { ReviewHintTag } from './ReviewHintTag';
 import { SuggestionReviewCard } from './SuggestionReviewCard';
 
 interface Props {
@@ -34,7 +35,7 @@ function SuggestionRow({ label, value, band, score }: {
       <Space size={4} wrap>
         {value === null ? <Typography.Text type="secondary">Không có gợi ý</Typography.Text> : <strong>{value}</strong>}
         <ConfidenceTag band={band} score={score} />
-        {value !== null && needsReview(band) && <Tag color="warning">Cần xem xét</Tag>}
+        {value !== null && <ReviewHintTag band={band} />}
       </Space>
     </div>
   );
@@ -61,6 +62,13 @@ export function AgentReviewPanel({ result, ticketRevision, suggestions = [], loa
     Impact: result.impactConfidence,
     Urgency: result.urgencyConfidence,
   };
+  const suggested: [string | null, ConfidenceBand | null][] = [
+    [result.suggestedCategory, result.categoryConfidence],
+    [result.suggestedImpact, result.impactConfidence],
+    [result.suggestedUrgency, result.urgencyConfidence],
+  ];
+  const careful = suggested.filter(([value, band]) => value !== null && needsReview(band)).length;
+  const decided = suggestions.filter((item) => item.decision !== 'Pending').length;
   return <Card title={title} extra={stale && <Tag color="red">Gợi ý cũ</Tag>}>
     <Space direction="vertical" style={{ width: '100%' }}>
       {result.requiresManualTriage && <Alert type="warning" showIcon message="Cần phân loại thủ công"
@@ -68,6 +76,16 @@ export function AgentReviewPanel({ result, ticketRevision, suggestions = [], loa
       {stale && <Alert type="warning" showIcon
         message="Nội dung ticket đã thay đổi sau khi AI phân tích; gợi ý có thể không còn đúng."
         action={onReanalyze && <Button size="small" onClick={onReanalyze}>Phân tích lại</Button>} />}
+      {(careful > 0 || suggestions.length > 0) && (
+        <Space size={12} wrap style={{ fontSize: 12 }}>
+          {careful > 0 && (
+            <Typography.Text type="warning"><ExclamationCircleOutlined /> {careful} gợi ý cần xem xét kỹ trước khi áp dụng</Typography.Text>
+          )}
+          {suggestions.length > 0 && (
+            <Typography.Text type="secondary">Đã quyết định {decided}/{suggestions.length} gợi ý</Typography.Text>
+          )}
+        </Space>
+      )}
       <div>
         <SuggestionRow label="Danh mục" value={result.suggestedCategory ? ticketCategoryLabels[result.suggestedCategory] : null}
           band={result.categoryConfidence} score={result.categoryScore} />

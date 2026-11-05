@@ -1,18 +1,26 @@
-import { Button, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Select, Space, Typography } from 'antd';
 import type { AgentQueueFilters } from '../model/ticket.types';
 import { agentQueueScopes, agentQueueStatusOptions } from '../model/agentQueue';
 import { ticketCategoryLabels } from '../model/ticketCategories';
+import { ticketPriorityLabels } from '../model/ticketPriority';
 import { ticketStatusMeta } from '../model/ticketStatus';
-import { TicketCategory } from '../model/ticket.types';
+import { TicketCategory, TicketPriority } from '../model/ticket.types';
 
 interface AgentQueueToolbarProps {
   filters: AgentQueueFilters;
   totalCount: number | undefined;
-  onChange: (patch: Partial<Pick<AgentQueueFilters, 'scope' | 'status' | 'category'>>) => void;
+  onChange: (patch: Partial<Pick<AgentQueueFilters, 'scope' | 'status' | 'category' | 'priority' | 'sortByPriority'>>) => void;
 }
+
+type QueueSort = 'newest' | 'priority';
 
 const statusOptions = agentQueueStatusOptions.map((status) => ({ value: status, label: ticketStatusMeta[status].label }));
 const categoryOptions = Object.values(TicketCategory).map((category) => ({ value: category, label: ticketCategoryLabels[category] }));
+const priorityOptions = Object.values(TicketPriority).map((priority) => ({ value: priority, label: ticketPriorityLabels[priority] }));
+const sortOptions: { value: QueueSort; label: string }[] = [
+  { value: 'newest', label: 'Sắp xếp: mới tạo trước' },
+  { value: 'priority', label: 'Sắp xếp: ưu tiên cao trước' },
+];
 
 function tabStyle(active: boolean) {
   return {
@@ -73,10 +81,24 @@ export function AgentQueueToolbar({ filters, totalCount, onChange }: AgentQueueT
           options={categoryOptions}
           onChange={(value?: AgentQueueFilters['category']) => onChange({ category: value ?? null })}
         />
-        <Tooltip title="Chưa hỗ trợ: ticket chưa có trường ưu tiên trong hệ thống.">
-          <Select aria-label="Ưu tiên" disabled placeholder="Ưu tiên: chưa hỗ trợ" style={{ width: 180 }} />
-        </Tooltip>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>Sắp xếp: mới tạo trước</Typography.Text>
+        <Select
+          aria-label="Ưu tiên"
+          allowClear
+          virtual={false}
+          placeholder="Ưu tiên: Tất cả"
+          style={{ width: 180 }}
+          value={filters.priority ?? undefined}
+          options={priorityOptions}
+          onChange={(value?: AgentQueueFilters['priority']) => onChange({ priority: value ?? null })}
+        />
+        <Select<QueueSort>
+          aria-label="Sắp xếp"
+          virtual={false}
+          style={{ width: 220 }}
+          value={filters.sortByPriority ? 'priority' : 'newest'}
+          options={sortOptions}
+          onChange={(value) => onChange({ sortByPriority: value === 'priority' })}
+        />
       </Space>
     </>
   );

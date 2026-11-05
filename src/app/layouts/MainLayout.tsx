@@ -1,60 +1,51 @@
-import { Button, Input, Layout, Menu, Space, Tag, Typography } from 'antd';
+import { Button, Input, Layout, Menu, Space, Typography } from 'antd';
 import {
   AppstoreOutlined,
   BellOutlined,
+  BookOutlined,
   CheckSquareOutlined,
   LogoutOutlined,
   PlusCircleOutlined,
   SearchOutlined,
   SettingOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
+import type { ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
+import type { Role } from '@/features/auth';
 import { getNavigation } from '../navigation/navigationConfig';
+import { routeConfig } from '../router/routeConfig';
 
 const { Sider, Header, Content } = Layout;
 const { Text } = Typography;
+
+const roleLabels: Record<Role, string> = { Admin: 'Quản trị viên', Agent: 'Kỹ thuật viên', Requester: 'Người yêu cầu' };
+const roleOrder: readonly Role[] = ['Admin', 'Agent', 'Requester'];
+const menuIcons: Partial<Record<string, ReactNode>> = {
+  [routeConfig.home.path]: <AppstoreOutlined />,
+  [routeConfig.create.path]: <PlusCircleOutlined />,
+  [routeConfig.tickets.path]: <CheckSquareOutlined />,
+  [routeConfig.workspace.path]: <UnorderedListOutlined />,
+  [routeConfig.knowledge.path]: <BookOutlined />,
+  [routeConfig.knowledgeAdmin.path]: <BookOutlined />,
+  [routeConfig.admin.path]: <SettingOutlined />,
+};
 
 export function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navItems = getNavigation(user?.roles ?? []);
-  const isAgentOrAdmin = user?.roles.some((r) => r === 'Agent' || r === 'Admin');
+  const roleText = roleOrder.filter((role) => user?.roles.includes(role)).map((role) => roleLabels[role]).join(' · ');
+  // The menu, and its order, come from the role-based navigation: nothing is added per screen here.
+  const menuItems = getNavigation(user?.roles ?? []).map((item) => ({
+    key: item.key,
+    label: item.label,
+    icon: menuIcons[item.key] ?? <CheckSquareOutlined />,
+  }));
 
-  // Map icon cho từng route
-  const getIcon = (key: string) => {
-    if (key.includes('tickets')) return <CheckSquareOutlined />;
-    if (key.includes('workspace')) return <AppstoreOutlined />;
-    if (key.includes('admin')) return <SettingOutlined />;
-    return <CheckSquareOutlined />;
-  };
-
-  const menuItems = [
-    {
-      key: '/',
-      label: 'Tổng quan',
-      icon: <AppstoreOutlined />,
-    },
-    {
-      key: '/tickets/new',
-      label: 'Tạo yêu cầu',
-      icon: <PlusCircleOutlined />,
-    },
-    ...navItems.map((item) => ({
-      key: item.key,
-      label: item.label,
-      icon: getIcon(item.key),
-    })),
-  ];
-
-  // Loại bỏ trùng lặp nếu có
-  const uniqueMenuItems = menuItems.filter(
-    (item, index, self) => index === self.findIndex((t) => t.key === item.key),
-  );
-
-  const selectedKey = uniqueMenuItems.find(
+  const selectedKey = menuItems.find(
     (item) => location.pathname === item.key || (item.key !== '/' && location.pathname.startsWith(`${item.key}/`)),
   )?.key ?? location.pathname;
 
@@ -94,7 +85,7 @@ export function MainLayout() {
           <Menu
             mode="inline"
             selectedKeys={[selectedKey]}
-            items={uniqueMenuItems}
+            items={menuItems}
             onClick={({ key }) => navigate(key)}
             style={{ borderRight: 0 }}
           />
@@ -111,8 +102,8 @@ export function MainLayout() {
           <div style={{ fontWeight: 600, color: 'var(--tx)' }}>
             {user?.fullName ?? user?.email ?? 'Người dùng'}
           </div>
-          <div style={{ color: 'var(--tx2)', fontSize: '11px', marginTop: '2px' }}>
-            {isAgentOrAdmin ? 'Agent · Hạ tầng' : 'Người yêu cầu'}
+          <div style={{ color: 'var(--tx2)', fontSize: '11px', marginTop: '2px' }} data-testid="current-roles">
+            {roleText || 'Chưa có vai trò'}
           </div>
         </div>
       </Sider>
@@ -132,23 +123,25 @@ export function MainLayout() {
             zIndex: 10,
           }}
         >
-          <div style={{ flex: 1, maxWidth: 420 }}>
+          {/* No search or notification endpoint exists yet, so both stay locked and say so. */}
+          <div style={{ flex: 1, maxWidth: 420 }} title="Chưa hỗ trợ tìm kiếm">
             <Input
+              disabled
+              aria-label="Tìm kiếm (chưa hỗ trợ)"
               prefix={<SearchOutlined style={{ color: 'var(--tx3)' }} />}
-              placeholder="Tìm ticket, bài viết…"
+              placeholder="Tìm kiếm: chưa hỗ trợ"
               style={{ borderRadius: 6, background: 'var(--sf2)' }}
             />
           </div>
 
           <Space size="middle" align="center">
-            <Tag color="cyan" style={{ borderRadius: 4, margin: 0 }}>
-              Production
-            </Tag>
             <Button
               type="text"
+              disabled
               icon={<BellOutlined />}
               style={{ color: 'var(--tx2)' }}
-              title="Thông báo"
+              title="Thông báo: chưa hỗ trợ"
+              aria-label="Thông báo (chưa hỗ trợ)"
             />
             <Text style={{ fontSize: '13px', color: 'var(--tx2)' }}>
               Xin chào, <b>{user?.fullName ?? user?.email}</b>

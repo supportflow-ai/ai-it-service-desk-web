@@ -26,11 +26,23 @@ export enum TicketStatus {
   PendingExternal = 9,
 }
 
+/** Computed by the backend from impact × urgency (ITIL); the client never sets it. */
+export const TicketPriority = {
+  P1: 'P1',
+  P2: 'P2',
+  P3: 'P3',
+  P4: 'P4',
+} as const;
+export type TicketPriority = (typeof TicketPriority)[keyof typeof TicketPriority];
+
 export interface CreateTicketPayload {
   title: string;
   categoryId: TicketCategory;
   description: string;
 }
+
+/** POST /tickets/{id}/update takes the same three fields, plus the revision on screen. */
+export type UpdateTicketPayload = CreateTicketPayload;
 
 /** The pinned backend TicketDto; the UI never adds fields the server does not send. */
 export interface TicketDto {
@@ -42,14 +54,14 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
-  requesterId?: string;
-  assignedToId?: string | null;
-  assignedAt?: string | null;
-  updatedAt?: string | null;
-  revision?: number;
-  priority?: string | null;
-  impact?: string | null;
-  urgency?: string | null;
+  /** The owner: close, reopen and cancel are allowed to them and to Admin. */
+  requesterId: string;
+  /** Null while nobody is assigned. The backend sends no assignee name. */
+  assignedToId: string | null;
+  /** Sent back as expectedRevision, so a write based on an outdated copy is rejected with 409. */
+  revision: number;
+  /** Null (or absent) while the backend has not set one. */
+  priority?: TicketPriority | null;
 }
 
 export interface PagedTicketResult {
@@ -66,8 +78,17 @@ export interface AgentQueueFilters {
   scope: AgentQueueScope;
   status: TicketStatus | null;
   category: TicketCategory | null;
+  priority: TicketPriority | null;
+  /** Highest priority first (P1 → P4), then newest; otherwise newest first. */
+  sortByPriority: boolean;
   page: number;
   pageSize: number;
+}
+
+/** GET /api/users?role=Agent returns only the id and the name, never the email. */
+export interface AgentDirectoryEntry {
+  userId: string;
+  fullName: string | null;
 }
 
 export interface TimelineItemDto {
@@ -97,30 +118,29 @@ export interface GenerateUploadUrlPayload {
   contentType: string;
 }
 
-export interface ConfirmAttachmentPayload extends GenerateUploadUrlPayload {
-  storageKey: string;
-}
-
-export interface TicketAttachmentDto extends ConfirmAttachmentPayload {
-  id: string;
-  ticketId: string;
-  uploadedBy: string;
-  createdAt: string;
-}
-
 export interface UploadUrlResult {
   uploadUrl: string;
   storageKey: string;
   expirySeconds: number;
+  /** Fields of a presigned POST policy; absent or null means a raw PUT to uploadUrl. */
   formData?: Record<string, string> | null;
+}
+
+export interface ConfirmAttachmentPayload extends GenerateUploadUrlPayload {
+  storageKey: string;
+}
+
+export interface TicketAttachmentDto {
+  id: string;
+  ticketId: string;
+  fileName: string;
+  fileSizeBytes: number;
+  contentType: string;
+  storageKey: string;
+  uploadedBy: string;
+  createdAt: string;
 }
 
 export interface DownloadUrlResult {
   downloadUrl: string;
-}
-
-export interface AgentSummary {
-  userId: string;
-  email: string;
-  fullName?: string | null;
 }

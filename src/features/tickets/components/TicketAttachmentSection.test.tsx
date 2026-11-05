@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -6,15 +6,27 @@ import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
 import { ticketA, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
-import type { ConfirmAttachmentPayload, TicketAttachmentDto } from '../model/ticket.types';
+import { TicketStatus } from '../model/ticket.types';
 import { TicketAttachmentSection } from './TicketAttachmentSection';
 
-const uploadUrl = 'https://storage.example.com/servicedesk/upload-target';
-const storageKey = `tickets/${ticketA.id}/key_log.txt`;
+const uploadUrl = 'https://storage.example.com/servicedesk';
+const pendingKey = `uploads/pending/${ticketA.id}/0001`;
+// No formData: the raw-PUT shape. The POST-policy shape is covered in e2e (jsdom File + FormData hangs MSW on Node 22).
+const presign = { uploadUrl, storageKey: pendingKey, expirySeconds: 3600 };
+const attachment = {
+  id: '30000000-0000-0000-0000-000000000001', ticketId: ticketA.id, fileName: 'log.txt', fileSizeBytes: 5,
+  contentType: 'text/plain', storageKey: `tickets/${ticketA.id}/attachments/0001`, uploadedBy: user.userId,
+  createdAt: '2026-11-03T08:00:00Z',
+};
+const listUrl = `http://localhost/api/tickets/${ticketA.id}/attachments`;
 
-function renderSection() {
-  const { Wrapper } = createTestWrapper();
-  return render(<TicketAttachmentSection ticketId={ticketA.id} />, { wrapper: Wrapper });
+let stored: (typeof attachment)[] = [];
+let listReads = 0;
+
+function renderSection(status = TicketStatus.Submitted) {
+  const { Wrapper, queryClient } = createTestWrapper();
+  render(<TicketAttachmentSection ticketId={ticketA.id} status={status} />, { wrapper: Wrapper });
+  return queryClient;
 }
 
 function pick(file: File) {
@@ -22,70 +34,103 @@ function pick(file: File) {
 }
 
 beforeEach(() => {
+  stored = [];
+  listReads = 0;
   sessionStore.setToken('requester');
-  let files: TicketAttachmentDto[] = [];
   server.use(
     http.get('http://localhost/api/auth/me', () => HttpResponse.json(user)),
-    http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json(files)),
-    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, async ({ request }) => {
-      const body = await request.json() as ConfirmAttachmentPayload;
-      const attachment = { ...body, id: '30000000-0000-0000-0000-000000000001', ticketId: ticketA.id, uploadedBy: user.userId, createdAt: '2026-11-03T00:00:00Z' };
-      files = [attachment];
-      return HttpResponse.json(attachment, { status: 201 });
-    }),
+    http.get(listUrl, () => { listReads += 1; return HttpResponse.json(stored); }),
   );
 });
 
 afterEach(() => vi.restoreAllMocks());
 
-it('rejects a disallowed file locally without calling the API', async () => {
+it('lists the attachments the backend stores for the ticket, so they survive a reload', async () => {
+  stored = [attachment];
   renderSection();
-  pick(new File(['x'], 'setup.exe', { type: 'application/octet-stream' }));
-  // Validation prevents requesting a signed upload URL; loading the list is expected.
-  expect(await screen.findByText(/'\.exe' không được hỗ trợ/)).toBeInTheDocument();
-});
-
-it('uploads through a presigned URL without leaking the API token, then lists the file', async () => {
-  const requested: unknown[] = [];
-  let storageAuthorization: string | null = 'unset';
-  server.use(
-    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, async ({ request }) => {
-      requested.push(await request.json());
-      return HttpResponse.json({ uploadUrl, storageKey, expirySeconds: 3600 });
-    }),
-    http.put(uploadUrl, ({ request }) => {
-      storageAuthorization = request.headers.get('authorization');
-      return new HttpResponse(null, { status: 200 });
-    }),
-  );
-  renderSection();
-  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
   expect(await screen.findByText('log.txt')).toBeInTheDocument();
-  expect(requested).toEqual([{ fileName: 'log.txt', fileSizeBytes: 5, contentType: 'text/plain' }]);
-  expect(storageAuthorization).toBeNull();
   expect(screen.getByText('Tệp đính kèm (1)')).toBeInTheDocument();
 });
 
-it('shows a storage failure and does not list the file', async () => {
+it('rejects a disallowed file locally without calling the API', async () => {
+  renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
+  pick(new File(['x'], 'setup.exe', { type: 'application/octet-stream' }));
+  // Any request here would fail the test through the unhandled-request guard.
+  expect(await screen.findByText(/'\.exe' không được hỗ trợ/)).toBeInTheDocument();
+});
+
+it('uploads to storage without the API token, confirms the file, then shows it from the refreshed list', async () => {
+  const requested: unknown[] = [];
+  const confirmed: unknown[] = [];
+  let storage: { method: string; authorization: string | null } | undefined;
   server.use(
-    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json({ uploadUrl, storageKey, expirySeconds: 3600 })),
-    http.put(uploadUrl, () => new HttpResponse(null, { status: 403 })),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, async ({ request }) => {
+      requested.push(await request.json());
+      return HttpResponse.json(presign);
+    }),
+    http.put(uploadUrl, ({ request }) => {
+      storage = { method: request.method, authorization: request.headers.get('authorization') };
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, async ({ request }) => {
+      confirmed.push(await request.json());
+      stored = [attachment];
+      return HttpResponse.json(attachment, { status: 201 });
+    }),
   );
   renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
+  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
+
+  expect(await screen.findByText('log.txt')).toBeInTheDocument();
+  const metadata = { fileName: 'log.txt', fileSizeBytes: 5, contentType: 'text/plain' };
+  expect(requested).toEqual([metadata]);
+  expect(storage).toEqual({ method: 'PUT', authorization: null });
+  expect(confirmed).toEqual([{ ...metadata, storageKey: pendingKey }]);
+  expect(listReads).toBe(2);
+  expect(screen.getByText('Tệp đính kèm (1)')).toBeInTheDocument();
+});
+
+it('does not confirm or list a file the storage rejected', async () => {
+  let confirms = 0;
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json(presign)),
+    http.put(uploadUrl, () => new HttpResponse(null, { status: 403 })),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => { confirms += 1; return HttpResponse.json(attachment, { status: 201 }); }),
+  );
+  renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
   pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
   expect(await screen.findByText(/Không tải được tệp lên kho lưu trữ/)).toBeInTheDocument();
+  expect(confirms).toBe(0);
   expect(screen.getByText('Tệp đính kèm (0)')).toBeInTheDocument();
 });
 
-it('downloads through a fresh authorized URL and reports download failures', async () => {
+it('explains a rejected confirmation and does not show the file as attached', async () => {
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json(presign)),
+    http.put(uploadUrl, () => new HttpResponse(null, { status: 200 })),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => (
+      HttpResponse.json({ error: 'Yêu cầu upload đã hết hạn.' }, { status: 400 })
+    )),
+  );
+  renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
+  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
+  expect(await screen.findByText(/Không thể đính kèm tệp/)).toBeInTheDocument();
+  expect(screen.queryByText('log.txt')).not.toBeInTheDocument();
+  expect(listReads).toBe(1);
+});
+
+it('downloads a listed file through a fresh authorized URL and reports download failures', async () => {
+  stored = [attachment];
   let downloadStatus = 200;
   const opened: string[] = [];
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
     opened.push(this.href);
   });
   server.use(
-    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json({ uploadUrl, storageKey, expirySeconds: 3600 })),
-    http.put(uploadUrl, () => new HttpResponse(null, { status: 200 })),
     http.get(`http://localhost/api/tickets/${ticketA.id}/attachments/download-url`, ({ request }) => {
       if (downloadStatus !== 200) return new HttpResponse(null, { status: downloadStatus });
       const key = new URL(request.url).searchParams.get('storageKey');
@@ -93,9 +138,8 @@ it('downloads through a fresh authorized URL and reports download failures', asy
     }),
   );
   renderSection();
-  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
   await userEvent.click(await screen.findByRole('button', { name: /Tải xuống/ }));
-  await waitFor(() => expect(opened).toEqual([`https://storage.example.com/servicedesk/${storageKey}?signed=1`]));
+  await waitFor(() => expect(opened).toEqual([`https://storage.example.com/servicedesk/${attachment.storageKey}?signed=1`]));
 
   downloadStatus = 404;
   await userEvent.click(screen.getByRole('button', { name: /Tải xuống/ }));
@@ -103,37 +147,25 @@ it('downloads through a fresh authorized URL and reports download failures', asy
   expect(opened).toHaveLength(1);
 });
 
-it('loads confirmed attachments again after remounting with a new query cache', async () => {
-  const attachment = { id: '30000000-0000-0000-0000-000000000001', ticketId: ticketA.id,
-    fileName: 'persisted.txt', storageKey, fileSizeBytes: 5, contentType: 'text/plain', uploadedBy: user.userId, createdAt: '2026-11-03T00:00:00Z' };
-  let reads = 0;
-  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => { reads += 1; return HttpResponse.json([attachment]); }));
-  const first = renderSection();
-  expect(await screen.findByText('persisted.txt')).toBeInTheDocument();
-  first.unmount();
-  renderSection();
-  expect(await screen.findByText('persisted.txt')).toBeInTheDocument();
-  expect(reads).toBe(2);
+it('hides cached attachments once access to the ticket is lost', async () => {
+  stored = [attachment];
+  let denied = false;
+  server.use(http.get(listUrl, () => (denied ? new HttpResponse(null, { status: 403 }) : HttpResponse.json(stored))));
+  const queryClient = renderSection();
+  expect(await screen.findByText('log.txt')).toBeInTheDocument();
+
+  denied = true;
+  await act(() => queryClient.invalidateQueries());
+  await waitFor(() => expect(screen.queryByText('log.txt')).not.toBeInTheDocument());
+  expect(screen.getByText('Tệp đính kèm (0)')).toBeInTheDocument();
 });
 
-it('retries confirmation without uploading the binary again', async () => {
-  let puts = 0;
-  let confirmations = 0;
-  const attachment = { id: '30000000-0000-0000-0000-000000000001', ticketId: ticketA.id,
-    fileName: 'retry.txt', storageKey, fileSizeBytes: 5, contentType: 'text/plain', uploadedBy: user.userId, createdAt: '2026-11-03T00:00:00Z' };
-  server.use(
-    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json({ uploadUrl, storageKey, expirySeconds: 3600 })),
-    http.put(uploadUrl, () => { puts += 1; return new HttpResponse(null, { status: 200 }); }),
-    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => {
-      confirmations += 1;
-      return confirmations === 1 ? new HttpResponse(null, { status: 503 }) : HttpResponse.json(attachment, { status: 201 });
-    }),
-    http.get(`http://localhost/api/tickets/${ticketA.id}/attachments`, () => HttpResponse.json(confirmations >= 2 ? [attachment] : [])),
-  );
-  renderSection();
-  pick(new File(['hello'], 'retry.txt', { type: 'text/plain' }));
-  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận lại' }));
-  expect(await screen.findByText('retry.txt')).toBeInTheDocument();
-  expect(puts).toBe(1);
-  expect(confirmations).toBe(2);
+it('keeps files of an ended ticket downloadable but takes no new ones', async () => {
+  stored = [attachment];
+  renderSection(TicketStatus.Closed);
+  expect(await screen.findByText('log.txt')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Tải xuống/ })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: /Đính kèm tệp/ })).not.toBeInTheDocument();
+  expect(screen.queryByTestId('attachment-input')).not.toBeInTheDocument();
+  expect(screen.getByText(/Ticket đã kết thúc: không đính kèm thêm được/)).toBeInTheDocument();
 });

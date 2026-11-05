@@ -22,6 +22,8 @@ describe('uploadToPresignedUrl', () => {
     expect(seen).toEqual({ method: 'PUT', authorization: null, contentType: 'text/plain' });
   });
 
+  // The presigned POST-policy branch is covered in e2e/attachments.spec.ts only: on Node 22 a jsdom
+  // File inside FormData never completes through MSW's XMLHttpRequest interceptor.
   it('normalizes a storage rejection without exposing it as an API status', async () => {
     server.use(http.put(target, () => new HttpResponse(null, { status: 403 })));
 

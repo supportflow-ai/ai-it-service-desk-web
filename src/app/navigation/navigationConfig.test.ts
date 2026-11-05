@@ -3,12 +3,12 @@ import { getNavigation } from './navigationConfig';
 import { hasAnyRole } from '@/features/auth';
 
 it.each([
-  [['Requester'], ['/requester-dashboard/tickets']],
-  [['Agent'], ['/requester-dashboard/tickets', '/agent-workspace']],
-  [['Admin'], ['/requester-dashboard/tickets', '/agent-workspace', '/admin-panel']],
-  [['Requester', 'Agent'], ['/requester-dashboard/tickets', '/agent-workspace']],
+  [['Requester'], ['/', '/tickets/new', '/requester-dashboard/tickets', '/knowledge']],
+  [['Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
+  [['Admin'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new', '/admin-panel']],
+  [['Requester', 'Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
   [['Unknown'], []],
-])('derives menu permissions for %j', (roles, paths) => {
+])('derives the menu and its order for %j', (roles, paths) => {
   expect(getNavigation(roles).map((item) => item.key)).toEqual(paths);
 });
 it('does not infer unknown role privileges', () => {

@@ -16,14 +16,25 @@ const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) 
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
 const TicketWorkspacePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketWorkspacePage })));
 const AgentQueuePage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.AgentQueuePage })));
+const KnowledgeSearchPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.KnowledgeSearchPage })));
+const PublishedArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.PublishedArticlePage })));
+const KnowledgeAdminPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.KnowledgeAdminPage })));
+const NewArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.NewArticlePage })));
+const EditArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.EditArticlePage })));
+const ArticleDetailPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.ArticleDetailPage })));
 const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceTriagePanel })));
+const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.RequesterAIPanel })));
 
 export function AppRouter() {
   const protectedPages = [
     { ...routes.home, element: <HomePage /> },
     { ...routes.tickets, element: <TicketListPage /> },
     { ...routes.ticket, element: <TicketDetailPage /> },
-    { ...routes.create, element: <CreateTicketPage /> },
+    {
+      ...routes.create,
+      // No requester analysis endpoint exists yet, so the panel shows its not-enabled state and sends no request.
+      element: <CreateTicketPage aiPanel={<Suspense fallback={null}><RequesterAIPanel result={null} /></Suspense>} />,
+    },
     { ...routes.workspace, element: <AgentQueuePage /> },
     {
       ...routes.workspaceTicket,
@@ -32,7 +43,14 @@ export function AppRouter() {
         <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} onTicketChanged={reload} /></Suspense>
       )} />,
     },
-    { ...routes.admin, element: <UnavailablePage title="Admin Panel" /> },
+    // A reader who found no answer goes on to a request (PRD J-03).
+    { ...routes.knowledge, element: <KnowledgeSearchPage helpPath={routes.create.path} /> },
+    { ...routes.knowledgeArticle, element: <PublishedArticlePage helpPath={routes.create.path} /> },
+    { ...routes.knowledgeAdmin, element: <KnowledgeAdminPage /> },
+    { ...routes.knowledgeNew, element: <NewArticlePage /> },
+    { ...routes.knowledgeRead, element: <ArticleDetailPage /> },
+    { ...routes.knowledgeEdit, element: <EditArticlePage /> },
+    { ...routes.admin, element: <UnavailablePage title={routes.admin.label} /> },
   ];
   return (
     <BrowserRouter>

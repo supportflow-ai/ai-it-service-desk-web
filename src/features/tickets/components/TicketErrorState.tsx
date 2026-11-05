@@ -4,15 +4,16 @@ import { Link } from 'react-router-dom';
 import { normalizeError } from '@/shared/api/httpError';
 import { ErrorState } from '@/shared/ui/ErrorState';
 
-interface TicketWorkspaceErrorStateProps {
+interface TicketErrorStateProps {
   error: unknown;
   backPath: string;
+  backLabel: string;
   onRetry: () => void;
 }
 
 /** Full-page state when the ticket cannot be shown: missing, forbidden or failed to load. */
-export function TicketWorkspaceErrorState({ error, backPath, onRetry }: TicketWorkspaceErrorStateProps) {
-  const back = <Link to={backPath}><ArrowLeftOutlined /> Quay lại hàng đợi</Link>;
+export function TicketErrorState({ error, backPath, backLabel, onRetry }: TicketErrorStateProps) {
+  const back = <Link to={backPath}><ArrowLeftOutlined /> {backLabel}</Link>;
   const status = error === null ? 404 : normalizeError(error).status;
   if (status === 404) {
     return <Result status="404" title="Không tìm thấy ticket" subTitle="Ticket không tồn tại hoặc nằm ngoài phạm vi của bạn." extra={back} />;

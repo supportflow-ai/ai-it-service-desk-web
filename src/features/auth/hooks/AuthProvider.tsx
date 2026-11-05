@@ -41,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={{
     user: session.token ? currentUser.data ?? null : null,
     status,
+    signedOut: !session.token && session.signedOut,
     sessionVersion: session.version,
     error: currentUser.error ? normalizeError(currentUser.error) : null,
     loginPending: loginMutation.isPending,

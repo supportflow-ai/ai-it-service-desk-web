@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Card, Input, Popconfirm, Select, Space, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, ClockCircleOutlined, CloseCircleOutlined, EditOutlined, FieldTimeOutlined } from '@ant-design/icons';
 import { TicketCategory, ticketCategoryLabels } from '@/features/tickets';
-import type { ConfidenceBand, SuggestionDto } from '../model/ai.types';
+import type { ConfidenceBand, SuggestionDecision, SuggestionDto } from '../model/ai.types';
 import {
   OVERRIDE_REASON_MAX_LENGTH,
+  decisionSummary,
   levelOptions,
   suggestionDecisionLabels,
   suggestionTypeLabels,
@@ -11,6 +14,23 @@ import {
 } from '../model/suggestionDecision';
 import type { DecisionHandler } from '../hooks/useSuggestionDecision';
 import { ConfidenceTag } from './ConfidenceTag';
+import { ReviewHintTag } from './ReviewHintTag';
+
+// An icon beside each status, so it does not rest on colour alone.
+const decisionIcons: Record<SuggestionDecision, ReactNode> = {
+  Pending: <ClockCircleOutlined />,
+  Accepted: <CheckCircleOutlined />,
+  Overridden: <EditOutlined />,
+  Rejected: <CloseCircleOutlined />,
+  Expired: <FieldTimeOutlined />,
+};
+
+function formatReviewedAt(iso: string) {
+  const date = new Date(iso);
+  return Number.isNaN(date.getTime()) ? iso : date.toLocaleString('vi-VN', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+}
 
 const categoryOptions = Object.values(TicketCategory).map((value) => ({ value, label: ticketCategoryLabels[value] }));
 
@@ -39,6 +59,9 @@ export function SuggestionReviewCard({ suggestion, confidence = null, revision, 
   const options = (suggestion.type === 'Category' ? categoryOptions : levelOptions)
     .filter((option) => option.value !== suggestion.suggestedValue);
   const decisionMeta = suggestionDecisionLabels[suggestion.decision];
+  const suggestedLabel = valueLabel(suggestion, suggestion.suggestedValue);
+  // The AI value did not end up on the ticket: shown struck through.
+  const setAside = suggestion.decision === 'Overridden' || suggestion.decision === 'Rejected' || suggestion.decision === 'Expired';
 
   const decide = async (decision: 'Accepted' | 'Rejected' | 'Overridden') => {
     if (disabled || revision === null) return;
@@ -57,10 +80,18 @@ export function SuggestionReviewCard({ suggestion, confidence = null, revision, 
     <Space direction="vertical" style={{ width: '100%' }}>
       <Space style={{ justifyContent: 'space-between', width: '100%' }}>
         <Typography.Text strong>{suggestionTypeLabels[suggestion.type]}</Typography.Text>
-        <Tag color={decisionMeta.color}>{decisionMeta.label}</Tag>
+        <Tag color={decisionMeta.color} icon={decisionIcons[suggestion.decision]}>{decisionMeta.label}</Tag>
       </Space>
-      <span>Gợi ý: <Tag>{valueLabel(suggestion, suggestion.suggestedValue)}</Tag><ConfidenceTag band={confidence} score={suggestion.modelScore} /></span>
+      <span>
+        Gợi ý: <Tag style={setAside ? { textDecoration: 'line-through' } : undefined}>{suggestedLabel}</Tag>
+        <ConfidenceTag band={confidence} score={suggestion.modelScore} />
+        {!decided && <ReviewHintTag band={confidence} />}
+      </span>
       {suggestion.finalValue && <span>Giá trị cuối: <Tag color="green">{valueLabel(suggestion, suggestion.finalValue)}</Tag></span>}
+      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        {decisionSummary(suggestion.decision, suggestedLabel, suggestion.finalValue && valueLabel(suggestion, suggestion.finalValue))}
+        {suggestion.reviewedAt && ` Lúc ${formatReviewedAt(suggestion.reviewedAt)}.`}
+      </Typography.Text>
 
       {!decided && <Space wrap>
         <Button type="primary" disabled={disabled} loading={pending} onClick={() => { void decide('Accepted'); }}>Chấp nhận</Button>

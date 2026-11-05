@@ -13,7 +13,7 @@ export function TicketResolveDialog({
 }) {
   return (
     <Modal
-      title="Giải quyết Ticket"
+      title="Giải quyết ticket"
       open={open}
       onCancel={onClose}
       footer={
@@ -25,7 +25,7 @@ export function TicketResolveDialog({
         </Space>
       }
     >
-      <p>Bạn có chắc chắn đã hoàn tất xử lý sự cố này và muốn chuyển trạng thái vé sang <b>Đã giải quyết (Resolved)</b>?</p>
+      <p>Bạn đã xử lý xong sự cố này và muốn chuyển ticket sang trạng thái <b>Đã giải quyết</b>?</p>
     </Modal>
   );
 }

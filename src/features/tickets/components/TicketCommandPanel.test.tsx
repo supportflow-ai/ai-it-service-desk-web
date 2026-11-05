@@ -7,14 +7,17 @@ import { server } from '../../../../tests/mocks/server';
 import { ticketA, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
 import { TicketCategory, TicketStatus } from '../model/ticket.types';
+import type { TicketView } from '../model/ticketPermissions';
 import { TicketCommandPanel } from './TicketCommandPanel';
 
-function renderPanel(roles: string[], status: TicketStatus, onReload = () => {}) {
+interface PanelOptions { view?: TicketView; onReload?: () => void; requesterId?: string }
+
+function renderPanel(roles: string[], status: TicketStatus, { view = 'workspace', onReload = () => {}, requesterId = ticketA.requesterId }: PanelOptions = {}) {
   sessionStore.setToken('session');
   server.use(http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles })));
-  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status, requesterId: roles.includes('Requester') ? user.userId : '00000000-0000-0000-0000-000000000099' };
+  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status, requesterId };
   const { Wrapper } = createTestWrapper();
-  render(<TicketCommandPanel ticket={ticket} onReload={onReload} />, { wrapper: Wrapper });
+  render(<TicketCommandPanel ticket={ticket} onReload={onReload} view={view} />, { wrapper: Wrapper });
 }
 
 it('gives an agent claim on a submitted ticket but no owner-only commands', async () => {
@@ -30,11 +33,34 @@ it('does not offer close or reopen to a plain agent on a resolved ticket', async
   expect(screen.queryByRole('button', { name: /Mở lại vé/ })).not.toBeInTheDocument();
 });
 
-it('lets admin close or reopen a resolved ticket and never shows claim', async () => {
+it('lets admin close or reopen a resolved ticket they do not own', async () => {
   renderPanel(['Admin'], TicketStatus.Resolved);
   expect(await screen.findByRole('button', { name: /Đóng vé/ })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Mở lại vé/ })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Nhận xử lý/ })).not.toBeInTheDocument();
+});
+
+it('lets admin claim a submitted ticket, as the backend allows', async () => {
+  renderPanel(['Admin'], TicketStatus.Submitted);
+  expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeEnabled();
+});
+
+it('treats an agent viewing their own request as its requester: cancel, but no claim', async () => {
+  renderPanel(['Agent'], TicketStatus.Submitted, { view: 'requester', requesterId: user.userId });
+  expect(await screen.findByRole('button', { name: /Hủy vé/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Nhận xử lý/ })).not.toBeInTheDocument();
+});
+
+it('keeps owner commands off the workspace for a plain agent, even on their own ticket', async () => {
+  renderPanel(['Agent'], TicketStatus.Submitted, { requesterId: user.userId });
+  expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Hủy vé/ })).not.toBeInTheDocument();
+});
+
+it('does not offer cancel to a requester who does not own the ticket', async () => {
+  renderPanel(['Requester'], TicketStatus.Submitted, { view: 'requester' });
+  expect(await screen.findByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Hủy vé/ })).not.toBeInTheDocument();
 });
 
 it('lets the requester cancel their submitted ticket after confirmation', async () => {
@@ -43,7 +69,7 @@ it('lets the requester cancel their submitted ticket after confirmation', async 
     calls.push('cancel');
     return HttpResponse.json({ ...ticketA, status: TicketStatus.Cancelled });
   }));
-  renderPanel(['Requester'], TicketStatus.Submitted);
+  renderPanel(['Requester'], TicketStatus.Submitted, { view: 'requester', requesterId: user.userId });
   await userEvent.click(await screen.findByRole('button', { name: /Hủy vé/ }));
   expect(calls).toEqual([]);
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận hủy' }));
@@ -58,7 +84,7 @@ it('explains a rejected transition and offers a reload instead of retrying', asy
     return HttpResponse.json({ error: 'Cannot claim ticket in status InProgress' }, { status: 400 });
   }));
   const onReload = vi.fn();
-  renderPanel(['Agent'], TicketStatus.Submitted, onReload);
+  renderPanel(['Agent'], TicketStatus.Submitted, { onReload });
   await userEvent.click(await screen.findByRole('button', { name: /Nhận xử lý/ }));
   expect(await screen.findByText(/Không thể chuyển trạng thái/)).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
@@ -66,10 +92,80 @@ it('explains a rejected transition and offers a reload instead of retrying', asy
   expect(claims).toBe(1);
 });
 
-it('reports a permission failure without the generic retry message', async () => {
-  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => new HttpResponse(null, { status: 403 })));
-  renderPanel(['Agent'], TicketStatus.Submitted);
+it('sends the revision on screen and asks for a reload when someone else changed the ticket', async () => {
+  const sent: (string | null)[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, ({ request }) => {
+    sent.push(new URL(request.url).searchParams.get('expectedRevision'));
+    return HttpResponse.json({ error: 'Dữ liệu đã bị thay đổi bởi người khác.' }, { status: 409 });
+  }));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.Submitted, { onReload });
   await userEvent.click(await screen.findByRole('button', { name: /Nhận xử lý/ }));
-  expect(await screen.findByText('Bạn không có quyền thực hiện thao tác này trên ticket.')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Tải lại' })).not.toBeInTheDocument();
+  expect(await screen.findByText(/Ticket vừa được người khác cập nhật/)).toBeInTheDocument();
+  expect(sent).toEqual([String(ticketA.revision)]);
+
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+  expect(screen.queryByText(/Ticket vừa được người khác cập nhật/)).not.toBeInTheDocument();
+  expect(sent).toHaveLength(1);
+});
+
+it('explains a claim lost to another agent and offers a reload', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/claim`, () => (
+    HttpResponse.json({ error: 'Vé đã được phân công cho kỹ thuật viên khác.' }, { status: 403 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.Submitted, { onReload });
+  await userEvent.click(await screen.findByRole('button', { name: /Nhận xử lý/ }));
+  expect(await screen.findByText(/ticket vừa được giao cho kỹ thuật viên khác/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+});
+
+it('lets the requester edit their submitted ticket, prefilled, saving with the revision on screen', async () => {
+  const sent: unknown[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/update`, async ({ request }) => {
+    sent.push(await request.json());
+    return HttpResponse.json({ ...ticketA, requesterId: user.userId, title: 'Không vào được VPN' });
+  }));
+  renderPanel(['Requester'], TicketStatus.Submitted, { view: 'requester', requesterId: user.userId });
+  await userEvent.click(await screen.findByRole('button', { name: /Sửa yêu cầu/ }));
+  const title = await screen.findByLabelText(/Tiêu đề yêu cầu/);
+  expect(title).toHaveValue(ticketA.title);
+  expect(screen.getByLabelText('Mô tả chi tiết')).toHaveValue(ticketA.description);
+  await userEvent.clear(title);
+  await userEvent.type(title, 'Không vào được VPN');
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+  await waitFor(() => expect(sent).toEqual([
+    { title: 'Không vào được VPN', categoryId: 'NET', description: ticketA.description, expectedRevision: ticketA.revision },
+  ]));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+it('keeps the typed changes and offers a reload when the ticket changed meanwhile', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/update`, () => (
+    HttpResponse.json({ error: 'Dữ liệu đã bị thay đổi bởi người khác.' }, { status: 409 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Requester'], TicketStatus.Submitted, { view: 'requester', requesterId: user.userId, onReload });
+  await userEvent.click(await screen.findByRole('button', { name: /Sửa yêu cầu/ }));
+  const title = await screen.findByLabelText(/Tiêu đề yêu cầu/);
+  await userEvent.type(title, ' (bổ sung)');
+  await userEvent.click(screen.getByRole('button', { name: 'Lưu thay đổi' }));
+  expect(await screen.findByText(/Ticket vừa được người khác cập nhật/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+  expect(screen.getByLabelText(/Tiêu đề yêu cầu/)).toHaveValue(`${ticketA.title} (bổ sung)`);
+});
+
+it('offers edit only while Submitted, and on the workspace only to an admin', async () => {
+  renderPanel(['Requester'], TicketStatus.Assigned, { view: 'requester', requesterId: user.userId });
+  expect(await screen.findByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Sửa yêu cầu/ })).not.toBeInTheDocument();
+});
+
+it.each([['Admin', true], ['Agent', false]] as const)('shows edit on the workspace to %s: %s', async (role, shown) => {
+  renderPanel([role], TicketStatus.Submitted);
+  expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Sửa yêu cầu/ }) !== null).toBe(shown);
 });

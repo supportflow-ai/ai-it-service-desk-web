@@ -1,8 +1,11 @@
 import type { ReactNode } from 'react';
 import { Card, Typography } from 'antd';
+import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
-import { assignmentView } from '../model/assignment';
+import { assignmentLabel } from '../model/assignment';
 import { ticketCategoryLabels } from '../model/ticketCategories';
+import { useAgentDirectory } from '../hooks/useAgentDirectory';
+import { TicketPriorityTag } from './TicketPriorityTag';
 import { TicketStatusTag } from './TicketStatusTag';
 
 function formatCreatedAt(iso: string) {
@@ -25,16 +28,17 @@ const unavailable = <Typography.Text type="secondary">Chưa có thông tin</Typo
 
 /** Only fields the backend TicketDto actually returns are shown as values. */
 export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
-  const assignment = assignmentView(ticket.status, ticket.assignedToId);
+  const { user } = useAuth();
+  const agents = useAgentDirectory();
   return (
     <Card title="Thông tin ticket" size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)', fontSize: 13 }}>
       <dl style={{ margin: 0 }}>
         <Field label="Mã ticket"><span className="mono">{ticket.ticketNumber}</span></Field>
         <Field label="Trạng thái"><TicketStatusTag status={ticket.status} /></Field>
+        <Field label="Ưu tiên"><TicketPriorityTag priority={ticket.priority} /></Field>
         <Field label="Danh mục">{ticketCategoryLabels[ticket.categoryId]}</Field>
-        <Field label="Người yêu cầu">{ticket.requesterId ?? unavailable}</Field>
-        <Field label="Mức ưu tiên">{ticket.priority ?? unavailable}</Field>
-        <Field label="Phụ trách">{assignment.known ? assignment.label : unavailable}</Field>
+        <Field label="Người yêu cầu">{unavailable}</Field>
+        <Field label="Phụ trách">{assignmentLabel(ticket, user?.userId, agents.data)}</Field>
         <Field label="Tạo lúc">{formatCreatedAt(ticket.createdAt)}</Field>
       </dl>
     </Card>

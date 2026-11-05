@@ -1,6 +1,6 @@
 import { ticketApi } from '../api/ticketApi';
 import { useTicketWrite } from './useTicketWrite';
 
-export function useCloseTicket(ticketId: string, expectedRevision?: number) {
-  return useTicketWrite({ ticketId, expectedRevision, action: 'close', write: (_: void, revision?: number) => ticketApi.closeTicket(ticketId, revision), change: 'state' });
+export function useCloseTicket(ticketId: string) {
+  return useTicketWrite({ ticketId, action: 'close', write: (expectedRevision: number) => ticketApi.closeTicket(ticketId, expectedRevision), change: 'state' });
 }
