@@ -10,7 +10,9 @@
     "typecheck": "tsc -b && tsc -p tsconfig.test.json && tsc -p tests/contracts/tsconfig.json",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "contract:check": "node tools/backend-contract.mjs",
+    "contract:generate": "node tools/backend-contract.mjs --generate"
   },
   "dependencies": {
     "@ant-design/icons": "5.6.1",
