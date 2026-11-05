@@ -199,6 +199,14 @@ body {
   line-height: 1.3;
 }
 .kb-markdown h1 { font-size: 22px; }
+/* The heading a semantic result pointed at (TC-362); clear of the sticky header when scrolled to. */
+.kb-markdown .kb-source-section {
+  scroll-margin-top: 80px;
+  background: var(--wns);
+  box-shadow: 0 0 0 6px var(--wns);
+  border-radius: 4px;
+  outline: none;
+}
 .kb-markdown h2 { font-size: 18px; }
 .kb-markdown h3 { font-size: 16px; }
 .kb-markdown p, .kb-markdown ul, .kb-markdown ol, .kb-markdown blockquote, .kb-markdown pre, .kb-markdown table {

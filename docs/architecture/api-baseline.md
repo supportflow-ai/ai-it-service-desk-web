@@ -242,6 +242,17 @@ line (title, version, publish date, tags). Relevance is "Độ liên quan: Cao/T
 model score appears only in the tooltip, as "Điểm mô hình 0.82" with the note that it ranks results
 and is not a probability, never as a percentage (Spec §11.3, PRD §8.1).
 
+TC-362 opens each source from its card: the title at the closest passage's section, and every other
+passage at its own (`/knowledge/:id` with `{ resultsSearch, section }` router state; a section is
+only a string of up to 200 characters, or null for the opening). The reader checks the section
+against the article's own headings: found, it scrolls to the heading, marks and focuses it, and says
+where the match is ("Tới mục này" scrolls again); gone from the current version, it says so and
+shows the whole article; the opening is named as such. Hits below the relevance threshold are never
+shown (provisional 0.35, `relevancePolicy.threshold`), so loosely related passages are not offered as
+an answer: when some came back but none clears it, and when none came back, the results area has its
+own empty state with "Tìm theo từ khóa" (when the page offers it) and "Tạo yêu cầu hỗ trợ" — apart
+from the keyword search's empty states and from a failed search.
+
 ## Not enabled
 
 AI HTTP endpoints are not used yet: backend dev f82f0b2 still exposes no triage result or review

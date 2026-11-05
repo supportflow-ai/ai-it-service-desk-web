@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SemanticMatch } from './knowledge.types';
-import { formatModelScore, groupMatches, relevanceBand, relevancePolicy } from './semanticResults';
+import { formatModelScore, groupMatches, relevanceBand, relevancePolicy, semanticOutcome } from './semanticResults';
 
 const match = (articleId: string, score: number, section: string | null = null): SemanticMatch => ({
   articleId, title: `Bài ${articleId}`, section, snippet: 'Đoạn khớp', score, tags: [], version: 1, publishedAt: '2026-11-03T08:00:00Z',
@@ -25,5 +25,18 @@ describe('semantic results', () => {
     expect(groups[1]?.best.section).toBe('Bước 1');
     expect(groups[1]?.others.map((other) => other.section)).toEqual(['Bước 2', null]);
     expect(groupMatches([])).toEqual([]);
+  });
+});
+
+describe('semantic outcome', () => {
+  it('counts only passages at or above the threshold as matches', () => {
+    const outcome = semanticOutcome([match('a', relevancePolicy.threshold), match('b', relevancePolicy.threshold - 0.01)]);
+    expect(outcome.kind).toBe('matches');
+    expect(outcome.matches.map((hit) => hit.articleId)).toEqual(['a']);
+  });
+
+  it('tells passages too weak to show from no passages at all', () => {
+    expect(semanticOutcome([match('a', relevancePolicy.threshold - 0.01)])).toEqual({ kind: 'weak', matches: [] });
+    expect(semanticOutcome([])).toEqual({ kind: 'none', matches: [] });
   });
 });

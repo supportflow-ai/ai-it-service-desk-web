@@ -6,7 +6,7 @@ export type RelevanceBand = 'high' | 'medium' | 'low';
  * Score cut-offs. Provisional: the score scale and the bands are for backend AI to settle with the
  * retrieval evaluation (Spec §11, Recall@K/MRR); until then these assume a similarity in [0, 1].
  */
-export const relevancePolicy = { high: 0.75, medium: 0.55 } as const;
+export const relevancePolicy = { high: 0.75, medium: 0.55, threshold: 0.35 } as const;
 
 export function relevanceBand(score: number): RelevanceBand {
   if (score >= relevancePolicy.high) return 'high';
@@ -19,6 +19,16 @@ export const relevanceLabels: Record<RelevanceBand, string> = { high: 'Cao', med
 /** A score as a plain number, never as a percentage (Spec §11.3). */
 export function formatModelScore(score: number) {
   return score.toFixed(2);
+}
+
+/**
+ * What the results area shows (TC-362): only passages at or above the threshold count as matches;
+ * `weak` means passages came back but none close enough, `none` that nothing came back.
+ */
+export function semanticOutcome(matches: readonly SemanticMatch[]) {
+  const relevant = matches.filter((match) => match.score >= relevancePolicy.threshold);
+  if (relevant.length > 0) return { kind: 'matches' as const, matches: relevant };
+  return { kind: matches.length > 0 ? 'weak' as const : 'none' as const, matches: relevant };
 }
 
 /** Groups passages by article, each article's closest passage first and the closest article first. */

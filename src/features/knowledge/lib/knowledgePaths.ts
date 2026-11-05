@@ -49,6 +49,22 @@ export interface KnowledgeResultsState {
   resultsSearch: string;
 }
 
+/** Router state carried from a semantic result to its source: the results, and the section to show. */
+export interface KnowledgeSourceState extends KnowledgeResultsState {
+  section: string | null;
+}
+
+/**
+ * Where a semantic result pointed in the article: a section, its opening (null), or nowhere
+ * (undefined: not opened from one). Capped so router state cannot carry anything large.
+ */
+export function sourceSectionFrom(state: unknown): string | null | undefined {
+  if (!isRecord(state) || !('section' in state)) return undefined;
+  const { section } = state;
+  if (section === null) return null;
+  return typeof section === 'string' && section.trim() !== '' && section.length <= 200 ? section : undefined;
+}
+
 /** The search URL to go back to. */
 export function knowledgeResultsPath(state: unknown) {
   return backTo(KNOWLEDGE_PATH, isRecord(state) ? state.resultsSearch : undefined);
