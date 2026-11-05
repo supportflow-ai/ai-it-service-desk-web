@@ -1,4 +1,5 @@
-import { Button, Card, Space, Tag, Typography } from 'antd';
+import { useCallback, useEffect, useRef } from 'react';
+import { Alert, Button, Card, Space, Tag, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
@@ -7,8 +8,9 @@ import { PageLoader } from '@/shared/ui/PageLoader';
 import { useArticle } from '../hooks/useArticle';
 import { isArticleAccessLost } from '../lib/articleErrorMessage';
 import { formatArticleDate } from '../lib/formatArticleDate';
-import { KNOWLEDGE_PATH, articlePath, knowledgeResultsPath, knowledgeTagPath } from '../lib/knowledgePaths';
+import { KNOWLEDGE_PATH, articlePath, knowledgeResultsPath, knowledgeTagPath, sourceSectionFrom } from '../lib/knowledgePaths';
 import { isArticleId } from '../model/articleId';
+import { articleSections, sameSection } from '../model/articleSections';
 import { ArticleStatus } from '../model/knowledge.types';
 import type { ArticleDto } from '../model/knowledge.types';
 import { canManageKnowledge } from '../model/knowledgePermissions';
@@ -20,6 +22,13 @@ interface PublishedArticlePageProps {
   helpPath: string;
 }
 
+function sourceNote(section: string | null, found: boolean) {
+  if (section === null) return 'Đoạn khớp với câu hỏi nằm ở phần mở đầu bài viết.';
+  return found
+    ? `Đoạn khớp với câu hỏi nằm ở mục “${section}”.`
+    : `Mục “${section}” không còn trong phiên bản hiện tại của bài; bên dưới là toàn bộ bài viết.`;
+}
+
 function versionLine(article: ArticleDto) {
   const published = formatArticleDate(article.publishedAt ?? article.updatedAt);
   const updated = formatArticleDate(article.updatedAt);
@@ -27,7 +36,10 @@ function versionLine(article: ArticleDto) {
     .filter(Boolean).join(' · ');
 }
 
-/** A Published article as readers see it (TC-343), with its tags, version and the way back. */
+/**
+ * A Published article as readers see it (TC-343), with its tags, version and the way back. Opened
+ * from a semantic result, it shows the section the passage came from (TC-362).
+ */
 export function PublishedArticlePage({ helpPath }: PublishedArticlePageProps) {
   const { id } = useParams();
   const location = useLocation();
@@ -37,6 +49,26 @@ export function PublishedArticlePage({ helpPath }: PublishedArticlePageProps) {
   const reload = () => { void article.refetch(); };
   const backPath = knowledgeResultsPath(location.state);
   const backLabel = backPath === KNOWLEDGE_PATH ? 'Về Kho tri thức' : 'Quay lại kết quả tìm kiếm';
+  const section = sourceSectionFrom(location.state);
+  const body = useRef<HTMLDivElement>(null);
+  const content = article.data?.content;
+  // Checked on the source, so a section the article no longer has is said so instead of searched for.
+  const sectionFound = typeof section === 'string' && content !== undefined
+    && articleSections(content).some((heading) => sameSection(heading, section));
+  const showSection = useCallback(() => {
+    if (typeof section !== 'string') return;
+    const headings = body.current?.querySelectorAll<HTMLElement>('h1, h2, h3, h4, h5, h6') ?? [];
+    const heading = [...headings].find((element) => sameSection(element.textContent ?? '', section));
+    if (!heading) return;
+    heading.classList.add('kb-source-section');
+    heading.tabIndex = -1;
+    heading.scrollIntoView({ block: 'start' });
+    heading.focus({ preventScroll: true });
+  }, [section]);
+  useEffect(() => {
+    if (sectionFound) showSection();
+  }, [sectionFound, showSection]);
+
   const unavailable = (error: unknown) => (
     <ArticleUnavailable error={error} backPath={backPath} backLabel={backLabel} onRetry={reload} />
   );
@@ -68,8 +100,17 @@ export function PublishedArticlePage({ helpPath }: PublishedArticlePageProps) {
           ))}
         </Space>
         <div className="meta">{versionLine(data)}</div>
+        {section !== undefined && (
+          <Alert
+            type={section === null || sectionFound ? 'info' : 'warning'}
+            showIcon
+            style={{ marginTop: 12 }}
+            message={sourceNote(section, sectionFound)}
+            action={sectionFound ? <Button size="small" onClick={showSection}>Tới mục này</Button> : undefined}
+          />
+        )}
         <Card style={{ borderRadius: 8, borderColor: 'var(--bd)', marginTop: 16 }}>
-          <MarkdownPreview markdown={data.content} />
+          <div ref={body}><MarkdownPreview markdown={data.content} /></div>
         </Card>
       </article>
 

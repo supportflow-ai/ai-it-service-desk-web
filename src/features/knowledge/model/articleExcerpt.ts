@@ -2,8 +2,9 @@
 // these rules only tidy it; they are not what keeps it safe.
 const rules: readonly [RegExp, string][] = [
   [/```[\s\S]*?(?:```|$)/g, ' '],
-  [/!\[([^\]]*)\]\([^)]*\)/g, '$1'],
-  [/\[([^\]]*)\]\([^)]*\)/g, '$1'],
+  // A link target may hold one level of parentheses, as in `javascript:alert(1)`.
+  [/!\[([^\]]*)\]\((?:[^()]|\([^()]*\))*\)/g, '$1'],
+  [/\[([^\]]*)\]\((?:[^()]|\([^()]*\))*\)/g, '$1'],
   [/<[^>]+>/g, ' '],
   [/^[ \t]*(?:#{1,6}|>+|[-*+]|\d+[.)])[ \t]+/gm, ''],
   [/^\[[ xX]\][ \t]+/gm, ''],

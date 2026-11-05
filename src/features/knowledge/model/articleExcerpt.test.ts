@@ -13,6 +13,7 @@ describe('article excerpt', () => {
   it('leaves code blocks and raw HTML tags out', () => {
     expect(articleExcerpt('Chạy lệnh:\n```sh\nipconfig /all\n```\nrồi <b>khởi động lại</b>.')).toBe('Chạy lệnh: rồi khởi động lại.');
     expect(articleExcerpt('Nhấn <script>alert(1)</script> Enter')).toBe('Nhấn alert(1) Enter');
+    expect(articleExcerpt('Bấm [đây](javascript:alert(1)) hoặc [wiki](https://vi.wikipedia.org/wiki/VPN_(mạng))')).toBe('Bấm đây hoặc wiki');
   });
 
   it('cuts a long text on a word and marks the cut', () => {

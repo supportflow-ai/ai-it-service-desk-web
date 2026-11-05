@@ -221,7 +221,37 @@ The reader side (TC-219) is open to every signed-in role, as `GET /knowledge/art
   management page instead, and anyone else sees not found. "Back" returns to the results it was
   opened from (`{ resultsSearch }` router state, `?…` only); a reader it did not help goes on to a
   request (PRD J-03).
-- The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
+
+Semantic search (TC-223) has no backend yet: backend dev `febb4d7` has only a NoOp
+`IEmbeddingService` and no search endpoint, and `ai-service` has only ticket classification; the
+embedding model, dimension and retrieval contract are still open (ai-service
+`docs/backend-alignment.md`). The UI is built against its own `SemanticMatch` shape, onto which the
+client of TC-360 will map the endpoint of AISD-S3-07-T03. What the UI needs per hit, for that contract:
+- `articleId`, `title`, `tags`, `version` and `publishedAt` of the Published version the passage
+  comes from (Spec §8.3: the current published version only; drafts and archived excluded, FR-KB-06);
+- `section` (the heading the chunk sits under, or null) and `snippet` (the chunk text,
+  `KnowledgeEmbedding.Content`);
+- `score`, higher is closer, with its scale stated.
+- Still to agree with backend AI: the no-match threshold and the High/Medium/Low cut-offs (the UI
+  uses provisional 0.55 / 0.75 on a [0, 1] similarity, `relevancePolicy`), whether the backend drops
+  hits below the threshold itself, and Top-K.
+
+TC-361 shows the hits as one card per source article: its closest passage first (section and the
+passage as plain text, never rendered as Markdown), the other passages that matched, and the source
+line (title, version, publish date, tags). Relevance is "Độ liên quan: Cao/Trung bình/Thấp"; the
+model score appears only in the tooltip, as "Điểm mô hình 0.82" with the note that it ranks results
+and is not a probability, never as a percentage (Spec §11.3, PRD §8.1).
+
+TC-362 opens each source from its card: the title at the closest passage's section, and every other
+passage at its own (`/knowledge/:id` with `{ resultsSearch, section }` router state; a section is
+only a string of up to 200 characters, or null for the opening). The reader checks the section
+against the article's own headings: found, it scrolls to the heading, marks and focuses it, and says
+where the match is ("Tới mục này" scrolls again); gone from the current version, it says so and
+shows the whole article; the opening is named as such. Hits below the relevance threshold are never
+shown (provisional 0.35, `relevancePolicy.threshold`), so loosely related passages are not offered as
+an answer: when some came back but none clears it, and when none came back, the results area has its
+own empty state with "Tìm theo từ khóa" (when the page offers it) and "Tạo yêu cầu hỗ trợ" — apart
+from the keyword search's empty states and from a failed search.
 
 ## Not enabled
 
@@ -236,6 +266,19 @@ visibly unsupported/disabled. There is no production mock, endpoint probing, gue
 self-assignment identity or default ticket revision. AI panels remain available as presentation
 components with async callbacks for a later reviewed integration. Missing revision, stale and
 manual-only suggestions cannot be applied.
+
+Confidence and decision states (TC-367) follow the backend domain at dev `febb4d7`, which still has
+no AI endpoint: the band comes from `ConfidencePolicy` (Low < 0.4, High ≥ 0.75), never recomputed
+in the UI, and each band gets the reviewer guidance `ConfidenceBand` documents: Low "Cần xem xét
+kỹ", Medium "Nên rà soát", High no flag; a missing band (no score, or one the policy rejects) reads
+like Low and says the score is missing. The panel counts what needs a careful check and how many
+suggestions are decided. Each decision status has an icon and says what it did to the ticket
+(applied the AI value; another value chosen instead, the AI value struck through; nothing applied;
+expired because the ticket changed, with "phân tích lại"), with the review time when the backend
+records one (`ReviewedAt`; Expired has none, `MarkExpired`). `ReviewedBy` is a user id with no name,
+so it is not shown. A requester sees only the band and, when it is Low or missing, that a technician
+will check the category; never a score. Blocked by AISD-S3-09-T03 (TC-365, held-out evaluation): if
+it moves the band thresholds, only the backend policy changes.
 
 The existing create endpoint supports optional Idempotency-Key, but this refactor preserves
 the existing request behavior and disables automatic write retries. Create is not advertised

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   articlePath, editArticlePath, knowledgeListPath, knowledgeResultsPath, knowledgeTagPath, listStateFrom, publishedArticlePath,
+  sourceSectionFrom,
 } from './knowledgePaths';
 
 describe('knowledge paths', () => {
@@ -41,5 +42,15 @@ describe('knowledge paths', () => {
     expect(knowledgeResultsPath({ resultsSearch: '//evil.example' })).toBe('/knowledge');
     expect(knowledgeResultsPath({ listSearch: '?status=draft' })).toBe('/knowledge');
     expect(knowledgeResultsPath(null)).toBe('/knowledge');
+  });
+
+  it('tells a section, the opening of an article and no semantic origin apart', () => {
+    expect(sourceSectionFrom({ resultsSearch: '?q=vpn', section: 'Các bước' })).toBe('Các bước');
+    expect(sourceSectionFrom({ resultsSearch: '?q=vpn', section: null })).toBeNull();
+    expect(sourceSectionFrom({ resultsSearch: '?q=vpn' })).toBeUndefined();
+    expect(sourceSectionFrom({ section: '   ' })).toBeUndefined();
+    expect(sourceSectionFrom({ section: 'x'.repeat(201) })).toBeUndefined();
+    expect(sourceSectionFrom({ section: 42 })).toBeUndefined();
+    expect(sourceSectionFrom(null)).toBeUndefined();
   });
 });

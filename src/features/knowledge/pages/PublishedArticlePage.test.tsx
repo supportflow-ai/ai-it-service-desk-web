@@ -2,7 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
 import { othersPublished, ownDraft, user } from '../../../../tests/fixtures';
@@ -121,4 +121,48 @@ it('keeps the article on screen when a refresh fails, with a retry', async () =>
   expect(await screen.findByText('Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Thử lại' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { level: 2, name: guide.title })).toBeInTheDocument();
+});
+
+describe('opened from a semantic result (TC-362)', () => {
+  const sourced = { ...guide, content: '## Trước khi bắt đầu\n\nCần tài khoản công ty.\n\n## Các   **bước**\n\n1. Mở Cài đặt' };
+  const scrolled: string[] = [];
+  beforeEach(() => {
+    served = sourced;
+    scrolled.length = 0;
+    // jsdom does not lay out pages, so it has no scrollIntoView of its own.
+    Element.prototype.scrollIntoView = vi.fn(function record(this: Element) { scrolled.push((this.textContent ?? '').replace(/\s+/g, ' ')); });
+  });
+
+  it('scrolls to the section of the passage, marks it and says where the match is', async () => {
+    renderReader(['Requester'], guide.id, { resultsSearch: '?mode=semantic&q=l%C3%A0m+sao', section: 'Các bước' });
+    expect(await screen.findByText('Đoạn khớp với câu hỏi nằm ở mục “Các bước”.')).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { level: 2, name: 'Các bước' });
+    expect(scrolled).toEqual(['Các bước']);
+    expect(heading).toHaveClass('kb-source-section');
+    expect(heading).toHaveFocus();
+    expect(screen.getByRole('link', { name: /Quay lại kết quả tìm kiếm/ })).toHaveAttribute('href', '/knowledge?mode=semantic&q=l%C3%A0m+sao');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tới mục này' }));
+    expect(scrolled).toEqual(['Các bước', 'Các bước']);
+  });
+
+  it('says when the section is no longer in the article, and scrolls nowhere', async () => {
+    renderReader(['Requester'], guide.id, { resultsSearch: '?q=x', section: 'Lỗi 809' });
+    expect(await screen.findByText('Mục “Lỗi 809” không còn trong phiên bản hiện tại của bài; bên dưới là toàn bộ bài viết.')).toBeInTheDocument();
+    expect(scrolled).toEqual([]);
+    expect(screen.queryByRole('button', { name: 'Tới mục này' })).not.toBeInTheDocument();
+  });
+
+  it('says when the passage is in the opening of the article', async () => {
+    renderReader(['Requester'], guide.id, { resultsSearch: '?q=x', section: null });
+    expect(await screen.findByText('Đoạn khớp với câu hỏi nằm ở phần mở đầu bài viết.')).toBeInTheDocument();
+    expect(scrolled).toEqual([]);
+  });
+
+  it('says nothing about sections when not opened from a semantic result', async () => {
+    renderReader(['Requester'], guide.id, { resultsSearch: '?q=x' });
+    await screen.findByRole('heading', { level: 2, name: guide.title });
+    expect(screen.queryByText(/Đoạn khớp với câu hỏi/)).not.toBeInTheDocument();
+    expect(scrolled).toEqual([]);
+  });
 });
