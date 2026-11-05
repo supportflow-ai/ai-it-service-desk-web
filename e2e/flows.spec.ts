@@ -112,3 +112,21 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
     `GET /api/tickets/${ticketA.id}/timeline`, `GET /api/tickets/${ticketA.id}/attachments`,
   ].sort());
 });
+
+test('a visitor sees the landing page at / and reaches sign in; other pages still ask to sign in', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: /Gửi yêu cầu IT một lần/ })).toBeVisible();
+  await expect(page.getByText('Sắp có')).toHaveCount(2);
+  await page.getByRole('main').getByRole('link', { name: 'Đăng nhập' }).first().click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto('/tickets/new');
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test('a signed-in requester at / sees the overview, not the landing page', async ({ page, api }) => {
+  await page.addInitScript(() => localStorage.setItem('token', 'restored'));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1, name: /Gửi yêu cầu IT một lần/ })).toHaveCount(0);
+  await expect(page.getByText('Chờ tiếp nhận')).toBeVisible();
+  expect(api.requests).toContain('GET /api/auth/me');
+});

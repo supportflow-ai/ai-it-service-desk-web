@@ -8,6 +8,7 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { UnavailablePage } from '../pages/UnavailablePage';
 import { ProtectedRoute } from './ProtectedRoute';
+import { RootRoute } from './RootRoute';
 import { routeConfig as routes } from './routeConfig';
 
 const LoginPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.LoginPage })));
@@ -31,7 +32,6 @@ export function AppRouter() {
   // Only a Requester may raise a request, so staff are not offered the way to one.
   const helpPath = hasAnyRole(user?.roles ?? [], routes.create.roles) ? routes.create.path : undefined;
   const protectedPages = [
-    { ...routes.home, element: <HomePage /> },
     { ...routes.tickets, element: <TicketListPage /> },
     { ...routes.ticket, element: <TicketDetailPage /> },
     {
@@ -63,6 +63,14 @@ export function AppRouter() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/403" element={<ForbiddenPage />} />
+          {/* `/` is public: the landing page for visitors, the overview once signed in. */}
+          <Route path={routes.home.path} element={<RootRoute />}>
+            <Route element={<ProtectedRoute />}>
+              <Route element={<MainLayout />}>
+                <Route index element={<HomePage />} />
+              </Route>
+            </Route>
+          </Route>
           <Route element={<ProtectedRoute />}>
             <Route element={<MainLayout />}>
               {protectedPages.map((route) => (

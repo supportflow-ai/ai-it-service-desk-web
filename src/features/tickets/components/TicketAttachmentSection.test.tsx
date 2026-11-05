@@ -123,6 +123,66 @@ it('explains a rejected confirmation and does not show the file as attached', as
   expect(listReads).toBe(1);
 });
 
+it('confirms again with the same storage key after a temporary failure, without uploading the file twice', async () => {
+  let uploadUrlCalls = 0;
+  let storagePuts = 0;
+  const confirmed: unknown[] = [];
+  let confirmStatus = 503;
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => { uploadUrlCalls += 1; return HttpResponse.json(presign); }),
+    http.put(uploadUrl, () => { storagePuts += 1; return new HttpResponse(null, { status: 200 }); }),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, async ({ request }) => {
+      confirmed.push(await request.json());
+      if (confirmStatus !== 201) return HttpResponse.json({ error: 'unavailable' }, { status: confirmStatus });
+      stored = [attachment];
+      return HttpResponse.json(attachment, { status: 201 });
+    }),
+  );
+  renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
+  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
+
+  expect(await screen.findByText('Tệp log.txt đã tải lên nhưng chưa được xác nhận')).toBeInTheDocument();
+  expect(screen.getByText('Tệp đính kèm (0)')).toBeInTheDocument();
+
+  confirmStatus = 201;
+  await userEvent.click(screen.getByRole('button', { name: 'Xác nhận lại' }));
+  expect(await screen.findByText('Tệp đính kèm (1)')).toBeInTheDocument();
+  expect(screen.queryByText(/chưa được xác nhận/)).not.toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(uploadUrlCalls).toBe(1);
+  expect(storagePuts).toBe(1);
+  const metadata = { fileName: 'log.txt', fileSizeBytes: 5, contentType: 'text/plain', storageKey: pendingKey };
+  expect(confirmed).toEqual([metadata, metadata]);
+});
+
+it('lets the person give up on an unconfirmed file', async () => {
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json(presign)),
+    http.put(uploadUrl, () => new HttpResponse(null, { status: 200 })),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => new HttpResponse(null, { status: 503 })),
+  );
+  renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
+  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Bỏ qua' }));
+  expect(screen.queryByText(/chưa được xác nhận/)).not.toBeInTheDocument();
+  expect(screen.getByText('Tệp đính kèm (0)')).toBeInTheDocument();
+});
+
+it('does not offer to confirm again when the backend rejected the upload itself', async () => {
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/upload-url`, () => HttpResponse.json(presign)),
+    http.put(uploadUrl, () => new HttpResponse(null, { status: 200 })),
+    http.post(`http://localhost/api/tickets/${ticketA.id}/attachments/confirm`, () => HttpResponse.json({ error: 'expired' }, { status: 400 })),
+  );
+  renderSection();
+  await screen.findByText(/Chưa có tệp đính kèm nào/);
+  pick(new File(['hello'], 'log.txt', { type: 'text/plain' }));
+  expect(await screen.findByText(/Không thể đính kèm tệp/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Xác nhận lại' })).not.toBeInTheDocument();
+});
+
 it('downloads a listed file through a fresh authorized URL and reports download failures', async () => {
   stored = [attachment];
   let downloadStatus = 200;

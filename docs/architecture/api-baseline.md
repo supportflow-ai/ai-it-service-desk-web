@@ -1,5 +1,27 @@
 # Frontend API compatibility baseline
 
+## Bổ sung hiện hành — 03/11/2026
+
+Phạm vi là working tree của đợt W2–W3 sau hợp nhất backend tại `659289c3a1cf8e4b9da86a15ea890ee59bcc3e6d`, cộng thay đổi `UploadUrlResult.formData`. Backend dùng thống nhất AttachmentUploadGrant, giữ confirm idempotent và nhận grant PUT cũ còn hạn; đường dẫn/payload frontend không thay đổi qua bước hợp nhất. Nguồn và checksum tại [backend-source.json](../../tests/contracts/backend-source.json), bản OpenAPI tại [backend-openapi.json](../../tests/contracts/backend-openapi.json). SHA nền chưa phải SHA của thay đổi chưa commit. Các phần tiếng Anh bên dưới giữ mốc lịch sử cũ để truy vết.
+
+| Luồng | Hành vi hiện tại |
+| --- | --- |
+| DTO | Đọc requesterId, assignedToId/At, updatedAt, revision, priority, impact, urgency khi backend cung cấp; dữ liệu thiếu không được thay bằng số revision giả |
+| Danh sách Agent | `GET /users?role=Agent`, chọn người phụ trách và dùng ID backend trả |
+| Ghi trạng thái/phân công | Revision bắt buộc ở frontend; assign gửi body expectedRevision, các lệnh còn lại gửi query; 409 giữ input và cho tải lại, không retry ghi tự động |
+| Attachment | Xin URL → POST multipart khi có formData (tương thích PUT nếu không có) → confirm → danh sách từ `GET /attachments` |
+| Confirm lỗi | Giữ yêu cầu chờ và cho xác nhận lại, không upload lại binary, không báo hoàn tất trước confirm |
+| Phiên/ticket | Query key gồm phiên và ticket; kết quả từ phiên cũ bị bỏ, các panel có state được remount khi đổi ticket |
+| AI | UI vẫn ở trạng thái chưa nối backend; HTTP adapter backend vừa có chưa cung cấp endpoint analysis/review |
+
+Kiểm tra contract: `npm run contract:check`. Sinh lại kiểu sau review: `npm run contract:generate`. Kiểm tra với đúng checkout backend: `node tools/backend-contract.mjs --backend-file ../ai-it-service-desk/contracts/backend/openapi-baseline.json`. CI kiểm tra checksum và kiểu sinh; kiểm tra xuyên repo cần cung cấp đúng checkout tương ứng. Không tự lấy nhánh di động rồi gán là contract đã duyệt.
+
+Các trường DTO được bổ sung vẫn optional để nhận diện backend cũ. Khi thiếu revision, frontend khóa lệnh trạng thái/phân công. Backend đang giữ ExpectedRevision tùy chọn cho caller cũ; việc bắt buộc phía server còn cần lộ trình tương thích.
+
+OpenAPI giữ một số chuỗi nullable do metadata C#; runtime reader vẫn yêu cầu các trường bắt buộc dùng để hiển thị hợp lệ. Kiểu trong `backend.generated.ts` do công cụ sinh; các kiểu trong feature và kiểm tra runtime được viết tay. Browser test mock HTTP chứng minh luồng trình duyệt, còn nghiệm thu backend/storage thật phải chạy riêng.
+
+## Historical baseline before hardening
+
 This is a pinned compatibility baseline, **not a claim about the latest backend**.
 Source backend commit: `f6a0adae01bd642753f02d2beae10abff6f410e3`, preserved in this repository's Git history.
 Frontend starting commit: `e6186246e7d01c4dab699eae121a7fda1a5314df`.
