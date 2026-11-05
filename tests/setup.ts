@@ -17,8 +17,14 @@ beforeAll(() => {
 });
 beforeEach(() => {
   sessionStore.clear();
-  configureApiClient({ baseURL: 'http://localhost/api', getAccessToken: () => sessionStore.getSnapshot().token,
-    getSessionVersion: () => sessionStore.getSnapshot().version, onUnauthorized: sessionStore.expire });
+  configureApiClient({
+    baseURL: 'http://localhost/api',
+    getAccessToken: () => sessionStore.getSnapshot().token,
+    getRefreshToken: () => sessionStore.getSnapshot().refreshToken,
+    getSessionVersion: () => sessionStore.getSnapshot().version,
+    onUnauthorized: sessionStore.expire,
+    onTokenRefreshed: (token, refreshToken) => sessionStore.setTokens(token, refreshToken),
+  });
 });
 afterEach(() => { cleanup(); server.resetHandlers(); localStorage.clear(); });
 afterAll(() => server.close());

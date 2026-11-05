@@ -12,7 +12,7 @@ export interface AuthContextValue {
   loginPending: boolean;
   loginError: AppError | null;
   login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
+  logout: () => void | Promise<void>;
   retrySession: () => void;
 }
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
