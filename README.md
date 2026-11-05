@@ -39,8 +39,6 @@ Nguồn contract, các endpoint được hỗ trợ và giới hạn kiểm th�
 Unit/component/hook tests dùng Vitest và MSW. Browser smoke dùng Playwright Chromium
 với API fixture trên production preview (cần chạy build trước), không thay thế nghiệm thu
 backend thật. CI dùng Node 22 và chạy cả hai nhóm kiểm thử.
-Jenkins agent cần có Node 22, Docker và quyền cài Chromium cùng các thư viện hệ thống
-cho browser smoke; pipeline kiểm tra phiên bản Node trước khi cài dependencies.
 
 ## Docker
 

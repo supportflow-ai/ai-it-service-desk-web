@@ -4,9 +4,11 @@ import type { Role } from '@/features/auth';
 export interface RouteDefinition { path: string; roles: readonly Role[]; label?: string; menuRoles?: readonly Role[] }
 export const routeConfig = {
   home: { path: '/', roles: [], label: 'Tổng quan', menuRoles: ['Requester'] },
-  tickets: { path: '/requester-dashboard/tickets', roles: ['Requester', 'Agent', 'Admin'], label: 'Yêu cầu của tôi' },
+  // Staff may open a ticket from here, but the list is the requests a Requester raised: only they see it in the menu.
+  tickets: { path: '/requester-dashboard/tickets', roles: ['Requester', 'Agent', 'Admin'], label: 'Yêu cầu của tôi', menuRoles: ['Requester'] },
   ticket: { path: '/requester-dashboard/tickets/:id', roles: ['Requester', 'Agent', 'Admin'] },
-  create: { path: '/tickets/new', roles: ['Requester', 'Agent', 'Admin'], label: 'Tạo yêu cầu' },
+  // Only a Requester raises requests (PRD J-01, Spec UC-02/UC-05); staff work them from the queue.
+  create: { path: '/tickets/new', roles: ['Requester'], label: 'Tạo yêu cầu' },
   workspace: { path: '/agent-workspace', roles: ['Agent', 'Admin'], label: 'Hàng đợi xử lý' },
   workspaceTicket: { path: '/agent-workspace/tickets/:id', roles: ['Agent', 'Admin'] },
   // Published articles are read by everyone signed in (RequireRequester admits Requester, Agent, Admin).
@@ -19,4 +21,5 @@ export const routeConfig = {
   knowledgeRead: { path: '/knowledge/manage/:id', roles: ['Agent', 'Admin'] },
   knowledgeEdit: { path: '/knowledge/manage/:id/edit', roles: ['Agent', 'Admin'] },
   admin: { path: '/admin-panel', roles: ['Admin'], label: 'Quản trị hệ thống' },
+  forgotPassword: { path: '/forgot-password', roles: [] },
 } as const satisfies Record<string, RouteDefinition>;

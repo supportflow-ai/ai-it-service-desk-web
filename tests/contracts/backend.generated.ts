@@ -29,9 +29,18 @@ export type ArticleDto = {
 
 export type ArticleStatus = 0 | 1 | 2;
 
+export type AssignRolesRequest = {
+  "roles"?: Array<string> | null;
+};
+
 export type AssignTicketRequest = {
   "agentId"?: string;
   "expectedRevision"?: number | null;
+};
+
+export type ChangePasswordRequest = {
+  "currentPassword"?: string | null;
+  "newPassword"?: string | null;
 };
 
 export type ConfirmAttachmentUploadRequest = {
@@ -53,8 +62,19 @@ export type CreateTicketCommand = {
   "categoryId"?: string | null;
 };
 
+export type DepartmentDto = {
+  "id"?: string;
+  "code"?: string | null;
+  "name"?: string | null;
+  "description"?: string | null;
+};
+
 export type DownloadUrlResult = {
   "downloadUrl"?: string | null;
+};
+
+export type ForgotPasswordRequest = {
+  "email"?: string | null;
 };
 
 export type GenerateUploadUrlRequest = {
@@ -87,11 +107,25 @@ export type PublishArticleRequest = {
   "expectedRevision"?: number | null;
 };
 
+export type RefreshAuthRequest = {
+  "refreshToken"?: string | null;
+};
+
 export type RegisterRequest = {
   "email": string | null;
   "password": string | null;
   "fullName"?: string | null;
   "role"?: string | null;
+};
+
+export type ResetPasswordRequest = {
+  "email"?: string | null;
+  "otpCode"?: string | null;
+  "newPassword"?: string | null;
+};
+
+export type RevokeTokenRequest = {
+  "refreshToken"?: string | null;
 };
 
 export type TicketAttachmentDto = {

@@ -7,7 +7,9 @@ export function bootstrap() {
   configureApiClient({
     baseURL: config.apiBaseUrl,
     getAccessToken: () => sessionStore.getSnapshot().token,
+    getRefreshToken: () => sessionStore.getSnapshot().refreshToken,
     getSessionVersion: () => sessionStore.getSnapshot().version,
     onUnauthorized: sessionStore.expire,
+    onTokenRefreshed: (token, refreshToken) => sessionStore.setTokens(token, refreshToken),
   });
 }

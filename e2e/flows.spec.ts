@@ -57,13 +57,16 @@ test('resource 403 preserves the session', async ({ page, api }) => {
   api.detailStatus = 403;
   await page.addInitScript(() => localStorage.setItem('token', 'restored'));
   await page.goto(`/requester-dashboard/tickets/${ticketA.id}`);
-  await expect(page.getByText('Bạn không có quyền xem ticket này')).toBeVisible();
+  await expect(page.getByText('Không tìm thấy ticket')).toBeVisible();
   await expect(page.getByRole('link', { name: /Quay lại danh sách/ })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('token'))).toBe('restored');
 });
 
 for (const [role, path, allowed] of [
   ['Requester', '/agent-workspace', false],
+  ['Requester', '/tickets/new', true],
+  ['Agent', '/tickets/new', false],
+  ['Admin', '/tickets/new', false],
   ['Agent', '/agent-workspace', true],
   ['Agent', '/admin-panel', false],
   ['Admin', '/agent-workspace', true],
@@ -84,7 +87,9 @@ for (const [role, path, allowed] of [
     await expect(page).toHaveURL(allowed ? path : '/403');
     if (!allowed) await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
     else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
+    else if (path === '/tickets/new') await expect(page.getByRole('heading', { name: 'Tạo yêu cầu' })).toBeVisible();
     else if (path === '/knowledge/manage' || path === '/knowledge') await expect(page.getByRole('heading', { name: 'Kho tri thức' })).toBeVisible();
+    else if (path === '/admin-panel') await expect(page.getByRole('heading', { name: 'Quản trị phân quyền người dùng' })).toBeVisible();
     else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });
 }
@@ -102,14 +107,11 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
   await expect(page.getByText('Ticket được tạo mới')).toHaveCount(0);
   await expect(page.getByText('Gợi ý AI chưa được bật cho ticket này.')).toBeVisible();
   await expect(page.getByText(/92%/)).toHaveCount(0);
-  const expectedRequests = [
-    'GET /api/auth/me',
-    `GET /api/tickets/${ticketA.id}`,
-    'GET /api/users?role=Agent',
-    `GET /api/tickets/${ticketA.id}/timeline`,
-    `GET /api/tickets/${ticketA.id}/attachments`,
-  ];
-  expect([...api.requests].sort()).toEqual([...expectedRequests].sort());
+  // The directories load beside the ticket, so only the set of requests is fixed, not their order.
+  expect([...api.requests].sort()).toEqual([
+    'GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, 'GET /api/departments', 'GET /api/users?role=Admin', 'GET /api/users?role=Agent',
+    `GET /api/tickets/${ticketA.id}/timeline`, `GET /api/tickets/${ticketA.id}/attachments`,
+  ].sort());
 });
 
 test('a visitor sees the landing page at / and reaches sign in; other pages still ask to sign in', async ({ page }) => {

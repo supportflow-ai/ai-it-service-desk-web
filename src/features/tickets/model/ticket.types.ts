@@ -85,7 +85,7 @@ export interface AgentQueueFilters {
   pageSize: number;
 }
 
-/** GET /api/users?role=Agent returns only the id and the name, never the email. */
+/** GET /api/users?role=Agent (or Admin) returns only the id and the name, never the email. */
 export interface AgentDirectoryEntry {
   userId: string;
   fullName: string | null;

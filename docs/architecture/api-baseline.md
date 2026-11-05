@@ -277,7 +277,7 @@ from the keyword search's empty states and from a failed search.
 
 ## Not enabled
 
-AI HTTP endpoints are not used yet: backend dev f82f0b2 still exposes no triage result or review
+AI HTTP endpoints are not used yet: backend dev febb4d7 still exposes no triage result or review
 decision endpoint, persists no AIAnalysis/AISuggestion, and its classifier is a NoOp (TC-277
 records "dev integration BLOCKED"). The workspace AI slot (`WorkspaceTriagePanel`, injected by
 the App) therefore shows the not-enabled state. Review decisions (accept, override with a

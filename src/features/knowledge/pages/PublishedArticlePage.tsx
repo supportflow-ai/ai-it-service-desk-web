@@ -19,7 +19,8 @@ import { MarkdownPreview } from '../components/MarkdownPreview';
 
 interface PublishedArticlePageProps {
   /** Where a reader the article did not help asks for help; the app passes the create-request route. */
-  helpPath: string;
+  /** Absent for staff, who do not raise requests. */
+  helpPath?: string;
 }
 
 function sourceNote(section: string | null, found: boolean) {
@@ -115,12 +116,14 @@ export function PublishedArticlePage({ helpPath }: PublishedArticlePageProps) {
       </article>
 
       {/* PRD J-03: a reader the article did not help goes on to a request. */}
-      <Card size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', marginTop: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <Typography.Text>Bài viết chưa giải quyết được vấn đề của bạn?</Typography.Text>
-          <Button type="primary" onClick={() => navigate(helpPath)}>Tạo yêu cầu hỗ trợ</Button>
-        </div>
-      </Card>
+      {helpPath && (
+        <Card size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', marginTop: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <Typography.Text>Bài viết chưa giải quyết được vấn đề của bạn?</Typography.Text>
+            <Button type="primary" onClick={() => navigate(helpPath)}>Tạo yêu cầu hỗ trợ</Button>
+          </div>
+        </Card>
+      )}
 
       {canManageKnowledge(user) && (
         <div style={{ marginTop: 12 }}><Link to={articlePath(data.id)}>Mở bài viết trong trang quản lý</Link></div>

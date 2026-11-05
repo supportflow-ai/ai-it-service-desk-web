@@ -1,17 +1,19 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { hasAnyRole, useAuth } from '@/features/auth';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { MainLayout } from '../layouts/MainLayout';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
-import { UnavailablePage } from '../pages/UnavailablePage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RootRoute } from './RootRoute';
 import { routeConfig as routes } from './routeConfig';
 
 const LoginPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.LoginPage })));
 const RegisterPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.ForgotPasswordPage })));
+const AdminUsersPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.AdminUsersPage })));
 const TicketListPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketListPage })));
 const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketDetailPage })));
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
@@ -27,6 +29,9 @@ const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then(
 const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.RequesterAIPanel })));
 
 export function AppRouter() {
+  const { user } = useAuth();
+  // Only a Requester may raise a request, so staff are not offered the way to one.
+  const helpPath = hasAnyRole(user?.roles ?? [], routes.create.roles) ? routes.create.path : undefined;
   const protectedPages = [
     { ...routes.tickets, element: <TicketListPage /> },
     { ...routes.ticket, element: <TicketDetailPage /> },
@@ -44,13 +49,13 @@ export function AppRouter() {
       )} />,
     },
     // A reader who found no answer goes on to a request (PRD J-03).
-    { ...routes.knowledge, element: <KnowledgeSearchPage helpPath={routes.create.path} /> },
-    { ...routes.knowledgeArticle, element: <PublishedArticlePage helpPath={routes.create.path} /> },
+    { ...routes.knowledge, element: <KnowledgeSearchPage helpPath={helpPath} /> },
+    { ...routes.knowledgeArticle, element: <PublishedArticlePage helpPath={helpPath} /> },
     { ...routes.knowledgeAdmin, element: <KnowledgeAdminPage /> },
     { ...routes.knowledgeNew, element: <NewArticlePage /> },
     { ...routes.knowledgeRead, element: <ArticleDetailPage /> },
     { ...routes.knowledgeEdit, element: <EditArticlePage /> },
-    { ...routes.admin, element: <UnavailablePage title={routes.admin.label} /> },
+    { ...routes.admin, element: <AdminUsersPage /> },
   ];
   return (
     <BrowserRouter>
@@ -58,6 +63,7 @@ export function AppRouter() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path={routes.forgotPassword.path} element={<ForgotPasswordPage />} />
           <Route path="/403" element={<ForbiddenPage />} />
           {/* `/` is public: the landing page for visitors, the overview once signed in. */}
           <Route path={routes.home.path} element={<RootRoute />}>

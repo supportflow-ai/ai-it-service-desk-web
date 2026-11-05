@@ -32,9 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const version = sessionStore.getSnapshot().version;
     const result = await loginMutation.mutateAsync(credentials);
     if (sessionStore.getSnapshot().version !== version) throw new AppError('Đã hủy đăng nhập của phiên cũ.', 'canceled');
-    sessionStore.setToken(result.token);
+    sessionStore.setTokens(result.token, result.refreshToken);
     queryClient.setQueryData(authKeys.session(sessionStore.getSnapshot().version), result.user);
   };
+
+  const logout = () => {
+    const refreshToken = sessionStore.getSnapshot().refreshToken;
+    if (refreshToken) {
+      void authApi.revoke({ refreshToken }).catch(() => {});
+    }
+    sessionStore.clear();
+  };
+
   const status = !session.token ? 'anonymous' : currentUser.data ? 'authenticated'
     : currentUser.isError ? 'unavailable' : 'restoring';
 
@@ -47,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginPending: loginMutation.isPending,
     loginError: loginMutation.error ? normalizeError(loginMutation.error) : null,
     login,
-    logout: sessionStore.clear,
+    logout,
     retrySession: () => { void currentUser.refetch(); },
   }}>{children}</AuthContext.Provider>;
 }
