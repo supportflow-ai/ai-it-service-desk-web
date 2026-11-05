@@ -106,7 +106,7 @@ it('keeps the typed comment and explains the failure when sending is rejected', 
 });
 
 it.each([
-  [403, 'Bạn không có quyền xem ticket này'],
+  [403, 'Không tìm thấy ticket'],
   [404, 'Không tìm thấy ticket'],
 ])('hides the cached ticket and its actions when a refetch returns %i, and keeps the session', async (status, title) => {
   let lost = false;

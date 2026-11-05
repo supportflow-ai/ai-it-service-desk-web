@@ -5,7 +5,7 @@ import type { PagedTicketResult, TicketDto } from '../model/ticket.types';
 import { AGENT_QUEUE_PAGE_SIZES } from '../model/agentQueue';
 import { assignmentLabel } from '../model/assignment';
 import { ticketCategoryLabels } from '../model/ticketCategories';
-import { useAgentDirectory } from '../hooks/useAgentDirectory';
+import { useStaffDirectory } from '../hooks/useStaffDirectory';
 import { workspaceTicketPath } from '../lib/agentQueueSearch';
 import type { QueueReturnState } from '../lib/agentQueueSearch';
 import { TicketPriorityTag } from './TicketPriorityTag';
@@ -30,8 +30,8 @@ function formatCreatedAt(iso: string) {
 
 export function AgentQueueTable({ result, loading, page, pageSize, returnState, onPageChange, onOpen }: AgentQueueTableProps) {
   const { user } = useAuth();
-  // The ticket carries only the assignee's id; the name comes from the staff-only agent directory.
-  const agents = useAgentDirectory();
+  // The ticket carries only the assignee's id; the name comes from the staff-only directory.
+  const staff = useStaffDirectory();
   return (
     <Table<TicketDto>
       rowKey="id"
@@ -78,7 +78,7 @@ export function AgentQueueTable({ result, loading, page, pageSize, returnState, 
           key: 'assignee',
           render: (_, ticket) => ticket.assignedToId === null
             ? <Typography.Text type="secondary">Chưa phân công</Typography.Text>
-            : assignmentLabel(ticket, user?.userId, agents.data),
+            : assignmentLabel(ticket, user?.userId, staff.data),
         },
         { title: 'Ngày tạo', key: 'created', align: 'right', render: (_, ticket) => formatCreatedAt(ticket.createdAt) },
       ]}

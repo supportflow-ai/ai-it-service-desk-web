@@ -75,6 +75,15 @@ it('reads the agent directory by id and name, without requiring an email', async
   server.use(http.get('http://localhost/api/users', () => HttpResponse.json([{ fullName: 'Không có id' }])));
   await expect(ticketApi.getAgentDirectory()).rejects.toMatchObject({ kind: 'invalid-response' });
 });
+it('reads the Admin directory with role=Admin', async () => {
+  const seen: string[] = [];
+  server.use(http.get('http://localhost/api/users', ({ request }) => {
+    seen.push(new URL(request.url).search);
+    return HttpResponse.json([{ userId: 'admin-1', fullName: 'Lê Văn Quản Trị' }]);
+  }));
+  expect(await ticketApi.getAdminDirectory()).toEqual([{ userId: 'admin-1', fullName: 'Lê Văn Quản Trị' }]);
+  expect(seen).toEqual(['?role=Admin']);
+});
 it('assigns with the backend agentId payload and unassigns without a body', async () => {
   const calls: unknown[] = [];
   server.use(

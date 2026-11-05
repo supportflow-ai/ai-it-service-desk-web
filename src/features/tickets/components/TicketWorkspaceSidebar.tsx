@@ -4,7 +4,7 @@ import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
 import { assignmentLabel } from '../model/assignment';
 import { ticketCategoryLabels } from '../model/ticketCategories';
-import { useAgentDirectory } from '../hooks/useAgentDirectory';
+import { useStaffDirectory } from '../hooks/useStaffDirectory';
 import { TicketPriorityTag } from './TicketPriorityTag';
 import { TicketStatusTag } from './TicketStatusTag';
 
@@ -29,7 +29,7 @@ const unavailable = <Typography.Text type="secondary">Chưa có thông tin</Typo
 /** Only fields the backend TicketDto actually returns are shown as values. */
 export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
   const { user } = useAuth();
-  const agents = useAgentDirectory();
+  const staff = useStaffDirectory();
   return (
     <Card title="Thông tin ticket" size="small" style={{ borderRadius: 8, borderColor: 'var(--bd)', background: 'var(--sf)', fontSize: 13 }}>
       <dl style={{ margin: 0 }}>
@@ -38,7 +38,7 @@ export function TicketWorkspaceSidebar({ ticket }: { ticket: TicketDto }) {
         <Field label="Ưu tiên"><TicketPriorityTag priority={ticket.priority} /></Field>
         <Field label="Danh mục">{ticketCategoryLabels[ticket.categoryId]}</Field>
         <Field label="Người yêu cầu">{unavailable}</Field>
-        <Field label="Phụ trách">{assignmentLabel(ticket, user?.userId, agents.data)}</Field>
+        <Field label="Phụ trách">{assignmentLabel(ticket, user?.userId, staff.data)}</Field>
         <Field label="Tạo lúc">{formatCreatedAt(ticket.createdAt)}</Field>
       </dl>
     </Card>

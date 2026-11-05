@@ -6,6 +6,7 @@ import type { TicketDto } from '../model/ticket.types';
 import { agentName, assignmentLabel } from '../model/assignment';
 import { canAssignTicket, canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
 import { useAgentDirectory } from '../hooks/useAgentDirectory';
+import { useStaffDirectory } from '../hooks/useStaffDirectory';
 import { useAssignTicket } from '../hooks/useAssignTicket';
 import { useUnassignTicket } from '../hooks/useUnassignTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
@@ -22,7 +23,9 @@ const assignmentMessages = {
 
 export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPanelProps) {
   const { user } = useAuth();
+  // Who can be chosen comes from the agents; the name shown for the current holder may be an Admin's.
   const agents = useAgentDirectory();
+  const staff = useStaffDirectory();
   const [chosenAgentId, setChosenAgentId] = useState<string>();
   const assignMutation = useAssignTicket(ticket.id);
   const unassignMutation = useUnassignTicket(ticket.id);
@@ -79,7 +82,7 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
       )}
 
       <Typography.Paragraph style={{ marginBottom: 12 }}>
-        Phụ trách: <strong>{assignmentLabel(ticket, user?.userId, agents.data)}</strong>
+        Phụ trách: <strong>{assignmentLabel(ticket, user?.userId, staff.data)}</strong>
       </Typography.Paragraph>
 
       <Space direction="vertical" style={{ width: '100%' }}>

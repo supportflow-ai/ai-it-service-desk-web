@@ -88,6 +88,22 @@ it('shows who handles each ticket: a name from the directory, or that nobody doe
   expect(within(unassigned).getByText('Chưa phân công')).toBeInTheDocument();
 });
 
+it('names an Admin who took a ticket, not only the agents', async () => {
+  const admin = { userId: '00000000-0000-0000-0000-000000000007', fullName: 'Lê Văn Quản Trị' };
+  server.use(
+    http.get('http://localhost/api/users', ({ request }) => HttpResponse.json(
+      new URL(request.url).searchParams.get('role') === 'Admin' ? [admin] : agentDirectory,
+    )),
+    http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({
+      items: [{ ...ticketA, assignedToId: admin.userId }], page: 1, pageSize: 10, totalCount: 1,
+    })),
+  );
+  renderQueue();
+  const row = (await screen.findByText(ticketA.ticketNumber)).closest('tr');
+  if (!row) throw new Error('Queue row is missing');
+  expect(await within(row).findByText(admin.fullName)).toBeInTheDocument();
+});
+
 it('shows the priority of each ticket, filters by it and sorts highest priority first', async () => {
   renderQueue();
   const row = (await screen.findByText(ticketA.ticketNumber)).closest('tr');

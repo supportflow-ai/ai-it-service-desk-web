@@ -15,11 +15,10 @@ interface TicketErrorStateProps {
 export function TicketErrorState({ error, backPath, backLabel, onRetry }: TicketErrorStateProps) {
   const back = <Link to={backPath}><ArrowLeftOutlined /> {backLabel}</Link>;
   const status = error === null ? 404 : normalizeError(error).status;
-  if (status === 404) {
-    return <Result status="404" title="Không tìm thấy ticket" subTitle="Ticket không tồn tại hoặc nằm ngoài phạm vi của bạn." extra={back} />;
-  }
-  if (status === 403) {
-    return <Result status="403" title="Bạn không có quyền xem ticket này" extra={back} />;
+  // A ticket that is missing and one the viewer may not see look the same, so the page does not
+  // reveal that a ticket outside their scope exists (PRD UX-04).
+  if (status === 404 || status === 403) {
+    return <Result status="404" title="Không tìm thấy ticket" subTitle="Ticket không tồn tại hoặc bạn không có quyền xem." extra={back} />;
   }
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
