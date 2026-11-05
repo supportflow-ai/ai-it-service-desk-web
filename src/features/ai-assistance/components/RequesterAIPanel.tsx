@@ -3,6 +3,7 @@ import { WarningOutlined, RobotOutlined } from '@ant-design/icons';
 import { ticketCategoryLabels } from '@/features/tickets';
 import type { RequesterTriageView } from '../model/ai.types';
 import { TriageOutcome } from '../model/ai.types';
+import { needsReview } from '../model/triageDisplay';
 import { ConfidenceTag } from './ConfidenceTag';
 
 const { Text } = Typography;
@@ -63,6 +64,10 @@ export function RequesterAIPanel({ result, loading }: Props) {
             <Text type="secondary">Danh mục gợi ý: </Text>
             <Tag color="processing">{ticketCategoryLabels[result.suggestedCategory]}</Tag>
             <ConfidenceTag band={result.categoryConfidence} />
+            {/* Requester-safe: a band, never the score (TriageViewProjections). */}
+            {needsReview(result.categoryConfidence) && (
+              <div><Text type="secondary" style={{ fontSize: 12 }}>AI chưa chắc chắn về danh mục này; kỹ thuật viên sẽ kiểm tra lại.</Text></div>
+            )}
           </div>
         )}
 

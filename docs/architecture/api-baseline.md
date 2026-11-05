@@ -267,6 +267,19 @@ self-assignment identity or default ticket revision. AI panels remain available 
 components with async callbacks for a later reviewed integration. Missing revision, stale and
 manual-only suggestions cannot be applied.
 
+Confidence and decision states (TC-367) follow the backend domain at dev `febb4d7`, which still has
+no AI endpoint: the band comes from `ConfidencePolicy` (Low < 0.4, High ≥ 0.75), never recomputed
+in the UI, and each band gets the reviewer guidance `ConfidenceBand` documents: Low "Cần xem xét
+kỹ", Medium "Nên rà soát", High no flag; a missing band (no score, or one the policy rejects) reads
+like Low and says the score is missing. The panel counts what needs a careful check and how many
+suggestions are decided. Each decision status has an icon and says what it did to the ticket
+(applied the AI value; another value chosen instead, the AI value struck through; nothing applied;
+expired because the ticket changed, with "phân tích lại"), with the review time when the backend
+records one (`ReviewedAt`; Expired has none, `MarkExpired`). `ReviewedBy` is a user id with no name,
+so it is not shown. A requester sees only the band and, when it is Low or missing, that a technician
+will check the category; never a score. Blocked by AISD-S3-09-T03 (TC-365, held-out evaluation): if
+it moves the band thresholds, only the backend policy changes.
+
 The existing create endpoint supports optional Idempotency-Key, but this refactor preserves
 the existing request behavior and disables automatic write retries. Create is not advertised
 as retry-safe. A future idempotency change needs stable per-intent keys and dedicated tests.

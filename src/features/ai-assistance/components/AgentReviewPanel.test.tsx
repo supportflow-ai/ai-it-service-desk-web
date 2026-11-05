@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
@@ -20,7 +20,11 @@ async function chooseOverride(value: string, reason: string) {
   await userEvent.click(screen.getByRole('button', { name: 'Chọn giá trị khác' }));
   await userEvent.click(screen.getByRole('combobox', { name: 'Giá trị thay thế' }));
   await userEvent.click(await screen.findByTitle(value));
-  if (reason) await userEvent.type(screen.getByRole('textbox', { name: 'Lý do điều chỉnh' }), reason);
+  if (reason) {
+    // Pasted: typing key by key into the counted text area is slow enough to time out a loaded run.
+    await userEvent.click(screen.getByRole('textbox', { name: 'Lý do điều chỉnh' }));
+    await userEvent.paste(reason);
+  }
 }
 
 it.each([
@@ -139,8 +143,44 @@ it('shows each suggestion with its confidence band and flags the ones that need 
   expect(screen.getByText('Mạng & Wi-Fi')).toBeInTheDocument();
   expect(screen.getByText('Độ tin cậy: Cao')).toBeInTheDocument();
   expect(screen.getByText('Độ tin cậy: Thấp')).toBeInTheDocument();
-  expect(screen.getAllByText('Cần xem xét')).toHaveLength(1);
+  // Low asks for a careful check, Medium for a look (backend ConfidenceBand), High for nothing.
+  expect(screen.getAllByText('Cần xem xét kỹ')).toHaveLength(1);
+  expect(screen.getAllByText('Nên rà soát')).toHaveLength(1);
+  expect(screen.getByText('1 gợi ý cần xem xét kỹ trước khi áp dụng')).toBeInTheDocument();
   expect(screen.queryByText(/%/)).not.toBeInTheDocument();
+});
+
+it('treats a suggestion without a confidence band like a low one, and says why', async () => {
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={{ ...analysis, categoryConfidence: null, categoryScore: null }} ticketRevision={1} />, { wrapper: Wrapper });
+  await userEvent.hover(screen.getByText('Cần xem xét kỹ'));
+  expect(await screen.findByText('AI không có điểm tin cậy cho gợi ý này.')).toBeInTheDocument();
+});
+
+it.each([
+  [{ decision: 'Accepted', finalValue: 'Low', reviewedAt: '2026-11-05T03:30:00Z' }, 'Đã chấp nhận', /^Đã áp dụng giá trị AI gợi ý: Thấp\. Lúc \d\d:\d\d 05\/11\/2026\.$/],
+  [{ decision: 'Overridden', finalValue: 'High', reviewedAt: '2026-11-05T03:30:00Z' }, 'Đã điều chỉnh', /^Kỹ thuật viên chọn Cao thay cho gợi ý Thấp\. Lúc/],
+  [{ decision: 'Rejected', reviewedAt: '2026-11-05T03:30:00Z' }, 'Đã từ chối', /^Không áp dụng giá trị nào từ AI\. Lúc/],
+  [{ decision: 'Expired' }, 'Hết hạn', /^Ticket đã thay đổi sau khi AI phân tích nên gợi ý hết hiệu lực; hãy phân tích lại\.$/],
+] as const)('says what a decided suggestion did to the ticket: %j', (change, label, summary) => {
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={analysis} ticketRevision={4} onDecision={vi.fn(async () => {})}
+    suggestions={[{ ...suggestion, ...change }]} />, { wrapper: Wrapper });
+  expect(screen.getByText(label)).toBeInTheDocument();
+  expect(screen.getByText(summary)).toBeInTheDocument();
+  expect(screen.getByText('Đã quyết định 1/1 gợi ý')).toBeInTheDocument();
+  // A decided suggestion asks for no more review, and the AI value it set aside is struck through.
+  const aiValue = within(screen.getByText('Gợi ý:')).getByText('Thấp').closest<HTMLElement>('.ant-tag');
+  expect(aiValue?.style.textDecoration).toBe(change.decision === 'Accepted' ? '' : 'line-through');
+  expect(screen.queryByRole('button', { name: 'Chấp nhận' })).not.toBeInTheDocument();
+});
+
+it('marks a pending suggestion as awaiting a decision, with how much checking it needs', () => {
+  const { Wrapper } = createTestWrapper();
+  render(<AgentReviewPanel result={analysis} ticketRevision={4} onDecision={vi.fn(async () => {})} suggestions={[suggestion]} />, { wrapper: Wrapper });
+  expect(screen.getByText('Chờ quyết định')).toBeInTheDocument();
+  expect(screen.getByText('Chưa có quyết định: gợi ý chưa được áp dụng vào ticket.')).toBeInTheDocument();
+  expect(screen.getByText('Đã quyết định 0/1 gợi ý')).toBeInTheDocument();
 });
 
 it('warns about manual-only and stale results', () => {
