@@ -1,7 +1,7 @@
 {
-  "sourceState": "committed backend snapshot; pending GitHub push",
+  "sourceState": "committed backend dev snapshot",
   "repository": "supportflow-ai/ai-it-service-desk",
-  "baseCommit": "007a2589086970157a99f51d7792b9a418ed0487",
+  "baseCommit": "febb4d7ec76dc1a846a554e349981b9b692c7091",
   "path": "contracts/backend/openapi-baseline.json",
-  "sha256": "8d0e46885543bc23a1e553c1217312f0e4a42e412e74deb8fced1a9eb2b8fa4e"
+  "sha256": "4820b4240ca1dea00cc6808078e5f80052cdd0824e3b8392df6a070c3c332bfc"
 }
