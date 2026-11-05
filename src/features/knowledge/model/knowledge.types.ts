@@ -51,3 +51,34 @@ export interface ArticleListFilters {
 
 /** GET /knowledge/articles/search as readers use it (TC-342): Published articles only, so no status. */
 export type PublishedSearchFilters = Omit<ArticleListFilters, 'status'>;
+
+/**
+ * One semantic search hit (TC-361): a passage of a Published article and how close it is to the
+ * question. This is the frontend's shape: the backend has no semantic search contract yet
+ * (AISD-S3-07-T03), so the client of TC-360 maps whatever it returns onto it.
+ */
+export interface SemanticMatch {
+  articleId: string;
+  title: string;
+  /** The heading the passage sits under; null for text before the first heading. */
+  section: string | null;
+  /** The matching passage, as stored (Markdown). It is only ever shown as plain text. */
+  snippet: string;
+  /** Ranking score, higher is closer. Not a calibrated probability (Spec §11.3). */
+  score: number;
+  tags: string[];
+  version: number;
+  publishedAt: string;
+}
+
+/** The passages of one article, its closest first: one card per source article. */
+export interface SemanticArticleGroup {
+  articleId: string;
+  title: string;
+  tags: string[];
+  version: number;
+  publishedAt: string;
+  best: SemanticMatch;
+  others: SemanticMatch[];
+}
+

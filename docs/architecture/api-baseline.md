@@ -221,7 +221,26 @@ The reader side (TC-219) is open to every signed-in role, as `GET /knowledge/art
   management page instead, and anyone else sees not found. "Back" returns to the results it was
   opened from (`{ resultsSearch }` router state, `?…` only); a reader it did not help goes on to a
   request (PRD J-03).
-- The requester dashboard knowledge card stays locked: reading for requesters is not part of TC-218.
+
+Semantic search (TC-223) has no backend yet: backend dev `febb4d7` has only a NoOp
+`IEmbeddingService` and no search endpoint, and `ai-service` has only ticket classification; the
+embedding model, dimension and retrieval contract are still open (ai-service
+`docs/backend-alignment.md`). The UI is built against its own `SemanticMatch` shape, onto which the
+client of TC-360 will map the endpoint of AISD-S3-07-T03. What the UI needs per hit, for that contract:
+- `articleId`, `title`, `tags`, `version` and `publishedAt` of the Published version the passage
+  comes from (Spec §8.3: the current published version only; drafts and archived excluded, FR-KB-06);
+- `section` (the heading the chunk sits under, or null) and `snippet` (the chunk text,
+  `KnowledgeEmbedding.Content`);
+- `score`, higher is closer, with its scale stated.
+- Still to agree with backend AI: the no-match threshold and the High/Medium/Low cut-offs (the UI
+  uses provisional 0.55 / 0.75 on a [0, 1] similarity, `relevancePolicy`), whether the backend drops
+  hits below the threshold itself, and Top-K.
+
+TC-361 shows the hits as one card per source article: its closest passage first (section and the
+passage as plain text, never rendered as Markdown), the other passages that matched, and the source
+line (title, version, publish date, tags). Relevance is "Độ liên quan: Cao/Trung bình/Thấp"; the
+model score appears only in the tooltip, as "Điểm mô hình 0.82" with the note that it ranks results
+and is not a probability, never as a percentage (Spec §11.3, PRD §8.1).
 
 ## Not enabled
 
