@@ -64,6 +64,9 @@ test('resource 403 preserves the session', async ({ page, api }) => {
 
 for (const [role, path, allowed] of [
   ['Requester', '/agent-workspace', false],
+  ['Requester', '/tickets/new', true],
+  ['Agent', '/tickets/new', false],
+  ['Admin', '/tickets/new', false],
   ['Agent', '/agent-workspace', true],
   ['Agent', '/admin-panel', false],
   ['Admin', '/agent-workspace', true],
@@ -84,6 +87,7 @@ for (const [role, path, allowed] of [
     await expect(page).toHaveURL(allowed ? path : '/403');
     if (!allowed) await expect(page.getByText('Bạn không có quyền truy cập trang này.')).toBeVisible();
     else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
+    else if (path === '/tickets/new') await expect(page.getByRole('heading', { name: 'Tạo yêu cầu' })).toBeVisible();
     else if (path === '/knowledge/manage' || path === '/knowledge') await expect(page.getByRole('heading', { name: 'Kho tri thức' })).toBeVisible();
     else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });

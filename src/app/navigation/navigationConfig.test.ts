@@ -4,8 +4,8 @@ import { hasAnyRole } from '@/features/auth';
 
 it.each([
   [['Requester'], ['/', '/tickets/new', '/requester-dashboard/tickets', '/knowledge']],
-  [['Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
-  [['Admin'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new', '/admin-panel']],
+  [['Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets']],
+  [['Admin'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/admin-panel']],
   [['Requester', 'Agent'], ['/agent-workspace', '/knowledge/manage', '/requester-dashboard/tickets', '/tickets/new']],
   [['Unknown'], []],
 ])('derives the menu and its order for %j', (roles, paths) => {

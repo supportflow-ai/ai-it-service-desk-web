@@ -6,7 +6,8 @@ export const routeConfig = {
   home: { path: '/', roles: [], label: 'Tổng quan', menuRoles: ['Requester'] },
   tickets: { path: '/requester-dashboard/tickets', roles: ['Requester', 'Agent', 'Admin'], label: 'Yêu cầu của tôi' },
   ticket: { path: '/requester-dashboard/tickets/:id', roles: ['Requester', 'Agent', 'Admin'] },
-  create: { path: '/tickets/new', roles: ['Requester', 'Agent', 'Admin'], label: 'Tạo yêu cầu' },
+  // Only a Requester raises requests (PRD J-01, Spec UC-02/UC-05); staff work them from the queue.
+  create: { path: '/tickets/new', roles: ['Requester'], label: 'Tạo yêu cầu' },
   workspace: { path: '/agent-workspace', roles: ['Agent', 'Admin'], label: 'Hàng đợi xử lý' },
   workspaceTicket: { path: '/agent-workspace/tickets/:id', roles: ['Agent', 'Admin'] },
   // Published articles are read by everyone signed in (RequireRequester admits Requester, Agent, Admin).

@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { hasAnyRole, useAuth } from '@/features/auth';
 import { PageLoader } from '@/shared/ui/PageLoader';
 import { MainLayout } from '../layouts/MainLayout';
 import { HomePage } from '../pages/HomePage';
@@ -26,6 +27,9 @@ const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then(
 const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.RequesterAIPanel })));
 
 export function AppRouter() {
+  const { user } = useAuth();
+  // Only a Requester may raise a request, so staff are not offered the way to one.
+  const helpPath = hasAnyRole(user?.roles ?? [], routes.create.roles) ? routes.create.path : undefined;
   const protectedPages = [
     { ...routes.home, element: <HomePage /> },
     { ...routes.tickets, element: <TicketListPage /> },
@@ -44,8 +48,8 @@ export function AppRouter() {
       )} />,
     },
     // A reader who found no answer goes on to a request (PRD J-03).
-    { ...routes.knowledge, element: <KnowledgeSearchPage helpPath={routes.create.path} /> },
-    { ...routes.knowledgeArticle, element: <PublishedArticlePage helpPath={routes.create.path} /> },
+    { ...routes.knowledge, element: <KnowledgeSearchPage helpPath={helpPath} /> },
+    { ...routes.knowledgeArticle, element: <PublishedArticlePage helpPath={helpPath} /> },
     { ...routes.knowledgeAdmin, element: <KnowledgeAdminPage /> },
     { ...routes.knowledgeNew, element: <NewArticlePage /> },
     { ...routes.knowledgeRead, element: <ArticleDetailPage /> },

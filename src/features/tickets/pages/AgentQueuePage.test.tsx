@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { beforeEach, expect, it } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
-import { agentDirectory, ticketA, ticketB, user } from '../../../../tests/fixtures';
+import { agentDirectory, namedAgent, ticketA, ticketB, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
 import { AgentQueuePage } from './AgentQueuePage';
 import { TicketWorkspacePage } from './TicketWorkspacePage';
@@ -70,6 +70,22 @@ it('switches scope and filters by status, restarting from page 1', async () => {
   await userEvent.click(screen.getByRole('tab', { name: /Của tôi/ }));
   await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', scope: 'my', status: '2' }));
   expect(screen.getByText(/Ticket đang giao cho bạn/)).toBeInTheDocument();
+});
+
+it('shows who handles each ticket: a name from the directory, or that nobody does yet', async () => {
+  server.use(
+    http.get('http://localhost/api/users', () => HttpResponse.json(agentDirectory)),
+    http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({
+      items: [{ ...ticketA, assignedToId: namedAgent.userId }, ticketB], page: 1, pageSize: 10, totalCount: 2,
+    })),
+  );
+  renderQueue();
+  const assigned = (await screen.findByText(ticketA.ticketNumber)).closest('tr');
+  const unassigned = (await screen.findByText(ticketB.ticketNumber)).closest('tr');
+  if (!assigned || !unassigned) throw new Error('Queue rows are missing');
+  expect(screen.getByRole('columnheader', { name: 'Người xử lý' })).toBeInTheDocument();
+  expect(await within(assigned).findByText(namedAgent.fullName)).toBeInTheDocument();
+  expect(within(unassigned).getByText('Chưa phân công')).toBeInTheDocument();
 });
 
 it('shows the priority of each ticket, filters by it and sorts highest priority first', async () => {
