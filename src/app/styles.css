@@ -1,26 +1,29 @@
 :root {
-  --bg: #F6F7F5;
+  /* Palette A (trust blue). Every pair used for text meets WCAG AA 4.5:1. */
+  --bg: #F8FAFC;
   --sf: #FFFFFF;
-  --sf2: #EEF1EF;
-  --sel: #E7F2EF;
-  --tx: #17201F;
-  --tx2: #626D69;
-  --tx3: #89928F;
-  --bd: #D8DEDB;
-  --bd2: #BEC8C4;
-  --pr: #0F766E;
-  --prh: #0B625C;
-  --prs: #E3F3F0;
-  --ok: #2F7D5B;
-  --oks: #E8F5EE;
-  --wn: #A56A16;
-  --wns: #FFF3DD;
-  --er: #B84848;
-  --ers: #FCECEC;
-  --in: #426D86;
-  --note: #FBF4E4;
+  --sf2: #F1F5F9;
+  --sel: #EFF6FF;
+  --tx: #0F172A;
+  --tx2: #475569;
+  --tx3: #64748B;
+  --bd: #E2E8F0;
+  --bd2: #CBD5E1;
+  --pr: #2563EB;
+  --prh: #1D4ED8;
+  --prs: #DBEAFE;
+  --ok: #15803D;
+  --oks: #DCFCE7;
+  --wn: #92400E;
+  --wns: #FEF3C7;
+  --er: #B91C1C;
+  --ers: #FEE2E2;
+  --in: #1D4ED8;
+  --note: #FFFBEB;
+  --noteb: #FDE68A;
   --onpr: #FFFFFF;
-  --sh: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --sh: 0 8px 24px rgba(15, 23, 42, 0.08);
+  color-scheme: light;
 }
 
 body {
@@ -134,7 +137,7 @@ body {
 }
 .msg-card.note {
   background: var(--note);
-  border-color: #EBD9B2;
+  border-color: var(--noteb);
 }
 .msg-card header {
   display: flex;
@@ -152,7 +155,7 @@ body {
   border-radius: 6px;
   font-size: 13px;
   margin-top: 12px;
-  border: 1px solid #EBD9B2;
+  border: 1px solid var(--noteb);
 }
 
 /* Attachment styling */

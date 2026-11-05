@@ -111,7 +111,7 @@ export function MainLayout() {
       <Layout style={{ background: 'var(--bg)' }}>
         <Header
           style={{
-            background: '#FFFFFF',
+            background: 'var(--sf)',
             borderBottom: '1px solid var(--bd)',
             padding: '0 28px',
             height: '60px',
