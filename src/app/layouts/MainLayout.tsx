@@ -1,13 +1,16 @@
-import { Button, Input, Layout, Menu, Space, Typography } from 'antd';
+import { Button, Dropdown, Input, Layout, Menu, Space, Typography } from 'antd';
 import {
   AppstoreOutlined,
   BellOutlined,
   BookOutlined,
   CheckSquareOutlined,
+  DesktopOutlined,
   LogoutOutlined,
+  MoonOutlined,
   PlusCircleOutlined,
   SearchOutlined,
   SettingOutlined,
+  SunOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
@@ -15,6 +18,8 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import type { Role } from '@/features/auth';
 import { getNavigation } from '../navigation/navigationConfig';
+import { useThemeMode } from '../providers/themeMode';
+import type { ThemePreference } from '../providers/themeMode';
 import { routeConfig } from '../router/routeConfig';
 
 const { Sider, Header, Content } = Layout;
@@ -31,9 +36,15 @@ const menuIcons: Partial<Record<string, ReactNode>> = {
   [routeConfig.knowledgeAdmin.path]: <BookOutlined />,
   [routeConfig.admin.path]: <SettingOutlined />,
 };
+const themeOptions: Record<ThemePreference, { label: string; icon: ReactNode }> = {
+  light: { label: 'Sáng', icon: <SunOutlined /> },
+  dark: { label: 'Tối', icon: <MoonOutlined /> },
+  system: { label: 'Theo hệ thống', icon: <DesktopOutlined /> },
+};
 
 export function MainLayout() {
   const { user, logout } = useAuth();
+  const { preference, setPreference } = useThemeMode();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -111,7 +122,7 @@ export function MainLayout() {
       <Layout style={{ background: 'var(--bg)' }}>
         <Header
           style={{
-            background: '#FFFFFF',
+            background: 'var(--sf)',
             borderBottom: '1px solid var(--bd)',
             padding: '0 28px',
             height: '60px',
@@ -135,6 +146,25 @@ export function MainLayout() {
           </div>
 
           <Space size="middle" align="center">
+            <Dropdown
+              trigger={['click']}
+              menu={{
+                selectable: true,
+                selectedKeys: [preference],
+                items: (Object.keys(themeOptions) as ThemePreference[]).map((key) => ({
+                  key, label: themeOptions[key].label, icon: themeOptions[key].icon,
+                })),
+                onClick: ({ key }) => setPreference(key as ThemePreference),
+              }}
+            >
+              <Button
+                type="text"
+                icon={themeOptions[preference].icon}
+                style={{ color: 'var(--tx2)' }}
+                title={`Giao diện: ${themeOptions[preference].label}`}
+                aria-label={`Giao diện: ${themeOptions[preference].label}`}
+              />
+            </Dropdown>
             <Button
               type="text"
               disabled

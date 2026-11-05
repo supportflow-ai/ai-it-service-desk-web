@@ -1,26 +1,57 @@
 :root {
-  --bg: #F6F7F5;
+  /* Palette A (trust blue). Every pair used for text meets WCAG AA 4.5:1. */
+  --bg: #F8FAFC;
   --sf: #FFFFFF;
-  --sf2: #EEF1EF;
-  --sel: #E7F2EF;
-  --tx: #17201F;
-  --tx2: #626D69;
-  --tx3: #89928F;
-  --bd: #D8DEDB;
-  --bd2: #BEC8C4;
-  --pr: #0F766E;
-  --prh: #0B625C;
-  --prs: #E3F3F0;
-  --ok: #2F7D5B;
-  --oks: #E8F5EE;
-  --wn: #A56A16;
-  --wns: #FFF3DD;
-  --er: #B84848;
-  --ers: #FCECEC;
-  --in: #426D86;
-  --note: #FBF4E4;
+  --sf2: #F1F5F9;
+  --sel: #EFF6FF;
+  --tx: #0F172A;
+  --tx2: #475569;
+  --tx3: #64748B;
+  --bd: #E2E8F0;
+  --bd2: #CBD5E1;
+  --pr: #2563EB;
+  --prh: #1D4ED8;
+  --prs: #DBEAFE;
+  --ok: #15803D;
+  --oks: #DCFCE7;
+  --wn: #92400E;
+  --wns: #FEF3C7;
+  --er: #B91C1C;
+  --ers: #FEE2E2;
+  --in: #1D4ED8;
+  --note: #FFFBEB;
+  --noteb: #FDE68A;
   --onpr: #FFFFFF;
-  --sh: 0 8px 24px rgba(0, 0, 0, 0.08);
+  --sh: 0 8px 24px rgba(15, 23, 42, 0.08);
+  color-scheme: light;
+}
+
+/* Dark mode, set by ThemeModeProvider. Lighter tones keep text pairs at 4.5:1 on slate surfaces. */
+:root[data-theme="dark"] {
+  --bg: #0F172A;
+  --sf: #1E293B;
+  --sf2: #273449;
+  --sel: #1E3352;
+  --tx: #E2E8F0;
+  --tx2: #94A3B8;
+  --tx3: #8B9AB0;
+  --bd: #334155;
+  --bd2: #475569;
+  --pr: #60A5FA;
+  --prh: #93C5FD;
+  --prs: #1E3A5F;
+  --ok: #4ADE80;
+  --oks: #14532D;
+  --wn: #FBBF24;
+  --wns: #422006;
+  --er: #F87171;
+  --ers: #450A0A;
+  --in: #93C5FD;
+  --note: #2B2410;
+  --noteb: #6B5414;
+  --onpr: #0F172A;
+  --sh: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
 }
 
 body {
@@ -134,7 +165,7 @@ body {
 }
 .msg-card.note {
   background: var(--note);
-  border-color: #EBD9B2;
+  border-color: var(--noteb);
 }
 .msg-card header {
   display: flex;
@@ -152,7 +183,7 @@ body {
   border-radius: 6px;
   font-size: 13px;
   margin-top: 12px;
-  border: 1px solid #EBD9B2;
+  border: 1px solid var(--noteb);
 }
 
 /* Attachment styling */
