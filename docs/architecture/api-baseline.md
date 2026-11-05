@@ -1,6 +1,20 @@
 # Frontend API compatibility baseline
 
-## Bổ sung hiện hành — 03/11/2026
+## Đối chiếu tích hợp MVP ngày 05/11/2026
+
+Đối chiếu [Web `main@ade7af4`](https://github.com/supportflow-ai/ai-it-service-desk-web/commit/ade7af4e1b88e7834c8d9b225f68eb7ebd75f9fe) với [Backend `main@bf38ef9`](https://github.com/supportflow-ai/ai-it-service-desk/commit/bf38ef903f46f6ea21f80da44c11d437391a9efb). Snapshot Web ghim Backend `dev@febb4d7` và khớp từng byte với OpenAPI trên Backend `main@bf38ef9`. [Mốc nguồn và checksum](../../tests/contracts/backend-source.json)
+
+| Luồng | Điểm đối chiếu |
+| --- | --- |
+| Danh bạ Agent | Bộ đọc chấp nhận `userId` và `fullName` tùy chọn theo dữ liệu trả về từ `GET /api/users?role=Agent` |
+| Nhận và hủy phân công | Agent và Admin nhận phiếu theo trạng thái và người phụ trách. Giao diện chỉ cho hủy phân công ở trạng thái `Assigned` |
+| Revision | `update` và `assign` gửi `expectedRevision` trong body. Các lệnh vòng đời và hủy phân công gửi qua query. Khi nhận `409`, giao diện cho tải lại phiếu |
+| Hàng đợi | Giao diện hỗ trợ lọc và sắp xếp theo độ ưu tiên qua `priority` và `sortByPriority` |
+| Knowledge và AI | Knowledge đã có giao diện đọc và quản trị theo quyền. Phạm vi Knowledge cần quyết định riêng. Luồng AI xử lý và lưu quyết định gợi ý từ đầu đến cuối thuộc giai đoạn sau |
+
+Nghiệm thu theo phiên bản Backend thực tế với tài khoản Requester, Agent và Admin. Kiểm tra phân công, nhận phiếu, ghi chú nội bộ và vòng đời tệp trên môi trường tích hợp. [Bộ đọc phản hồi](../../src/features/tickets/api/ticketContract.ts) · [Điều kiện hiển thị thao tác](../../src/features/tickets/model/ticketPermissions.ts) · [Bản đồ truy cập Kho tri thức](knowledge-ui-access-map.md)
+
+## Mốc đối chiếu 03/11/2026
 
 Phạm vi là working tree của đợt W2–W3 sau hợp nhất backend tại `659289c3a1cf8e4b9da86a15ea890ee59bcc3e6d`, cộng thay đổi `UploadUrlResult.formData`. Backend dùng thống nhất AttachmentUploadGrant, giữ confirm idempotent và nhận grant PUT cũ còn hạn; đường dẫn/payload frontend không thay đổi qua bước hợp nhất. Nguồn và checksum tại [backend-source.json](../../tests/contracts/backend-source.json), bản OpenAPI tại [backend-openapi.json](../../tests/contracts/backend-openapi.json). SHA nền chưa phải SHA của thay đổi chưa commit. Các phần tiếng Anh bên dưới giữ mốc lịch sử cũ để truy vết.
 
