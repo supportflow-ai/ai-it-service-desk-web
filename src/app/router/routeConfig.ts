@@ -21,4 +21,5 @@ export const routeConfig = {
   knowledgeRead: { path: '/knowledge/manage/:id', roles: ['Agent', 'Admin'] },
   knowledgeEdit: { path: '/knowledge/manage/:id/edit', roles: ['Agent', 'Admin'] },
   admin: { path: '/admin-panel', roles: ['Admin'], label: 'Quản trị hệ thống' },
+  forgotPassword: { path: '/forgot-password', roles: [] },
 } as const satisfies Record<string, RouteDefinition>;

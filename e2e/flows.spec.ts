@@ -89,6 +89,7 @@ for (const [role, path, allowed] of [
     else if (path === '/agent-workspace') await expect(page.getByRole('heading', { name: 'Hàng đợi xử lý' })).toBeVisible();
     else if (path === '/tickets/new') await expect(page.getByRole('heading', { name: 'Tạo yêu cầu' })).toBeVisible();
     else if (path === '/knowledge/manage' || path === '/knowledge') await expect(page.getByRole('heading', { name: 'Kho tri thức' })).toBeVisible();
+    else if (path === '/admin-panel') await expect(page.getByRole('heading', { name: 'Quản trị phân quyền người dùng' })).toBeVisible();
     else await expect(page.getByText(/chưa được hỗ trợ/)).toBeVisible();
   });
 }
@@ -108,7 +109,7 @@ test('Admin workspace preserves UI with commands and live timeline', async ({ pa
   await expect(page.getByText(/92%/)).toHaveCount(0);
   // The directories load beside the ticket, so only the set of requests is fixed, not their order.
   expect([...api.requests].sort()).toEqual([
-    'GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, 'GET /api/users?role=Admin', 'GET /api/users?role=Agent',
+    'GET /api/auth/me', `GET /api/tickets/${ticketA.id}`, 'GET /api/departments', 'GET /api/users?role=Admin', 'GET /api/users?role=Agent',
     `GET /api/tickets/${ticketA.id}/timeline`, `GET /api/tickets/${ticketA.id}/attachments`,
   ].sort());
 });

@@ -6,13 +6,14 @@ import { MainLayout } from '../layouts/MainLayout';
 import { HomePage } from '../pages/HomePage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
-import { UnavailablePage } from '../pages/UnavailablePage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RootRoute } from './RootRoute';
 import { routeConfig as routes } from './routeConfig';
 
 const LoginPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.LoginPage })));
 const RegisterPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.ForgotPasswordPage })));
+const AdminUsersPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.AdminUsersPage })));
 const TicketListPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketListPage })));
 const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketDetailPage })));
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
@@ -54,7 +55,7 @@ export function AppRouter() {
     { ...routes.knowledgeNew, element: <NewArticlePage /> },
     { ...routes.knowledgeRead, element: <ArticleDetailPage /> },
     { ...routes.knowledgeEdit, element: <EditArticlePage /> },
-    { ...routes.admin, element: <UnavailablePage title={routes.admin.label} /> },
+    { ...routes.admin, element: <AdminUsersPage /> },
   ];
   return (
     <BrowserRouter>
@@ -62,6 +63,7 @@ export function AppRouter() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path={routes.forgotPassword.path} element={<ForgotPasswordPage />} />
           <Route path="/403" element={<ForbiddenPage />} />
           {/* `/` is public: the landing page for visitors, the overview once signed in. */}
           <Route path={routes.home.path} element={<RootRoute />}>
