@@ -49,6 +49,11 @@ export const ticketApi = {
     const response = await apiClient.get<unknown>('/users', { params: { role: 'Agent' }, signal });
     return readAgentDirectory(response.data);
   },
+  /** Staff only: the Admins, who can take a ticket too (claim) and so may be the name behind an assignee. */
+  async getAdminDirectory(signal?: AbortSignal) {
+    const response = await apiClient.get<unknown>('/users', { params: { role: 'Admin' }, signal });
+    return readAgentDirectory(response.data);
+  },
   async getTicketById(id: string, signal?: AbortSignal) {
     const response = await apiClient.get<unknown>(`/tickets/${encodeURIComponent(id)}`, { signal });
     return readTicket(response.data);

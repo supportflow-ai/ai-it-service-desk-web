@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Button, Input, Layout, Menu, Space, Typography } from 'antd';
 import {
   AppstoreOutlined,
   BellOutlined,
   BookOutlined,
   CheckSquareOutlined,
+  KeyOutlined,
   LogoutOutlined,
   PlusCircleOutlined,
   SearchOutlined,
@@ -12,7 +14,7 @@ import {
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { ChangePasswordModal, useAuth } from '@/features/auth';
 import type { Role } from '@/features/auth';
 import { getNavigation } from '../navigation/navigationConfig';
 import { ThemeSwitch } from './ThemeSwitch';
@@ -37,6 +39,7 @@ export function MainLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [openPasswordModal, setOpenPasswordModal] = useState(false);
 
   const roleText = roleOrder.filter((role) => user?.roles.includes(role)).map((role) => roleLabels[role]).join(' · ');
   // The menu, and its order, come from the role-based navigation: nothing is added per screen here.
@@ -68,21 +71,23 @@ export function MainLayout() {
           <div
             onClick={() => navigate('/')}
             style={{
-              fontSize: '18px',
-              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
               cursor: 'pointer',
-              color: 'var(--tx)',
-              letterSpacing: '-0.3px',
+              fontWeight: 700,
+              fontSize: 16,
+              color: 'var(--pr)',
             }}
           >
-            Support<span style={{ color: 'var(--pr)' }}>Flow</span>
+            <span style={{ fontSize: 20 }}>SupportFlow</span>
           </div>
-          <div style={{ fontSize: '11px', color: 'var(--tx3)', marginTop: '2px' }}>
-            IT Service Desk
+          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+            Hệ thống hỗ trợ IT nội bộ
           </div>
         </div>
 
-        <div style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
+        <div style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }}>
           <Menu
             mode="inline"
             selectedKeys={[selectedKey]}
@@ -92,30 +97,32 @@ export function MainLayout() {
           />
         </div>
 
-        <div
-          style={{
-            padding: '14px 16px',
-            borderTop: '1px solid var(--bd)',
-            background: 'var(--sf2)',
-            fontSize: '12px',
-          }}
-        >
-          <div style={{ fontWeight: 600, color: 'var(--tx)' }}>
-            {user?.fullName ?? user?.email ?? 'Người dùng'}
+        {user && (
+          <div
+            style={{
+              padding: '12px 16px',
+              borderTop: '1px solid var(--bd2)',
+              fontSize: 12,
+              background: 'var(--sf)',
+            }}
+          >
+            <div style={{ fontWeight: 600, color: 'var(--tx)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {user.fullName ?? user.email}
+            </div>
+            <div style={{ color: 'var(--tx3)', fontSize: 11, marginTop: 2 }} data-testid="current-roles">
+              {roleText || 'Chưa có vai trò'}
+            </div>
           </div>
-          <div style={{ color: 'var(--tx2)', fontSize: '11px', marginTop: '2px' }} data-testid="current-roles">
-            {roleText || 'Chưa có vai trò'}
-          </div>
-        </div>
+        )}
       </Sider>
 
-      <Layout style={{ background: 'var(--bg)' }}>
+      <Layout>
         <Header
           style={{
             background: 'var(--sf)',
             borderBottom: '1px solid var(--bd)',
-            padding: '0 28px',
-            height: '60px',
+            padding: '0 24px',
+            height: 60,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -149,6 +156,14 @@ export function MainLayout() {
               Xin chào, <b>{user?.fullName ?? user?.email}</b>
             </Text>
             <Button
+              icon={<KeyOutlined />}
+              onClick={() => setOpenPasswordModal(true)}
+              size="small"
+              style={{ borderRadius: 6 }}
+            >
+              Đổi mật khẩu
+            </Button>
+            <Button
               icon={<LogoutOutlined />}
               onClick={logout}
               danger
@@ -164,6 +179,8 @@ export function MainLayout() {
           <Outlet />
         </Content>
       </Layout>
+
+      <ChangePasswordModal open={openPasswordModal} onClose={() => setOpenPasswordModal(false)} />
     </Layout>
   );
 }

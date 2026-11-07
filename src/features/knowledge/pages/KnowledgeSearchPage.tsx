@@ -10,7 +10,8 @@ import { PublishedArticleCard } from '../components/PublishedArticleCard';
 
 interface KnowledgeSearchPageProps {
   /** Where a reader who found no answer asks for help; the app passes the create-request route. */
-  helpPath: string;
+  /** Where a reader who found no answer goes on; absent for staff, who do not raise requests. */
+  helpPath?: string;
 }
 
 function summary(result: PagedArticleResult, { query, tag }: PublishedSearchFilters) {
@@ -26,7 +27,7 @@ export function KnowledgeSearchPage({ helpPath }: KnowledgeSearchPageProps) {
   const result = articles.data;
   const resultsState: KnowledgeResultsState = { resultsSearch: search };
   const reload = () => { void articles.refetch(); };
-  const askForHelp = <Button type="primary" onClick={() => navigate(helpPath)}>Tạo yêu cầu hỗ trợ</Button>;
+  const askForHelp = helpPath ? <Button type="primary" onClick={() => navigate(helpPath)}>Tạo yêu cầu hỗ trợ</Button> : null;
 
   const empty = {
     loading: (

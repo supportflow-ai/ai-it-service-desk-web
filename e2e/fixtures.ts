@@ -44,6 +44,11 @@ export const test = base.extend<{ api: ApiFixture }>({
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
       if (key === 'GET /api/users' && url.searchParams.get('role') === 'Agent') return route.fulfill({ json: agentDirectory });
+      if (key === 'GET /api/users' && url.searchParams.get('role') === 'Admin') return route.fulfill({ json: [] });
+      if (key === 'GET /api/departments') return route.fulfill({ json: [] });
+      if (request.method() === 'PUT' && url.pathname.startsWith('/api/users/') && url.pathname.endsWith('/roles')) {
+        return route.fulfill({ json: { message: 'Cập nhật vai trò thành công.' } });
+      }
       // Like SearchPublishedAsync at backend dev ced117c: Published only, ILIKE on title or content,
       // the tag lower-cased, newest published first. (Staff here ask with status=1 for the same set.)
       if (key === 'GET /api/knowledge/articles/search') {

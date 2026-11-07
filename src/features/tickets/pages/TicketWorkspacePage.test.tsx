@@ -145,10 +145,10 @@ it('shows a not-found page with a way back when the ticket does not exist', asyn
   expect(screen.getByRole('link', { name: /Quay lại hàng đợi/ })).toHaveAttribute('href', '/agent-workspace');
 });
 
-it('shows a forbidden page and keeps the session when the ticket is out of scope', async () => {
+it('shows the same not-found page and keeps the session when the ticket is out of scope (UX-04)', async () => {
   server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => new HttpResponse(null, { status: 403 })));
   renderAt(ticketA.id);
-  expect(await screen.findByText('Bạn không có quyền xem ticket này')).toBeInTheDocument();
+  expect(await screen.findByText('Không tìm thấy ticket')).toBeInTheDocument();
   expect(sessionStore.getSnapshot().token).toBe('agent');
 });
 
