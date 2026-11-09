@@ -54,6 +54,27 @@ it('opens on the unassigned queue from the real queue endpoint', async () => {
   expect(screen.getByText('1–10 trên 25 ticket')).toBeInTheDocument();
 });
 
+it('tells an Agent their queue only holds their team tickets and ones assigned to them', async () => {
+  server.use(http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({ items: [], page: 1, pageSize: 10, totalCount: 0 })));
+  renderQueue();
+  expect(await screen.findByText(/Bạn chỉ thấy ticket thuộc nhóm hỗ trợ của mình hoặc được giao trực tiếp/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('tab', { name: /Tất cả/ }));
+  expect(await screen.findByText('Ticket thuộc nhóm hỗ trợ của bạn hoặc được giao trực tiếp cho bạn.')).toBeInTheDocument();
+  expect(screen.queryByText('Toàn bộ ticket trong hệ thống.')).not.toBeInTheDocument();
+});
+
+it('keeps the whole-system wording for an Admin, who reads every ticket', async () => {
+  server.use(
+    http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Admin'] })),
+    http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({ items: [], page: 1, pageSize: 10, totalCount: 0 })),
+  );
+  renderQueue();
+  expect(await screen.findByText('Không có ticket nào phù hợp với bộ lọc.')).toBeInTheDocument();
+  expect(screen.queryByText(/chỉ thấy ticket thuộc nhóm/)).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('tab', { name: /Tất cả/ }));
+  expect(await screen.findByText('Toàn bộ ticket trong hệ thống.')).toBeInTheDocument();
+});
+
 it('switches scope and filters by status, restarting from page 1', async () => {
   renderQueue();
   await screen.findByText(ticketA.ticketNumber);

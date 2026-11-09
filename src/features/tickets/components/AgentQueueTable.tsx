@@ -1,8 +1,8 @@
 import { Table, Typography } from 'antd';
 import { Link } from 'react-router-dom';
-import { useAuth } from '@/features/auth';
+import { hasAnyRole, useAuth } from '@/features/auth';
 import type { PagedTicketResult, TicketDto } from '../model/ticket.types';
-import { AGENT_QUEUE_PAGE_SIZES } from '../model/agentQueue';
+import { AGENT_QUEUE_PAGE_SIZES, agentQueueEmptyText } from '../model/agentQueue';
 import { assignmentLabel } from '../model/assignment';
 import { ticketCategoryLabels } from '../model/ticketCategories';
 import { useStaffDirectory } from '../hooks/useStaffDirectory';
@@ -38,7 +38,7 @@ export function AgentQueueTable({ result, loading, page, pageSize, returnState, 
       size="middle"
       dataSource={result?.items ?? []}
       loading={loading}
-      locale={{ emptyText: 'Không có ticket nào phù hợp với bộ lọc.' }}
+      locale={{ emptyText: agentQueueEmptyText(hasAnyRole(user?.roles ?? [], ['Admin'])) }}
       onRow={(ticket) => ({
         // The ticket link handles its own clicks (including opening in a new tab).
         onClick: (event) => {

@@ -1,6 +1,7 @@
 import { Button, Select, Space, Typography } from 'antd';
+import { hasAnyRole, useAuth } from '@/features/auth';
 import type { AgentQueueFilters } from '../model/ticket.types';
-import { agentQueueScopes, agentQueueStatusOptions } from '../model/agentQueue';
+import { agentQueueScopeDescription, agentQueueScopes, agentQueueStatusOptions } from '../model/agentQueue';
 import { ticketCategoryLabels } from '../model/ticketCategories';
 import { ticketPriorityLabels } from '../model/ticketPriority';
 import { ticketStatusMeta } from '../model/ticketStatus';
@@ -34,6 +35,8 @@ function tabStyle(active: boolean) {
 }
 
 export function AgentQueueToolbar({ filters, totalCount, onChange }: AgentQueueToolbarProps) {
+  const { user } = useAuth();
+  const seesAll = hasAnyRole(user?.roles ?? [], ['Admin']);
   const activeScope = agentQueueScopes.find((item) => item.scope === filters.scope);
   return (
     <>
@@ -56,7 +59,7 @@ export function AgentQueueToolbar({ filters, totalCount, onChange }: AgentQueueT
       </div>
       {activeScope && (
         <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 12 }}>
-          {activeScope.description}
+          {agentQueueScopeDescription(activeScope.scope, seesAll)}
         </Typography.Text>
       )}
 
