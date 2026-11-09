@@ -12,6 +12,11 @@ describe('HTTP normalization', () => {
     expect(normalized.status).toBe(status);
     expect(normalized.message).not.toContain('database');
   });
+  it('explains a rate limit (429) and never retries it automatically', () => {
+    const limited = httpError(429);
+    expect(normalizeError(limited).message).toBe('Bạn thao tác quá nhanh. Vui lòng đợi một lúc rồi thử lại.');
+    expect(shouldRetryQuery(0, limited)).toBe(false);
+  });
   it('preserves validated field errors', () => {
     expect(normalizeError(httpError(400, { errors: { title: ['Required'], unsafe: 42 } })).fieldErrors).toEqual({ title: ['Required'] });
   });
