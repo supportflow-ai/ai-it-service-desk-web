@@ -183,6 +183,23 @@ it('does not offer to confirm again when the backend rejected the upload itself'
   expect(screen.queryByRole('button', { name: 'Xác nhận lại' })).not.toBeInTheDocument();
 });
 
+it('refuses an eleventh file locally and says the ticket is full, without calling the API', async () => {
+  stored = Array.from({ length: 10 }, (_, index) => ({ ...attachment, id: `30000000-0000-0000-0000-0000000000${String(index).padStart(2, '0')}`, fileName: `f${index}.txt` }));
+  renderSection();
+  expect(await screen.findByText('Tệp đính kèm (10)')).toBeInTheDocument();
+  // Any request here would fail the test through the unhandled-request guard.
+  pick(new File(['x'], 'them.txt', { type: 'text/plain' }));
+  expect(await screen.findByText('Mỗi phiếu chỉ được đính kèm tối đa 10 tệp.')).toBeInTheDocument();
+});
+
+it('refuses a file that would take the ticket over 50 MB in total', async () => {
+  stored = [{ ...attachment, fileSizeBytes: 45 * 1024 * 1024 }];
+  renderSection();
+  expect(await screen.findByText('log.txt')).toBeInTheDocument();
+  pick(new File([new ArrayBuffer(6 * 1024 * 1024)], 'lon.zip', { type: 'application/zip' }));
+  expect(await screen.findByText(/không được vượt quá 50 MB/)).toBeInTheDocument();
+});
+
 it('downloads a listed file through a fresh authorized URL and reports download failures', async () => {
   stored = [attachment];
   let downloadStatus = 200;

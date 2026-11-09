@@ -3,7 +3,7 @@ import { sessionStore, useAuth } from '@/features/auth';
 import { AppError } from '@/shared/api/httpError';
 import { confirmUploadedAttachment, isRetryableConfirmError, uploadAttachment } from '../lib/uploadAttachment';
 import type { UnconfirmedUpload } from '../lib/uploadAttachment';
-import { validateAttachmentFile } from '../validation/attachmentRules';
+import { validateAttachmentFile, validateTicketCapacity } from '../validation/attachmentRules';
 import { useTicketWrite } from './useTicketWrite';
 
 /**
@@ -62,12 +62,15 @@ export function useUploadAttachment(ticketId: string) {
     },
   });
 
-  /** Validates locally first, so a rejected file never reaches the API. */
-  const upload = (file: File) => {
+  /**
+   * Validates locally first, so a rejected file never reaches the API. `attached` are the files the
+   * ticket already has, for its quota; without them only the backend can refuse a full ticket.
+   */
+  const upload = (file: File, attached: readonly { fileSizeBytes: number }[] = []) => {
     mutation.reset();
     confirmAgain.reset();
     setUnconfirmed(null);
-    const invalid = validateAttachmentFile(file);
+    const invalid = validateAttachmentFile(file) ?? validateTicketCapacity(attached.map((item) => item.fileSizeBytes), file);
     setValidationError(invalid);
     if (invalid) return;
     setProgress(0);

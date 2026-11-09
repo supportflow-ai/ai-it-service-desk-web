@@ -19,7 +19,7 @@ interface TicketAttachmentSectionProps {
 }
 
 const attachmentMessages = {
-  400: 'Không thể đính kèm tệp: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP tối đa 10 MB, hoặc yêu cầu tải lên đã hết hạn. Vui lòng chọn lại tệp.',
+  400: 'Không thể đính kèm tệp: chỉ chấp nhận PDF, PNG, JPG, DOCX, TXT, ZIP tối đa 10 MB, mỗi phiếu tối đa 10 tệp và 50 MB, hoặc yêu cầu tải lên đã hết hạn. Vui lòng chọn lại tệp.',
 };
 
 /** Callers must remount this section (key={ticketId}) when the ticket changes. */
@@ -39,7 +39,7 @@ export function TicketAttachmentSection({ ticketId, status }: TicketAttachmentSe
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    upload.upload(file);
+    upload.upload(file, items);
   };
 
   return (
@@ -131,7 +131,7 @@ export function TicketAttachmentSection({ ticketId, status }: TicketAttachmentSe
 
       {!attachments.isPending && !attachments.error && items.length === 0 && (
         <Empty
-          description={allowUpload ? 'Chưa có tệp đính kèm nào (Tối đa 10 MB: PDF, PNG, JPG, DOCX, TXT, ZIP).' : 'Chưa có tệp đính kèm nào.'}
+          description={allowUpload ? 'Chưa có tệp đính kèm nào (Tối đa 10 MB mỗi tệp, 10 tệp và 50 MB mỗi phiếu: PDF, PNG, JPG, DOCX, TXT, ZIP).' : 'Chưa có tệp đính kèm nào.'}
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       )}

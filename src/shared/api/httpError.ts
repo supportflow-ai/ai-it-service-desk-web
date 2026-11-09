@@ -23,6 +23,8 @@ const messages: Record<number, string> = {
   403: 'Bạn không có quyền thực hiện thao tác này.',
   404: 'Không tìm thấy dữ liệu yêu cầu.',
   409: 'Dữ liệu có xung đột. Vui lòng tải lại trước khi thử lại.',
+  // Sign-in, registration and password flows are rate limited per IP and per email.
+  429: 'Bạn thao tác quá nhanh. Vui lòng đợi một lúc rồi thử lại.',
 };
 
 export function normalizeError(error: unknown): AppError {
