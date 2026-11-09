@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ATTACHMENT_MAX_BYTES, validateAttachmentFile } from './attachmentRules';
+import { ATTACHMENT_MAX_BYTES, validateAttachmentFile, validateTicketCapacity } from './attachmentRules';
 import { COMMENT_MAX_LENGTH, canSendComment, validateCommentContent } from './commentRules';
 
 describe('comment rules', () => {
@@ -28,5 +28,21 @@ describe('attachment rules', () => {
   it('rejects empty and oversized files', () => {
     expect(validateAttachmentFile({ name: 'a.png', size: 0 })).toMatch(/tối đa 10 MB/);
     expect(validateAttachmentFile({ name: 'a.png', size: ATTACHMENT_MAX_BYTES + 1 })).toMatch(/tối đa 10 MB/);
+  });
+});
+
+describe('ticket attachment quota', () => {
+  const MiB = 1024 * 1024;
+
+  it('accepts the tenth file when the total is exactly 50 MiB', () => {
+    expect(validateTicketCapacity(Array(9).fill(5 * MiB), { size: 5 * MiB })).toBeNull();
+  });
+
+  it('rejects an eleventh file even when the total fits', () => {
+    expect(validateTicketCapacity(Array(10).fill(1), { size: 1 })).toMatch(/tối đa 10 tệp/);
+  });
+
+  it('rejects a total over 50 MiB by one byte', () => {
+    expect(validateTicketCapacity([10 * MiB, 10 * MiB, 10 * MiB, 10 * MiB], { size: 10 * MiB + 1 })).toMatch(/50 MB/);
   });
 });
