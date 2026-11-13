@@ -1,4 +1,39 @@
-# AGENTS.md — Frontend Architecture and Engineering Rules
+# AGENTS.md — Giao diện web (`ai-it-service-desk-web`)
+
+Dành cho mọi người làm việc trong kho này, gồm lập trình viên, người kiểm thử, người vận hành và trợ lý AI. Quy tắc chung của cả dự án (quy trình nhánh, commit, PR, giới hạn an toàn, hoàn thành) nằm ở [cẩm nang chung](docs/team-handbook.md). File này gồm quy tắc kiến trúc và vận hành riêng của web.
+
+## 0. Đọc trước
+
+Kho này sở hữu giao diện SPA, điều hướng, dữ liệu truy vấn (TanStack Query) và kiểm tra phản hồi phía client. API, quyền nghiệp vụ, dữ liệu và hợp đồng HTTP thuộc [backend](https://github.com/supportflow-ai/ai-it-service-desk). Web không phải ranh giới bảo mật. Cổng NGINX chuyển `/api` tới backend thuộc [kho hạ tầng](https://github.com/supportflow-ai/supportflow-ai-infra).
+
+Bảy điều cần nhớ trước khi sửa:
+
+1. Dependency một chiều `main/App → app → features → shared`; ngoài feature chỉ import qua `index.ts` (§2).
+2. Remote state chỉ ở TanStack Query; page và component không gọi HTTP (§6–§8).
+3. Hợp đồng đi trước: không tự thêm trường, endpoint, quyền hay `If-Match` chưa được xác nhận (§8, §13).
+4. Ẩn nút không phải bảo mật; backend luôn kiểm tra quyền (§11).
+5. Không mock hay dữ liệu giả trong production; AI luôn có người duyệt (§13).
+6. Không sửa snapshot, contract, test hay nới lint để làm CI xanh (§15–§16).
+7. Trước khi bàn giao chạy lint, typecheck, test, build; đổi route, đăng nhập hoặc luồng người dùng thì chạy thêm E2E (§18).
+
+### Lệnh
+
+Cần Node.js 22 (xem `.nvmrc`). Chạy từ gốc repo:
+
+```sh
+npm ci
+npm run dev                         # Vite tại http://localhost:5173, chuyển /api sang http://localhost:5000
+npm run lint                        # ESLint và kiểm tra kiến trúc (tools/check-architecture.mjs)
+npm run typecheck
+npm run build
+npm test                            # Vitest và MSW
+npx playwright install chromium     # một lần
+npm run test:e2e                    # cần build trước; chạy trên bản preview với API giả (fixture)
+npm run contract:check              # checksum snapshot OpenAPI backend và kiểu sinh
+npm run contract:generate           # sinh lại kiểu sau khi đã review OpenAPI
+```
+
+Số kiểm thử thực sự chạy phải lớn hơn 0. Kiểm thử E2E dùng API giả nên không thay nghiệm thu với backend thật.
 
 ## 1. Mục tiêu và phạm vi
 
@@ -232,7 +267,7 @@ refactor làm thay đổi nghiệp vụ/API ngoài yêu cầu.
    cancellation, cache invalidation, lỗi và mutation side effects.
 4. Cập nhật route/menu/permission cùng nhau nếu có màn hình hoặc quyền mới.
 5. Thêm test hành vi phù hợp và negative architecture case cho boundary mới.
-6. Theo [checklist feature mới](docs/architecture/new-feature-checklist.md).
+6. Cập nhật tài liệu liên quan (README, [api-baseline](docs/architecture/api-baseline.md)) khi đổi hợp đồng hoặc luồng người dùng.
 
 ### Khi triển khai từ Figma
 Đọc đúng frame/design context và screenshot, tái sử dụng Ant Design/components,
@@ -263,3 +298,31 @@ quyền hay nghiệp vụ mới. Asset dùng local, không lưu URL tạm của 
 
 Nếu môi trường chặn check bắt buộc, báo bằng chứng/giới hạn; không coi phần chưa
 kiểm chứng là đã nghiệm thu.
+
+## 20. Ngôn ngữ và Git
+
+Quy ước đầy đủ ở [cẩm nang chung](docs/team-handbook.md). Điểm riêng của web:
+
+- Tài liệu mới, mô tả commit và PR bằng tiếng Việt có dấu; giữ nguyên định danh, câu lệnh và hợp đồng kỹ thuật.
+- Tạo nhánh từ `dev` và mở PR vào `dev`; `dev` được đưa vào `main` bằng PR tổng hợp. CI chạy trên mọi PR, trên push vào `main`, `dev`, `codex/**`, `feature/**` và khi chạy thủ công.
+- Commit dạng `<loại>(<phạm vi>): <mô tả tiếng Việt>`. **Mã công việc (Jira hoặc công cụ khác) không bắt buộc**; có thì ghi vào mô tả PR.
+- Kiểm tra nhánh, HEAD và thay đổi chưa commit trước khi sửa; chỉ đưa phần thuộc nhiệm vụ vào commit, không dùng `git add -A` khi chưa xác minh. Không tự commit khi chỉ được yêu cầu đánh giá hay lập kế hoạch, không đổi tên nhánh đã được chỉ định.
+- Không merge các nhánh `archive/*`: chỉ để tra cứu lịch sử trước khi tách repo.
+- Chỉ sửa AGENTS.md khi nhiệm vụ yêu cầu. Ngoại lệ: đổi lệnh hoặc cấu hình được ghim thì cập nhật hướng dẫn bị ảnh hưởng trong cùng thay đổi.
+
+## 21. Giới hạn an toàn
+
+- Không đặt khóa bí mật trong biến `VITE_*`: Vite nhúng chúng vào bản build công khai. Không ghi token, mật khẩu hay nội dung phiếu vào log, fixture hoặc ảnh chụp.
+- Không tự push, hợp nhất PR hay triển khai khi chưa được giao. Không ghi đè thay đổi chưa commit của người khác, không force-push, không `reset --hard` hay `clean` khi chưa kiểm tra.
+- Không gọi endpoint dự đoán hay dò endpoint để "thử xem có chạy không"; chức năng chưa có backend theo §13.
+- Quyết định nghiệp vụ hay chính sách quyền thuộc chủ dự án: nêu lựa chọn và tác động, giữ nguyên hành vi hiện tại và hỏi.
+
+## 22. Đồng bộ với kho khác
+
+| Bạn đổi | Phải làm |
+| --- | --- |
+| API backend thay đổi (đường dẫn, tham số, mã phản hồi, DTO) | Lấy `contracts/backend/openapi-baseline.json` từ **đúng SHA backend**, cập nhật `tests/contracts/backend-openapi.json` và `backend-source.json` (SHA, checksum), chạy `contract:generate` rồi `contract:check`, sửa adapter, mock và test theo thay đổi. Kiểm tra với checkout backend: `node tools/backend-contract.mjs --backend-file ../ai-it-service-desk/contracts/backend/openapi-baseline.json` |
+| Cổng dev, đường dẫn `/api`, `VITE_API_BASE_URL`, Dockerfile của web | Báo **infra** (NGINX, Compose) và **backend** (CORS) |
+| Hành vi hiển thị phụ thuộc quyền | Đối chiếu [hợp đồng backend hiện hành](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/architecture/current-backend-contract.md); không suy luận quyền từ dữ liệu chưa đủ |
+
+Tình trạng đồng bộ hiện tại của snapshot và các khác biệt đã biết nằm ở đầu [api-baseline.md](docs/architecture/api-baseline.md). Smoke toàn hệ thống thuộc kho infra và phải dùng đúng SHA web.
