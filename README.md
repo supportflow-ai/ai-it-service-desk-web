@@ -2,6 +2,8 @@
 
 Frontend React 19, TypeScript 5.7, Vite 6 và Ant Design 5 của AI IT Service Desk.
 
+Phạm vi MVP đã chốt gồm Identity và Ticketing. Xem [đối chiếu API của Frontend](docs/architecture/api-baseline.md) để chọn đúng bản Backend khi nghiệm thu và [tài liệu dự án](https://github.com/supportflow-ai/supportflow-ai-infra/blob/main/README.md) để theo dõi phạm vi chung.
+
 ## Phát triển
 
 Cần Node.js 22 và npm. Chạy từ thư mục gốc:
