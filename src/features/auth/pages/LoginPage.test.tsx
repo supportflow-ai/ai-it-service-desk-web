@@ -36,6 +36,14 @@ it('says the email or password is wrong, and that repeated failures lock the acc
   expect(screen.queryByText('home page')).not.toBeInTheDocument();
 });
 
+it('asks the person to wait when the backend rate limits sign-in, without blaming the password', async () => {
+  server.use(http.post('http://localhost/api/auth/login', () => new HttpResponse(null, { status: 429, headers: { 'Retry-After': '30' } })));
+  renderLogin();
+  await signIn();
+  expect(await screen.findByText('Bạn thao tác quá nhanh. Vui lòng đợi một lúc rồi thử lại.')).toBeInTheDocument();
+  expect(screen.queryByText(/Email hoặc mật khẩu không đúng/)).not.toBeInTheDocument();
+});
+
 it('keeps the generic message for a server failure', async () => {
   server.use(http.post('http://localhost/api/auth/login', () => new HttpResponse(null, { status: 500 })));
   renderLogin();

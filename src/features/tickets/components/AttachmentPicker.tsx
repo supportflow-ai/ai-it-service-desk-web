@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react';
 import { Alert, Button, Space, Typography } from 'antd';
 import { DeleteOutlined, PaperClipOutlined } from '@ant-design/icons';
 import { formatFileSize } from '../lib/formatFileSize';
-import { ATTACHMENT_ACCEPT, validateAttachmentFile } from '../validation/attachmentRules';
+import { ATTACHMENT_ACCEPT, validateAttachmentFile, validateTicketCapacity } from '../validation/attachmentRules';
 
 interface AttachmentPickerProps {
   files: readonly File[];
@@ -26,7 +26,11 @@ export function AttachmentPicker({ files, onChange, disabled }: AttachmentPicker
     for (const file of picked) {
       const invalid = validateAttachmentFile(file);
       if (invalid) problems.push(`${file.name}: ${invalid}`);
-      else if (!kept.some((existing) => sameFile(existing, file))) kept.push(file);
+      else if (!kept.some((existing) => sameFile(existing, file))) {
+        const full = validateTicketCapacity(kept.map((existing) => existing.size), file);
+        if (full) problems.push(`${file.name}: ${full}`);
+        else kept.push(file);
+      }
     }
     setRejected(problems);
     onChange(kept);
@@ -48,7 +52,7 @@ export function AttachmentPicker({ files, onChange, disabled }: AttachmentPicker
         Đính kèm tệp
       </Button>
       <Typography.Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 6 }}>
-        PDF, PNG, JPG, DOCX, TXT, ZIP, tối đa 10 MB mỗi tệp. Tệp được tải lên ngay sau khi yêu cầu được tạo.
+        PDF, PNG, JPG, DOCX, TXT, ZIP, tối đa 10 MB mỗi tệp, 10 tệp và 50 MB mỗi yêu cầu. Tệp được tải lên ngay sau khi yêu cầu được tạo.
       </Typography.Text>
 
       {rejected.length > 0 && (

@@ -70,6 +70,15 @@ beforeEach(() => {
   );
 });
 
+it('keeps at most 10 files and says which one did not fit', async () => {
+  renderCreate();
+  await screen.findByRole('button', { name: 'Gửi yêu cầu' });
+  choose(...Array.from({ length: 11 }, (_, index) => new File(['x'], `f${index}.txt`, { type: 'text/plain' })));
+  expect(await screen.findByText('f10.txt: Mỗi phiếu chỉ được đính kèm tối đa 10 tệp.')).toBeInTheDocument();
+  expect(screen.getByText('f9.txt')).toBeInTheDocument();
+  expect(screen.queryByText('f10.txt')).not.toBeInTheDocument();
+});
+
 it('shows no invented AI suggestion, confidence, article or department', async () => {
   renderCreate();
   expect(await screen.findByRole('button', { name: 'Gửi yêu cầu' })).toBeInTheDocument();

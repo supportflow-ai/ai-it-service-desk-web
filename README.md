@@ -35,7 +35,7 @@ là bản chụp enum backend tại commit `f6a0adae01bd642753f02d2beae10abff6f4
 cần cập nhật có phối hợp khi hợp đồng API thay đổi. Các test này kiểm tra
 hợp đồng đã ghim, không tự phát hiện thay đổi mới trong repo backend.
 
-Quy chuẩn kiến trúc và workflow coding agent nằm trong [AGENTS.md](AGENTS.md).
+Quy chuẩn kiến trúc và workflow coding agent nằm trong [AGENTS.md](AGENTS.md); quy trình nhánh, commit, PR của cả dự án nằm ở [cẩm nang chung](docs/team-handbook.md).
 Nguồn contract, các endpoint được hỗ trợ và giới hạn kiểm thử được ghi tại
 [API baseline](docs/architecture/api-baseline.md).
 Unit/component/hook tests dùng Vitest và MSW. Browser smoke dùng Playwright Chromium
@@ -66,6 +66,7 @@ Mã nguồn backend vẫn có thể được xem trong các commit cũ.
 - `archive/local/*`: các nhánh đã có trong bản sao local tại thời điểm chuyển.
 - Danh sách 87 commit gốc: `docs/migration/source-commits.txt`.
 
-Các nhánh `archive/*` chỉ dùng tra cứu lịch sử. Phát triển frontend trên `main`
-hoặc nhánh tạo từ `main`. Không merge các nhánh lưu trữ vào frontend.
+Các nhánh `archive/*` chỉ dùng tra cứu lịch sử. Phát triển frontend trên nhánh
+tạo từ `dev` và mở PR vào `dev`; `dev` được đưa vào `main` bằng PR tổng hợp.
+Không merge các nhánh lưu trữ vào frontend.
 Repo nguồn không bị thay đổi trong lần chuyển này.
