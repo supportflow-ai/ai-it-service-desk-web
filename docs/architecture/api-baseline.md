@@ -1,5 +1,11 @@
 # Frontend API compatibility baseline
 
+## Đối chiếu ngày 2026-11-13
+
+Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
+
+Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Chưa đối chiếu giao diện hàng đợi với phạm vi mới này.
+
 ## Bổ sung hiện hành — 03/11/2026
 
 Phạm vi là working tree của đợt W2–W3 sau hợp nhất backend tại `659289c3a1cf8e4b9da86a15ea890ee59bcc3e6d`, cộng thay đổi `UploadUrlResult.formData`. Backend dùng thống nhất AttachmentUploadGrant, giữ confirm idempotent và nhận grant PUT cũ còn hạn; đường dẫn/payload frontend không thay đổi qua bước hợp nhất. Nguồn và checksum tại [backend-source.json](../../tests/contracts/backend-source.json), bản OpenAPI tại [backend-openapi.json](../../tests/contracts/backend-openapi.json). SHA nền chưa phải SHA của thay đổi chưa commit. Các phần tiếng Anh bên dưới giữ mốc lịch sử cũ để truy vết.
