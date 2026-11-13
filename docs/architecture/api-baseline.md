@@ -4,9 +4,23 @@
 
 Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
 
-Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Chưa đối chiếu giao diện hàng đợi với phạm vi mới này.
+Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
 
-## Bổ sung hiện hành — 03/11/2026
+## Đối chiếu tích hợp MVP ngày 05/11/2026
+
+Đối chiếu [Web `main@ade7af4`](https://github.com/supportflow-ai/ai-it-service-desk-web/commit/ade7af4e1b88e7834c8d9b225f68eb7ebd75f9fe) với [Backend `main@bf38ef9`](https://github.com/supportflow-ai/ai-it-service-desk/commit/bf38ef903f46f6ea21f80da44c11d437391a9efb). Snapshot Web ghim Backend `dev@febb4d7` và khớp từng byte với OpenAPI trên Backend `main@bf38ef9`. [Mốc nguồn và checksum](../../tests/contracts/backend-source.json)
+
+| Luồng | Điểm đối chiếu |
+| --- | --- |
+| Danh bạ Agent | Bộ đọc chấp nhận `userId` và `fullName` tùy chọn theo dữ liệu trả về từ `GET /api/users?role=Agent` |
+| Nhận và hủy phân công | Agent và Admin nhận phiếu theo trạng thái và người phụ trách. Giao diện chỉ cho hủy phân công ở trạng thái `Assigned` |
+| Revision | `update` và `assign` gửi `expectedRevision` trong body. Các lệnh vòng đời và hủy phân công gửi qua query. Khi nhận `409`, giao diện cho tải lại phiếu |
+| Hàng đợi | Giao diện hỗ trợ lọc và sắp xếp theo độ ưu tiên qua `priority` và `sortByPriority` |
+| Knowledge và AI | Knowledge đã có giao diện đọc và quản trị theo quyền. Phạm vi Knowledge cần quyết định riêng. Luồng AI xử lý và lưu quyết định gợi ý từ đầu đến cuối thuộc giai đoạn sau |
+
+Nghiệm thu theo phiên bản Backend thực tế với tài khoản Requester, Agent và Admin. Kiểm tra phân công, nhận phiếu, ghi chú nội bộ và vòng đời tệp trên môi trường tích hợp. [Bộ đọc phản hồi](../../src/features/tickets/api/ticketContract.ts) · [Điều kiện hiển thị thao tác](../../src/features/tickets/model/ticketPermissions.ts) · [Bản đồ truy cập Kho tri thức](knowledge-ui-access-map.md)
+
+## Mốc đối chiếu 03/11/2026
 
 Phạm vi là working tree của đợt W2–W3 sau hợp nhất backend tại `659289c3a1cf8e4b9da86a15ea890ee59bcc3e6d`, cộng thay đổi `UploadUrlResult.formData`. Backend dùng thống nhất AttachmentUploadGrant, giữ confirm idempotent và nhận grant PUT cũ còn hạn; đường dẫn/payload frontend không thay đổi qua bước hợp nhất. Nguồn và checksum tại [backend-source.json](../../tests/contracts/backend-source.json), bản OpenAPI tại [backend-openapi.json](../../tests/contracts/backend-openapi.json). SHA nền chưa phải SHA của thay đổi chưa commit. Các phần tiếng Anh bên dưới giữ mốc lịch sử cũ để truy vết.
 
