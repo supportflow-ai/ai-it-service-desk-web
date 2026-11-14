@@ -2,7 +2,7 @@
 
 ## Đối chiếu ngày 2026-11-13
 
-Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
+Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
 
 Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
 
@@ -190,13 +190,13 @@ what backend `007a258` implements. Every screen shows one perspective, whatever 
 | Screen | Who | What it offers |
 | --- | --- | --- |
 | `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
-| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role (Agent and Admin may raise a request too, owner's decision 2026-11-13) | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
 | `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (edit/cancel while Submitted, close/reopen when Resolved, when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
 | `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
 | `/admin-panel` | Admin | Not supported yet: no admin endpoints |
 
-The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi; staff: Hàng
-đợi xử lý, Yêu cầu của tôi, Tạo yêu cầu, plus Quản trị hệ thống for Admin) and the sidebar names the
+The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi, Kho tri thức; staff: Hàng
+đợi xử lý, Kho tri thức, Tạo yêu cầu, plus Quản trị hệ thống for Admin; "Yêu cầu của tôi" is shown to Requesters only) and the sidebar names the
 real roles. Signing out returns to a clean login page, so the next account never lands on the
 previous one's page; only an expired session returns to where it was. Every tab follows a sign-in,
 account switch or sign-out made in another tab.
