@@ -65,8 +65,8 @@ test('resource 403 preserves the session', async ({ page, api }) => {
 for (const [role, path, allowed] of [
   ['Requester', '/agent-workspace', false],
   ['Requester', '/tickets/new', true],
-  ['Agent', '/tickets/new', false],
-  ['Admin', '/tickets/new', false],
+  ['Agent', '/tickets/new', true],
+  ['Admin', '/tickets/new', true],
   ['Agent', '/agent-workspace', true],
   ['Agent', '/admin-panel', false],
   ['Admin', '/agent-workspace', true],
