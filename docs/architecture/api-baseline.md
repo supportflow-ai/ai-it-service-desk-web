@@ -190,13 +190,13 @@ what backend `007a258` implements. Every screen shows one perspective, whatever 
 | Screen | Who | What it offers |
 | --- | --- | --- |
 | `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
-| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role (Agent and Admin may raise a request too, owner's decision 2026-11-13) | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
 | `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (edit/cancel while Submitted, close/reopen when Resolved, when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
 | `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
 | `/admin-panel` | Admin | Not supported yet: no admin endpoints |
 
-The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi; staff: Hàng
-đợi xử lý, Yêu cầu của tôi, Tạo yêu cầu, plus Quản trị hệ thống for Admin) and the sidebar names the
+The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi, Kho tri thức; staff: Hàng
+đợi xử lý, Kho tri thức, Tạo yêu cầu, plus Quản trị hệ thống for Admin; "Yêu cầu của tôi" is shown to Requesters only) and the sidebar names the
 real roles. Signing out returns to a clean login page, so the next account never lands on the
 previous one's page; only an expired session returns to where it was. Every tab follows a sign-in,
 account switch or sign-out made in another tab.
