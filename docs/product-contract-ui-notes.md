@@ -56,7 +56,7 @@ Mục này do nhóm giao diện thêm sau khi đọc mã; phần 1–3 ở trên
 | QD-01 | Xong. `readAgentDirectory` chỉ cần `userId`, `fullName` có thể null; không còn đòi `email`. | Không |
 | QD-02 | Xong. `canClaimTicket` cho Agent và Admin; phiếu `Assigned` cho Agent khác chỉ Admin được nhận (như backend). | Không |
 | QD-03 | Xong. `canUnassignTicket` chỉ cho phép khi phiếu đang `Assigned`. | Không |
-| QD-04 | **Khác đề xuất.** Ô lọc "Ưu tiên" và sắp xếp theo ưu tiên đang **bật** và gọi `priority`, `sortByPriority` của `GET /tickets/queue` (đã có ở backend). Đề xuất của tài liệu là tắt. | **Có.** Giữ bật, hoặc tắt theo đề xuất |
+| QD-04 | **Khác đề xuất.** Ô lọc "Ưu tiên" và sắp xếp theo ưu tiên đang **bật** và gọi `priority`, `sortByPriority` của `GET /tickets/queue` (đã có ở backend). Đề xuất của tài liệu là tắt. Lưu ý khi chọn (đối chiếu backend `dev@ef4390d`, 2026-11-16): backend chưa có đường ghi Impact/Urgency, nên mọi phiếu đều mang P3 và bộ lọc hiện chỉ trả "tất cả" hoặc "không có gì". | **Có.** Giữ bật, hoặc tắt theo đề xuất |
 | QD-05 | Mục "Kho tri thức" và các route `/knowledge/*` vẫn hiển thị và gọi API. | **Có**, chặn phát hành |
 | QD-06 | Giao diện **có** gửi `Idempotency-Key` khi tạo phiếu (`useCreateTicket`), cùng một khóa cho cùng nội dung. | Không; nên cập nhật tài liệu 01, 02, 03 |
 | QD-07 | Bản OpenAPI của backend `main` (`bf38ef9`) có cùng SHA-256 với bản giao diện đang ghim (`4820b424…`); kiểm tra bằng `node tools/backend-contract.mjs --backend-file …`. Chưa cần sinh lại kiểu. | Không |

@@ -33,7 +33,7 @@ npm run test:e2e   # khi đổi route, đăng nhập hoặc luồng người dù
 
 - [ ] CI đạt trên commit mới nhất của PR
 - [ ] Có ít nhất một người khác đánh giá; không tự phê duyệt PR của mình
-- [ ] Tài liệu liên quan đã cập nhật bằng tiếng Việt, hoặc nêu lý do không cần: 
+- [ ] Tài liệu liên quan đã cập nhật bằng tiếng Việt, hoặc nêu lý do không cần:
 - [ ] Không có bí mật, token hay dữ liệu thật trong mã, log, fixture
 - [ ] Không sửa snapshot, contract, test hay nới lint để làm CI xanh
 - [ ] Tương thích hợp đồng API được giữ, hoặc thay đổi đã nêu rõ

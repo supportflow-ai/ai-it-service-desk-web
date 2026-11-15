@@ -6,6 +6,21 @@ Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8
 
 Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
 
+## Việc cần sửa: Agent và Admin cũng tạo được phiếu (quyết định 2026-11-13)
+
+Chủ dự án xác nhận Agent và Admin cũng phải tạo được phiếu. Hiện giao diện chỉ cho Requester (commit `6c8981d`), trong khi API cho phép cả ba vai trò (`RequireRequester` gồm Requester, Agent, Admin) và bảng "Screens and roles" bên dưới vẫn ghi `/tickets/new` cho "Every role". Mã còn ghi chú rằng chỉ Requester tạo yêu cầu theo PRD J-01 và Spec UC-02/UC-05; người sửa cần đối chiếu với quyết định mới và cập nhật ghi chú đó.
+
+| Vị trí | Việc cần sửa |
+| --- | --- |
+| `src/app/router/routeConfig.ts` | `create.roles` thêm `Agent` và `Admin`; sửa chú thích |
+| `src/app/navigation/navigationConfig.ts` | Đưa mục "Tạo yêu cầu" vào `staffMenu` (hiện chỉ `requesterMenu` có) |
+| `src/app/router/AppRouter.tsx` | `helpPath` dùng `routes.create.roles` nên tự theo thay đổi; kiểm lại luồng điều hướng sau đăng nhập của nhân viên |
+| `src/features/tickets/pages/TicketListPage.tsx`, `src/features/tickets/components/RequesterDashboard.tsx` | Kiểm tra liên kết "Tạo yêu cầu" hiển thị đúng cho vai trò nhân viên |
+| Kiểm thử | `navigationConfig.test.ts` (thứ tự menu Agent, Admin), `MainLayout.test.tsx`, `HomePage.test.tsx`, `e2e/flows.spec.ts` |
+| Tài liệu | Bảng "Screens and roles" ở dưới; `docs/project` của kho infra |
+
+Chưa kiểm: nhân viên tạo phiếu thì phiếu thuộc về chính họ (`requesterId` là người đăng nhập) và vẫn đi vào hàng đợi phân loại thủ công; cần xác nhận hiển thị trong giao diện hàng đợi và phạm vi đọc theo nhóm hỗ trợ (ADR-016) cho phiếu do Agent tự tạo.
+
 ## Đối chiếu tích hợp MVP ngày 05/11/2026
 
 Đối chiếu [Web `main@ade7af4`](https://github.com/supportflow-ai/ai-it-service-desk-web/commit/ade7af4e1b88e7834c8d9b225f68eb7ebd75f9fe) với [Backend `main@bf38ef9`](https://github.com/supportflow-ai/ai-it-service-desk/commit/bf38ef903f46f6ea21f80da44c11d437391a9efb). Snapshot Web ghim Backend `dev@febb4d7` và khớp từng byte với OpenAPI trên Backend `main@bf38ef9`. [Mốc nguồn và checksum](../../tests/contracts/backend-source.json)
