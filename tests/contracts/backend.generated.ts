@@ -62,6 +62,11 @@ export type CreateTicketCommand = {
   "categoryId"?: string | null;
 };
 
+export type DateRangeDto = {
+  "from"?: string;
+  "to"?: string;
+};
+
 export type DepartmentDto = {
   "id"?: string;
   "code"?: string | null;
@@ -103,6 +108,11 @@ export type PagedTicketResult = {
   "totalCount"?: number;
 };
 
+export type PendingTicketRequest = {
+  "status"?: TicketStatus;
+  "expectedRevision"?: number | null;
+};
+
 export type PublishArticleRequest = {
   "expectedRevision"?: number | null;
 };
@@ -126,6 +136,41 @@ export type ResetPasswordRequest = {
 
 export type RevokeTokenRequest = {
   "refreshToken"?: string | null;
+};
+
+export type SlaClockSummaryDto = {
+  "targetMinutes"?: number | null;
+  "elapsedMinutes"?: number | null;
+  "remainingMinutes"?: number | null;
+  "deadline"?: string | null;
+  "isBreached"?: boolean;
+  "state"?: string | null;
+};
+
+export type SlaComplianceMetricDto = {
+  "achieved"?: number;
+  "breached"?: number;
+  "rate"?: number | null;
+};
+
+export type SlaSummaryDto = {
+  "isApplicable"?: boolean;
+  "evaluatedAt"?: string;
+  "overallStatus"?: string | null;
+  "firstResponse"?: SlaClockSummaryDto;
+  "resolution"?: SlaClockSummaryDto;
+};
+
+export type TicketAnalyticsDto = {
+  "range"?: DateRangeDto;
+  "evaluatedAt"?: string;
+  "volume"?: number;
+  "statusDistribution"?: Record<string, number> | null;
+  "priorityDistribution"?: Record<string, number> | null;
+  "firstResponseCompliance"?: SlaComplianceMetricDto;
+  "resolutionCompliance"?: SlaComplianceMetricDto;
+  "averageResolutionMinutes"?: number | null;
+  "resolutionEligibleCount"?: number;
 };
 
 export type TicketAttachmentDto = {
@@ -156,7 +201,10 @@ export type TicketDto = {
   "priority"?: string | null;
   "impact"?: string | null;
   "urgency"?: string | null;
+  "sla"?: SlaSummaryDto;
 };
+
+export type TicketStatus = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export type TimelineItemDto = {
   "id"?: string;
