@@ -1,5 +1,18 @@
 # Frontend API compatibility baseline
 
+## Đối chiếu ngày 2026-11-18 (backend `dev@3b20de5`)
+
+Snapshot OpenAPI trong `tests/contracts/` ghim backend `3b20de50d0e530a39b9111a68c5c9df3373a0d4c` (sha256 `fdf5b5dd…`). So với mốc `ef4390d`: thêm `POST /api/tickets/{id}/pending` và `/resume`, `GET /api/tickets/analytics`, tham số `slaStatus` của hàng đợi, trường `sla` trong `TicketDto`, mã `409` của `comments` và schema `TicketStatus`. Các đoạn mô tả quyền phân công "mọi Agent hoặc Admin" ở bên dưới là mốc cũ.
+
+| Hành vi backend (PR #79, #80) | Giao diện |
+| --- | --- |
+| Phân công và hủy phân công chỉ cho Trưởng nhóm của nhóm đang giữ phiếu (gán cho Agent cùng nhóm) hoặc Admin (gán cho Agent bất kỳ); Agent thường bị 403; phiếu `Resolved` bị chặn (400) | Chỉ Admin thấy "Nhận về tôi", "Giao việc" và "Hủy phân công". Trưởng nhóm là thành viên nhóm mà web chưa đọc được (không có vai trò Lead trong JWT, chưa có API thành viên nhóm), nên chưa có đường hiện lệnh cho họ; máy chủ vẫn là nơi quyết định. Agent nhận phiếu bằng "Nhận xử lý" |
+| `resolve` nhận cả `InProgress` và `PendingExternal` (DEC-04), không nhận `PendingUser` | "Giải quyết" hiện ở cả hai trạng thái đầu |
+| `pending` (`{status, expectedRevision}` trong body) và `resume` (`expectedRevision` trong query): Agent đang được giao, Trưởng nhóm hoặc Admin | Nút "Chờ phản hồi người dùng", "Chờ đối tác" và "Tiếp tục xử lý" cho Agent đang được giao hoặc Admin; Trưởng nhóm không phải người được giao thì chưa thấy nút |
+| Requester bình luận công khai khi `PendingUser` thì phiếu tự về `InProgress` (DEC-03) | Không cần mã riêng: sau khi gửi bình luận, phiếu được tải lại theo cơ chế hiện có |
+
+Chưa làm ở giao diện: hiển thị `sla`, bộ lọc `slaStatus` của hàng đợi và trang báo cáo `analytics` (Sprint 4, cần nhóm chốt phạm vi). Tài liệu backend mô tả `sla` với các trường phẳng, còn OpenAPI mô tả `firstResponse` và `resolution` lồng nhau; cần Tuấn Anh xác nhận trước khi đọc trường này.
+
 ## Đối chiếu ngày 2026-11-13
 
 Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
@@ -13,7 +26,7 @@ Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-s
 | Luồng | Điểm đối chiếu |
 | --- | --- |
 | Danh bạ Agent | Bộ đọc chấp nhận `userId` và `fullName` tùy chọn theo dữ liệu trả về từ `GET /api/users?role=Agent` |
-| Nhận và hủy phân công | Agent và Admin nhận phiếu theo trạng thái và người phụ trách. Giao diện chỉ cho hủy phân công ở trạng thái `Assigned` |
+| Nhận và hủy phân công | Agent và Admin nhận phiếu theo trạng thái và người phụ trách. Giao diện chỉ cho hủy phân công ở trạng thái `Assigned`. Từ backend `3b20de5`, phân công và hủy phân công chỉ còn Admin thấy (xem mục 2026-11-18) |
 | Revision | `update` và `assign` gửi `expectedRevision` trong body. Các lệnh vòng đời và hủy phân công gửi qua query. Khi nhận `409`, giao diện cho tải lại phiếu |
 | Hàng đợi | Giao diện hỗ trợ lọc và sắp xếp theo độ ưu tiên qua `priority` và `sortByPriority` |
 | Knowledge và AI | Knowledge đã có giao diện đọc và quản trị theo quyền. Phạm vi Knowledge cần quyết định riêng. Luồng AI xử lý và lưu quyết định gợi ý từ đầu đến cuối thuộc giai đoạn sau |

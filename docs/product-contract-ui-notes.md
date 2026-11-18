@@ -26,7 +26,7 @@ Guard route chỉ để điều hướng. Backend luôn kiểm tra lại quyền
 | --- | --- | --- |
 | QD-01 | Bỏ yêu cầu `email` trong `readAgents`; hiển thị `fullName`, nếu không có thì dùng `userId` (sau khi chủ dự án duyệt) | `src/features/tickets/api/ticketContract.ts` |
 | QD-02 | Cho Admin thấy nút nhận xử lý, nếu chủ dự án chọn theo backend | `src/features/tickets/model/ticketPermissions.ts` (`canClaimTicket`) |
-| QD-03 | Chỉ hiện "hủy phân công" khi trạng thái là `Assigned` | `ticketPermissions.ts` (`canUnassignTicket`) |
+| QD-03 | Chỉ hiện "hủy phân công" khi trạng thái là `Assigned`, và từ backend `3b20de5` chỉ cho Admin (Agent thường bị 403) | `ticketPermissions.ts` (`canUnassignTicket`) |
 | QD-04 | Giữ tắt ô lọc ưu tiên; sửa câu "chưa hỗ trợ" thành "chưa thuộc MVP" nếu cần | `AgentQueueToolbar.tsx` |
 | QD-07 | Sinh lại kiểu sau khi backend xuất bản chuẩn mới (`npm run contract:generate`) | `tests/contracts/` |
 
