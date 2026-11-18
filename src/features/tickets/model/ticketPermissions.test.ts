@@ -11,8 +11,10 @@ import {
   canCloseTicket,
   canEditTicket,
   canOpenWorkspace,
+  canPauseTicket,
   canReopenTicket,
   canResolveTicket,
+  canResumeTicket,
   canSeeInternalNotes,
   canSelfAssignTicket,
   canUnassignTicket,
@@ -80,14 +82,16 @@ describe('ticketPermissions', () => {
     expect(canClaimTicket(admin, ticket(TicketStatus.Assigned, 'someone-else', 'other-agent'), 'workspace')).toBe(true);
   });
 
-  it('lets staff assign any ticket that has not ended', () => {
-    for (const status of [TicketStatus.Submitted, TicketStatus.Assigned, TicketStatus.InProgress, TicketStatus.Resolved]) {
-      expect(canAssignTicket(agent, ticket(status))).toBe(true);
+  it('lets only an admin assign a ticket that is still open, never a resolved, closed or cancelled one', () => {
+    for (const status of [TicketStatus.Submitted, TicketStatus.Assigned, TicketStatus.InProgress, TicketStatus.PendingUser]) {
       expect(canAssignTicket(admin, ticket(status))).toBe(true);
+      // An ordinary agent is refused (403); a team Lead is a membership the web cannot see.
+      expect(canAssignTicket(agent, ticket(status))).toBe(false);
       expect(canAssignTicket(requester, ticket(status))).toBe(false);
     }
-    expect(canAssignTicket(agent, ticket(TicketStatus.Closed))).toBe(false);
-    expect(canAssignTicket(admin, ticket(TicketStatus.Cancelled))).toBe(false);
+    for (const status of [TicketStatus.Resolved, TicketStatus.Closed, TicketStatus.Cancelled]) {
+      expect(canAssignTicket(admin, ticket(status))).toBe(false);
+    }
   });
 
   it('takes no public comment or new file on a closed or cancelled ticket', () => {
@@ -125,18 +129,45 @@ describe('ticketPermissions', () => {
     expect(canCancelTicket(requester, ticket(TicketStatus.Assigned, requester.userId), 'requester')).toBe(false);
   });
 
-  it('offers self-assign to staff only on tickets nobody holds', () => {
-    expect(canSelfAssignTicket(agent, ticket(TicketStatus.Submitted))).toBe(true);
+  it('offers self-assign to an admin only, on tickets nobody holds; an agent uses claim', () => {
     expect(canSelfAssignTicket(admin, ticket(TicketStatus.Submitted))).toBe(true);
-    expect(canSelfAssignTicket(agent, ticket(TicketStatus.Assigned))).toBe(false);
+    expect(canSelfAssignTicket(agent, ticket(TicketStatus.Submitted))).toBe(false);
+    expect(canSelfAssignTicket(admin, ticket(TicketStatus.Assigned))).toBe(false);
     expect(canSelfAssignTicket(requester, ticket(TicketStatus.Submitted))).toBe(false);
   });
 
-  it('offers unassign to staff only on assigned tickets, never on in-progress ones', () => {
-    expect(canUnassignTicket(agent, ticket(TicketStatus.Assigned))).toBe(true);
+  it('offers unassign to an admin only, on assigned tickets, never on in-progress ones', () => {
     expect(canUnassignTicket(admin, ticket(TicketStatus.Assigned))).toBe(true);
-    expect(canUnassignTicket(agent, ticket(TicketStatus.InProgress))).toBe(false);
+    expect(canUnassignTicket(agent, ticket(TicketStatus.Assigned))).toBe(false);
+    expect(canUnassignTicket(admin, ticket(TicketStatus.InProgress))).toBe(false);
     expect(canUnassignTicket(requester, ticket(TicketStatus.Assigned))).toBe(false);
+  });
+
+  it('lets staff resolve from InProgress or PendingExternal, but not from PendingUser', () => {
+    for (const user of [agent, admin]) {
+      expect(canResolveTicket(user, ticket(TicketStatus.PendingExternal), 'workspace')).toBe(true);
+      expect(canResolveTicket(user, ticket(TicketStatus.PendingUser), 'workspace')).toBe(false);
+      expect(canResolveTicket(user, ticket(TicketStatus.Resolved), 'workspace')).toBe(false);
+    }
+  });
+
+  it('lets the assignee or an admin pause an InProgress ticket and resume a paused one, on the workspace only', () => {
+    const mine = (status: TicketStatus) => ticket(status, 'someone-else', agent.userId);
+    expect(canPauseTicket(agent, mine(TicketStatus.InProgress), 'workspace')).toBe(true);
+    expect(canPauseTicket(admin, ticket(TicketStatus.InProgress), 'workspace')).toBe(true);
+    expect(canPauseTicket(agent, ticket(TicketStatus.InProgress, 'someone-else', 'other-agent'), 'workspace')).toBe(false);
+    expect(canPauseTicket(agent, ticket(TicketStatus.InProgress), 'workspace')).toBe(false);
+    expect(canPauseTicket(agent, mine(TicketStatus.Assigned), 'workspace')).toBe(false);
+    expect(canPauseTicket(agent, mine(TicketStatus.PendingUser), 'workspace')).toBe(false);
+    expect(canPauseTicket(agent, mine(TicketStatus.InProgress), 'requester')).toBe(false);
+    for (const status of [TicketStatus.PendingUser, TicketStatus.PendingExternal]) {
+      expect(canResumeTicket(agent, mine(status), 'workspace')).toBe(true);
+      expect(canResumeTicket(admin, ticket(status), 'workspace')).toBe(true);
+      expect(canResumeTicket(agent, ticket(status, 'someone-else', 'other-agent'), 'workspace')).toBe(false);
+      expect(canResumeTicket(agent, mine(status), 'requester')).toBe(false);
+    }
+    expect(canResumeTicket(agent, mine(TicketStatus.InProgress), 'workspace')).toBe(false);
+    expect(canPauseTicket(requester, ticket(TicketStatus.InProgress, requester.userId, requester.userId), 'workspace')).toBe(false);
   });
 
   it('grants nothing to unknown roles or anonymous users', () => {
@@ -148,6 +179,8 @@ describe('ticketPermissions', () => {
       expect(canSelfAssignTicket(user, ticket(TicketStatus.Submitted))).toBe(false);
       expect(canUnassignTicket(user, ticket(TicketStatus.Assigned))).toBe(false);
       expect(canAssignTicket(user, ticket(TicketStatus.Submitted))).toBe(false);
+      expect(canPauseTicket(user, ticket(TicketStatus.InProgress), 'workspace')).toBe(false);
+      expect(canResumeTicket(user, ticket(TicketStatus.PendingUser), 'workspace')).toBe(false);
     }
   });
 });

@@ -26,6 +26,9 @@ export enum TicketStatus {
   PendingExternal = 9,
 }
 
+/** The two states a staff member may pause an InProgress ticket into (POST /tickets/{id}/pending). */
+export type PendingTicketStatus = TicketStatus.PendingUser | TicketStatus.PendingExternal;
+
 /** Computed by the backend from impact × urgency (ITIL); the client never sets it. */
 export const TicketPriority = {
   P1: 'P1',

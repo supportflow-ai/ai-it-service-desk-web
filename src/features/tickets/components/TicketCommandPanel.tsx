@@ -1,22 +1,27 @@
 import { useState } from 'react';
 import { Alert, Button, Card, Popconfirm, Space, Typography } from 'antd';
-import { CheckOutlined, CloseOutlined, EditOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
+import { CheckOutlined, CloseOutlined, EditOutlined, PauseCircleOutlined, PlayCircleOutlined, RollbackOutlined, StopOutlined, UserAddOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
-import type { TicketDto } from '../model/ticket.types';
+import { TicketStatus } from '../model/ticket.types';
+import type { PendingTicketStatus, TicketDto } from '../model/ticket.types';
 import {
   canCancelTicket,
   canClaimTicket,
   canCloseTicket,
   canEditTicket,
+  canPauseTicket,
   canReopenTicket,
   canResolveTicket,
+  canResumeTicket,
 } from '../model/ticketPermissions';
 import type { TicketView } from '../model/ticketPermissions';
 import { useCancelTicket } from '../hooks/useCancelTicket';
 import { useClaimTicket } from '../hooks/useClaimTicket';
 import { useCloseTicket } from '../hooks/useCloseTicket';
+import { usePauseTicket } from '../hooks/usePauseTicket';
 import { useReopenTicket } from '../hooks/useReopenTicket';
 import { useResolveTicket } from '../hooks/useResolveTicket';
+import { useResumeTicket } from '../hooks/useResumeTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
 import { describeTicketError } from '../lib/ticketErrorMessage';
 import { TicketEditDialog } from './TicketEditDialog';
@@ -31,9 +36,9 @@ interface TicketCommandPanelProps {
 
 const transitionMessages = {
   400: 'Không thể chuyển trạng thái: ticket có thể đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
-  // Staff only ever see staff commands here, so a 403 means the ticket was meanwhile assigned to
-  // another agent (ClaimTicketUseCase), which a reload shows.
-  403: 'Không thể nhận xử lý: ticket vừa được giao cho kỹ thuật viên khác. Hãy tải lại để xem người phụ trách mới.',
+  // A 403 here means the ticket was meanwhile assigned to another agent: ClaimTicketUseCase refuses
+  // it, and so do pause and resume, which accept only the assignee, a Lead of the holding team or an Admin.
+  403: 'Không thể thực hiện: ticket vừa được giao cho kỹ thuật viên khác. Hãy tải lại để xem người phụ trách mới.',
 };
 const reloadableStatuses = [400, 403, 409] as const;
 
@@ -44,10 +49,12 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
 
   const claimMutation = useClaimTicket(ticket.id);
   const resolveMutation = useResolveTicket(ticket.id);
+  const pauseMutation = usePauseTicket(ticket.id);
+  const resumeMutation = useResumeTicket(ticket.id);
   const closeMutation = useCloseTicket(ticket.id);
   const reopenMutation = useReopenTicket(ticket.id);
   const cancelMutation = useCancelTicket(ticket.id);
-  const mutations = [claimMutation, resolveMutation, closeMutation, reopenMutation, cancelMutation];
+  const mutations = [claimMutation, resolveMutation, pauseMutation, resumeMutation, closeMutation, reopenMutation, cancelMutation];
 
   // Also covers assignment writes from the other panel, so two state changes never overlap.
   const isPending = useTicketStateWritePending(ticket.id);
@@ -60,6 +67,10 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
     for (const mutation of mutations) if (mutation !== target) mutation.reset();
     target.mutate(ticket.revision, onSettled ? { onSettled } : undefined);
   };
+  const pause = (status: PendingTicketStatus) => {
+    for (const mutation of mutations) if (mutation !== pauseMutation) mutation.reset();
+    pauseMutation.mutate({ status, expectedRevision: ticket.revision });
+  };
   // Reloading shows the current ticket, so the error about the old copy no longer applies.
   const reload = () => {
     for (const mutation of mutations) mutation.reset();
@@ -69,6 +80,8 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
   const allowed = {
     claim: canClaimTicket(user, ticket, view),
     resolve: canResolveTicket(user, ticket, view),
+    pause: canPauseTicket(user, ticket, view),
+    resume: canResumeTicket(user, ticket, view),
     close: canCloseTicket(user, ticket, view),
     reopen: canReopenTicket(user, ticket, view),
     cancel: canCancelTicket(user, ticket, view),
@@ -122,6 +135,41 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
             style={{ borderRadius: 6, background: 'var(--ok)', borderColor: 'var(--ok)' }}
           >
             Giải quyết
+          </Button>
+        )}
+
+        {allowed.pause && (
+          <>
+            <Button
+              icon={<PauseCircleOutlined />}
+              loading={pauseMutation.isPending && pauseMutation.variables?.status === TicketStatus.PendingUser}
+              disabled={isPending}
+              onClick={() => pause(TicketStatus.PendingUser)}
+              style={{ borderRadius: 6 }}
+            >
+              Chờ phản hồi người dùng
+            </Button>
+            <Button
+              icon={<PauseCircleOutlined />}
+              loading={pauseMutation.isPending && pauseMutation.variables?.status === TicketStatus.PendingExternal}
+              disabled={isPending}
+              onClick={() => pause(TicketStatus.PendingExternal)}
+              style={{ borderRadius: 6 }}
+            >
+              Chờ đối tác
+            </Button>
+          </>
+        )}
+
+        {allowed.resume && (
+          <Button
+            icon={<PlayCircleOutlined />}
+            loading={resumeMutation.isPending}
+            disabled={isPending}
+            onClick={() => run(resumeMutation)}
+            style={{ borderRadius: 6 }}
+          >
+            Tiếp tục xử lý
           </Button>
         )}
 

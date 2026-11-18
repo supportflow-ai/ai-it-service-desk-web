@@ -10,12 +10,12 @@ import { TicketCategory, TicketStatus } from '../model/ticket.types';
 import type { TicketView } from '../model/ticketPermissions';
 import { TicketCommandPanel } from './TicketCommandPanel';
 
-interface PanelOptions { view?: TicketView; onReload?: () => void; requesterId?: string }
+interface PanelOptions { view?: TicketView; onReload?: () => void; requesterId?: string; assignedToId?: string | null }
 
-function renderPanel(roles: string[], status: TicketStatus, { view = 'workspace', onReload = () => {}, requesterId = ticketA.requesterId }: PanelOptions = {}) {
+function renderPanel(roles: string[], status: TicketStatus, { view = 'workspace', onReload = () => {}, requesterId = ticketA.requesterId, assignedToId = null }: PanelOptions = {}) {
   sessionStore.setToken('session');
   server.use(http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles })));
-  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status, requesterId };
+  const ticket = { ...ticketA, categoryId: TicketCategory.NET, status, requesterId, assignedToId };
   const { Wrapper } = createTestWrapper();
   render(<TicketCommandPanel ticket={ticket} onReload={onReload} view={view} />, { wrapper: Wrapper });
 }
@@ -168,4 +168,60 @@ it.each([['Admin', true], ['Agent', false]] as const)('shows edit on the workspa
   renderPanel([role], TicketStatus.Submitted);
   expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Sửa yêu cầu/ }) !== null).toBe(shown);
+});
+
+it('lets the assignee pause an in-progress ticket into either waiting state, sending the status and revision in the body', async () => {
+  const bodies: unknown[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/pending`, async ({ request }) => {
+    bodies.push(await request.json());
+    return HttpResponse.json({ ...ticketA, status: TicketStatus.PendingUser });
+  }));
+  renderPanel(['Agent'], TicketStatus.InProgress, { assignedToId: user.userId });
+  await userEvent.click(await screen.findByRole('button', { name: /Chờ phản hồi người dùng/ }));
+  await waitFor(() => expect(bodies).toEqual([{ status: TicketStatus.PendingUser, expectedRevision: ticketA.revision }]));
+  await userEvent.click(screen.getByRole('button', { name: /Chờ đối tác/ }));
+  await waitFor(() => expect(bodies).toHaveLength(2));
+  expect(bodies[1]).toEqual({ status: TicketStatus.PendingExternal, expectedRevision: ticketA.revision });
+});
+
+it('offers no pause to an agent who does not hold the ticket, but does to an admin', async () => {
+  renderPanel(['Agent'], TicketStatus.InProgress, { assignedToId: '00000000-0000-0000-0000-000000000099' });
+  expect(await screen.findByRole('button', { name: /Giải quyết/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Chờ phản hồi người dùng|Chờ đối tác/ })).not.toBeInTheDocument();
+});
+
+it('offers an admin pause on a ticket held by another agent', async () => {
+  renderPanel(['Admin'], TicketStatus.InProgress, { assignedToId: '00000000-0000-0000-0000-000000000099' });
+  expect(await screen.findByRole('button', { name: /Chờ phản hồi người dùng/ })).toBeEnabled();
+});
+
+it('resumes a waiting ticket with the revision in the query', async () => {
+  const sent: (string | null)[] = [];
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/resume`, ({ request }) => {
+    sent.push(new URL(request.url).searchParams.get('expectedRevision'));
+    return HttpResponse.json({ ...ticketA, status: TicketStatus.InProgress });
+  }));
+  renderPanel(['Agent'], TicketStatus.PendingUser, { assignedToId: user.userId });
+  await userEvent.click(await screen.findByRole('button', { name: /Tiếp tục xử lý/ }));
+  await waitFor(() => expect(sent).toEqual([String(ticketA.revision)]));
+  // PendingUser cannot be resolved directly (DEC-04): only resume leaves it.
+  expect(screen.queryByRole('button', { name: /Giải quyết/ })).not.toBeInTheDocument();
+});
+
+it('lets staff resolve straight from PendingExternal', async () => {
+  renderPanel(['Agent'], TicketStatus.PendingExternal, { assignedToId: user.userId });
+  expect(await screen.findByRole('button', { name: /Giải quyết/ })).toBeEnabled();
+  expect(screen.getByRole('button', { name: /Tiếp tục xử lý/ })).toBeEnabled();
+});
+
+it('asks for a reload when a pause is refused because the ticket moved on', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/pending`, () => (
+    HttpResponse.json({ error: 'Dữ liệu đã bị thay đổi bởi người khác.' }, { status: 409 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.InProgress, { assignedToId: user.userId, onReload });
+  await userEvent.click(await screen.findByRole('button', { name: /Chờ đối tác/ }));
+  expect(await screen.findByText(/Ticket vừa được người khác cập nhật/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
 });

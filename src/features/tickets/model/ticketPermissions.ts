@@ -20,6 +20,20 @@ function isStaff(user: User | null) {
   return !!user && hasAnyRole(user.roles, ['Agent', 'Admin']);
 }
 
+function isAdmin(user: User | null) {
+  return !!user && hasAnyRole(user.roles, ['Admin']);
+}
+
+/**
+ * Pause and resume (backend `dev` 3b20de5) accept the agent the ticket is assigned to, a Lead of the
+ * team that holds it, or an Admin. A Lead is a team membership the web cannot read, so only the
+ * assignee and an Admin are offered the command; the server still rejects anyone else.
+ */
+function mayDriveTicket(user: User | null, ticket: TicketFacts) {
+  if (!user) return false;
+  return isAdmin(user) || (hasAnyRole(user.roles, ['Agent']) && ticket.assignedToId === user.userId);
+}
+
 /**
  * Close/reopen/cancel use cases accept the ticket's requester or an Admin. The owner does it from
  * their own screen; on the workspace only an Admin may do it on their behalf.
@@ -53,8 +67,21 @@ export function canClaimTicket(user: User | null, ticket: TicketFacts, view: Tic
     && (ticket.assignedToId === user.userId || hasAnyRole(user.roles, ['Admin']));
 }
 
+/** Resolve accepts InProgress and, since DEC-04, PendingExternal; never PendingUser. */
 export function canResolveTicket(user: User | null, ticket: TicketFacts, view: TicketView) {
-  return view === 'workspace' && isStaff(user) && ticket.status === TicketStatus.InProgress;
+  return view === 'workspace' && isStaff(user)
+    && (ticket.status === TicketStatus.InProgress || ticket.status === TicketStatus.PendingExternal);
+}
+
+/** InProgress → PendingUser or PendingExternal; pauses the resolution clock. */
+export function canPauseTicket(user: User | null, ticket: TicketFacts, view: TicketView) {
+  return view === 'workspace' && mayDriveTicket(user, ticket) && ticket.status === TicketStatus.InProgress;
+}
+
+/** PendingUser or PendingExternal → InProgress. A requester's public comment resumes PendingUser by itself. */
+export function canResumeTicket(user: User | null, ticket: TicketFacts, view: TicketView) {
+  return view === 'workspace' && mayDriveTicket(user, ticket)
+    && (ticket.status === TicketStatus.PendingUser || ticket.status === TicketStatus.PendingExternal);
 }
 
 export function canCloseTicket(user: User | null, ticket: TicketFacts, view: TicketView) {
@@ -74,9 +101,14 @@ export function canEditTicket(user: User | null, ticket: TicketFacts, view: Tick
   return mayActForOwner(user, ticket, view) && ticket.status === TicketStatus.Submitted;
 }
 
-/** AssignTicketUseCase accepts any Agent or Admin on every ticket that has not ended. */
+/**
+ * AssignTicketUseCase (backend `dev` 3b20de5) accepts a Lead of the team that holds the ticket, who
+ * may only pick an agent of that team, or an Admin, who may pick any agent; an ordinary Agent gets 403.
+ * It refuses Closed, Cancelled and Resolved tickets (400). A Lead is a team membership the web cannot
+ * read, so only an Admin is offered the command; the server still rejects anyone else.
+ */
 export function canAssignTicket(user: User | null, ticket: Pick<TicketDto, 'status'>) {
-  return isStaff(user) && !isTerminalStatus(ticket.status);
+  return isAdmin(user) && !isTerminalStatus(ticket.status) && ticket.status !== TicketStatus.Resolved;
 }
 
 /**
@@ -91,12 +123,15 @@ export function canAttachFiles(ticket: Pick<TicketDto, 'status'>) {
   return !isTerminalStatus(ticket.status);
 }
 
-/** Self-assign only takes a ticket nobody holds (Submitted); the backend accepts Agent or Admin as assignee. */
+/**
+ * Self-assign goes through the assign command, so it is an Admin's too; an Agent takes a ticket nobody
+ * holds (Submitted) with claim instead. Only a Submitted ticket qualifies.
+ */
 export function canSelfAssignTicket(user: User | null, ticket: TicketFacts) {
-  return isStaff(user) && ticket.status === TicketStatus.Submitted;
+  return isAdmin(user) && ticket.status === TicketStatus.Submitted;
 }
 
-/** UnassignTicketUseCase accepts any Agent or Admin, and only on an Assigned ticket. */
+/** UnassignTicketUseCase accepts a Lead of the holding team or an Admin (an Agent gets 403), and only on an Assigned ticket. */
 export function canUnassignTicket(user: User | null, ticket: TicketFacts) {
-  return isStaff(user) && ticket.status === TicketStatus.Assigned;
+  return isAdmin(user) && ticket.status === TicketStatus.Assigned;
 }

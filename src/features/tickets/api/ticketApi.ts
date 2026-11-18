@@ -8,6 +8,7 @@ import type {
   ConfirmAttachmentPayload,
   CreateTicketPayload,
   GenerateUploadUrlPayload,
+  PendingTicketStatus,
   UpdateTicketPayload,
 } from '../model/ticket.types';
 import {
@@ -83,6 +84,16 @@ export const ticketApi = {
   },
   async resolveTicket(ticketId: string, expectedRevision: number) {
     const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/resolve`, undefined, { params: { expectedRevision } });
+    return readTicket(response.data);
+  },
+  /** Assigned agent, Lead of the holding team or Admin. Moves InProgress to PendingUser or PendingExternal; the revision goes in the body. */
+  async pauseTicket(ticketId: string, status: PendingTicketStatus, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/pending`, { status, expectedRevision });
+    return readTicket(response.data);
+  },
+  /** Moves PendingUser or PendingExternal back to InProgress; the revision goes in the query. */
+  async resumeTicket(ticketId: string, expectedRevision: number) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/resume`, undefined, { params: { expectedRevision } });
     return readTicket(response.data);
   },
   async closeTicket(ticketId: string, expectedRevision: number) {

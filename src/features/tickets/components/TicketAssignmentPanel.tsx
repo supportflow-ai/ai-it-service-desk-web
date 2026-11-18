@@ -18,7 +18,8 @@ interface TicketAssignmentPanelProps {
 }
 
 const assignmentMessages = {
-  400: 'Không thể thay đổi phân công: kỹ thuật viên không hợp lệ hoặc ticket đã được người khác cập nhật. Hãy tải lại để xem trạng thái mới nhất.',
+  400: 'Không thể thay đổi phân công: ticket đã được giải quyết hoặc người khác vừa cập nhật, hoặc kỹ thuật viên không hợp lệ hay không thuộc nhóm phụ trách. Hãy tải lại để xem trạng thái mới nhất.',
+  403: 'Chỉ Trưởng nhóm phụ trách phiếu hoặc Quản trị viên mới có quyền phân công hoặc hủy phân công.',
 };
 
 export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPanelProps) {

@@ -55,6 +55,12 @@ beforeEach(() => {
   );
 });
 
+/** Assign and unassign are an Admin's (or a team Lead's, which the web cannot see), so the flows that use them sign in as one. */
+function signInAsAdmin() {
+  sessionStore.setToken('admin');
+  server.use(http.get('http://localhost/api/auth/me', () => HttpResponse.json({ ...user, roles: ['Admin'] })));
+}
+
 it('renders workspace with real ticket data and dynamic timeline', async () => {
   renderWorkspace();
   expect(await screen.findByRole('heading', { name: ticketA.title })).toBeInTheDocument();
@@ -98,7 +104,8 @@ it('says "Bạn" when the signed-in agent holds the ticket', async () => {
   expect(sidebarField('Phụ trách')).toHaveTextContent('Bạn');
 });
 
-it('runs the whole agent flow on one screen: self-assign, claim, comment, resolve', async () => {
+it('runs the whole admin flow on one screen: self-assign, claim, comment, resolve', async () => {
+  signInAsAdmin();
   let status = TicketStatus.Submitted;
   let assignedToId: string | null = null;
   const timeline: (typeof timelineItemA)[] = [];
@@ -134,7 +141,9 @@ it('runs the whole agent flow on one screen: self-assign, claim, comment, resolv
   await userEvent.click(screen.getByRole('button', { name: /Giải quyết/ }));
   await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận giải quyết' }));
   await waitFor(() => expect(sidebarField('Trạng thái')).toHaveTextContent('Đã giải quyết'));
-  expect(screen.getByText(/Không có thao tác nào khả dụng/)).toBeInTheDocument();
+  // An admin may then close or reopen on the owner's behalf; resolving again is no longer offered.
+  expect(screen.getByRole('button', { name: /Đóng vé/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Giải quyết/ })).not.toBeInTheDocument();
   // Four writes, each re-rendering the whole workspace in jsdom: 15–20 s, above the 15 s default.
 }, 30_000);
 
@@ -166,6 +175,7 @@ it('reloads the ticket when a write finds it gone, and hides the stale copy', as
 });
 
 it('blocks every other status or assignment action while one is in flight', async () => {
+  signInAsAdmin();
   let release = () => {};
   const gate = new Promise<void>((resolve) => { release = resolve; });
   let status = TicketStatus.Submitted;
@@ -184,6 +194,13 @@ it('blocks every other status or assignment action while one is in flight', asyn
   await waitFor(() => expect(selfAssign).toBeDisabled());
   release();
   await waitFor(() => expect(screen.queryByRole('button', { name: /Nhận về tôi/ })).not.toBeInTheDocument(), { timeout: 5000 });
+});
+
+it('lets an ordinary agent take a ticket with claim, and offers no assignment command', async () => {
+  renderWorkspace();
+  expect(await screen.findByRole('button', { name: /Nhận xử lý/ })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: /Nhận về tôi|Hủy phân công|Giao việc/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole('combobox', { name: 'Giao cho kỹ thuật viên' })).not.toBeInTheDocument();
 });
 
 it('says a closed ticket has no further actions', async () => {
