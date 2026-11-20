@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
+import { sessionStore } from '../lib/sessionStore';
 import { LoginPage } from './LoginPage';
 
 function renderLogin() {
@@ -63,3 +64,21 @@ it('labels the sign-in fields for password managers: username and current-passwo
   expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'username');
   expect(screen.getByLabelText('Mật khẩu')).toHaveAttribute('autocomplete', 'current-password');
 });
+
+it('says why the person is back at sign-in when their session expired, and not on a first visit', async () => {
+  renderLogin();
+  expect(screen.queryByText(/Phiên đăng nhập đã hết hạn/)).not.toBeInTheDocument();
+});
+
+it('shows the expiry notice after the server ended the session, and drops it once signed in again', async () => {
+  server.use(http.post('http://localhost/api/auth/login', () => HttpResponse.json({ token: 'again', user: { userId: 'u', email: 'an@example.com', fullName: null, roles: ['Requester'] } })));
+  sessionStore.setTokens('old', 'old-refresh');
+  const { token, version } = sessionStore.getSnapshot();
+  if (!token) throw new Error('token missing');
+  sessionStore.expire(token, version);
+  renderLogin();
+  expect(await screen.findByText('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.')).toBeInTheDocument();
+  await signIn();
+  expect(await screen.findByText('home page')).toBeInTheDocument();
+});
+

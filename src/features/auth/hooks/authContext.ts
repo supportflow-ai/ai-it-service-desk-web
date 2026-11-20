@@ -7,6 +7,8 @@ export interface AuthContextValue {
   status: AuthStatus;
   /** Anonymous because someone signed out, rather than a first visit or an expired session. */
   signedOut: boolean;
+  /** Anonymous because the server rejected the session and it could not be renewed. */
+  sessionExpired: boolean;
   sessionVersion: number;
   error: AppError | null;
   loginPending: boolean;

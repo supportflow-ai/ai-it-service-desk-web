@@ -16,6 +16,9 @@ export function LoginPage() {
   return (
     <Card style={{ width: 400, margin: '48px auto' }}>
       <Typography.Title level={2}>Đăng nhập</Typography.Title>
+      {auth.sessionExpired && !loginError && (
+        <Alert type="warning" showIcon message="Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục." style={{ marginBottom: 16 }} />
+      )}
       {loginError && <Alert type="error" showIcon message={loginError} style={{ marginBottom: 16 }} />}
       <AuthForm pending={auth.loginPending} onSubmit={async (values) => {
         try { await auth.login(values); navigate(from, { replace: true }); }
