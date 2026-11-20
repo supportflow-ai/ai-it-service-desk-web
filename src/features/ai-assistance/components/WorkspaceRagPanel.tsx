@@ -4,6 +4,7 @@ import { RagEvidencePanel } from './RagEvidencePanel';
 interface WorkspaceRagPanelProps {
   ticketId: string;
   sources?: RagSourceAdapter;
+  knowledgeSearchPath?: string;
 }
 
 /**
@@ -12,6 +13,6 @@ interface WorkspaceRagPanelProps {
  * sends no request. Plug the query in here once the contract exists; the panel already renders
  * the answer, citation, no-evidence, unavailable and loading states.
  */
-export function WorkspaceRagPanel({ ticketId, sources }: WorkspaceRagPanelProps) {
-  return <RagEvidencePanel key={ticketId} result={null} sources={sources} />;
+export function WorkspaceRagPanel({ ticketId, sources, knowledgeSearchPath }: WorkspaceRagPanelProps) {
+  return <RagEvidencePanel key={ticketId} result={null} sources={sources} knowledgeSearchPath={knowledgeSearchPath} />;
 }

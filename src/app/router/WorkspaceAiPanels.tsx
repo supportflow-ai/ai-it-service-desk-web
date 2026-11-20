@@ -32,7 +32,7 @@ export function WorkspaceAiPanels({ ticketId, onTicketChanged }: WorkspaceAiPane
     <Suspense fallback={null}>
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
         <WorkspaceTriagePanel ticketId={ticketId} onTicketChanged={onTicketChanged} />
-        {showEvidence && <WorkspaceRagPanel ticketId={ticketId} sources={ragSources} />}
+        {showEvidence && <WorkspaceRagPanel ticketId={ticketId} sources={ragSources} knowledgeSearchPath={routes.knowledge.path} />}
       </Space>
     </Suspense>
   );
