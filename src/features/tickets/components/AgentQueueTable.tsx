@@ -43,6 +43,8 @@ export function AgentQueueTable({ result, failed = false, loading, page, pageSiz
     <Table<TicketDto>
       rowKey="id"
       size="middle"
+      // The columns keep their width; a narrow screen scrolls the table sideways instead of cutting the last ones off.
+      scroll={{ x: 'max-content' }}
       dataSource={result?.items ?? []}
       loading={loading}
       locale={{ emptyText }}

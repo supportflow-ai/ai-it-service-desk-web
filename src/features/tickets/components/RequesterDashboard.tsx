@@ -133,6 +133,7 @@ export function RequesterDashboard({ knowledgePanel }: RequesterDashboardProps) 
             )}
 
             {recent.length > 0 && (
+              <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--sf2)', borderBottom: '1px solid var(--bd2)' }}>
@@ -168,6 +169,7 @@ export function RequesterDashboard({ knowledgePanel }: RequesterDashboardProps) 
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Card>
         </Col>

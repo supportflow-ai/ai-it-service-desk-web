@@ -177,6 +177,7 @@ export function AdminUsersPage() {
           columns={columns}
           dataSource={users}
           loading={loading}
+          scroll={{ x: 'max-content' }}
           pagination={{ pageSize: 10 }}
           // A failed load is not an empty list: the error above says what failed and offers a retry.
           locale={{ emptyText: error ? 'Chưa tải được danh sách người dùng.' : 'Không tìm thấy người dùng phù hợp' }}

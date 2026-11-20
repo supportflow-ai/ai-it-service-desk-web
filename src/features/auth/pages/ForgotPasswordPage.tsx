@@ -40,7 +40,7 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <Card style={{ width: 400, margin: '48px auto' }}>
+    <Card style={{ width: 400, maxWidth: 'calc(100% - 32px)', margin: '48px auto' }}>
       <Typography.Title level={2}>Quên mật khẩu</Typography.Title>
       {errorMessage && <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 16 }} />}
 
