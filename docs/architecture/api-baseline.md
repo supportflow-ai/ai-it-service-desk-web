@@ -1,5 +1,16 @@
 # Frontend API compatibility baseline
 
+## Khoảng lệch contract: SLA (TC-232, đối chiếu ngày 2026-11-20)
+
+Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này **chưa vào `dev`** và `contracts/backend/openapi-baseline.json` của nó **chưa có** schema SLA hay tham số `slaStatus`, nên snapshot ghim trong `tests/contracts/` **không đổi**; nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
+
+| Thành phần | Contract theo code backend | Cách web xử lý |
+| --- | --- | --- |
+| `TicketDto.sla` (`GET /tickets/queue`, `GET /tickets/{id}`) | `SlaSummaryDto`: `isApplicable`, `evaluatedAt`, `overallStatus` (`OnTrack`, `AtRisk`, `Breached`, `Completed`, `NotApplicable`), `firstResponse` và `resolution` (`targetMinutes`, `elapsedMinutes`, `remainingMinutes`, `deadline`, `isBreached`, `state`) | Trường tùy chọn; kiểm tra runtime ở `ticketContract.ts`; thiếu thì hiện "Chưa có thông tin SLA", không tự tính ở client |
+| `GET /tickets/queue?slaStatus=` | `All`, `OnTrack`, `AtRisk`, `Breached` (giá trị khác trả 400) | Chỉ gửi khi chọn bộ lọc; backend chưa hỗ trợ sẽ bỏ qua tham số, nên nếu có ticket không kèm `sla` thì trang hàng đợi cảnh báo danh sách chưa được lọc |
+
+Việc cần làm khi backend merge: lấy `openapi-baseline.json` từ đúng SHA backend, cập nhật snapshot và checksum, chạy `contract:generate` và `contract:check` (mục 22 của [AGENTS.md](../../AGENTS.md)), rồi bỏ cảnh báo "chưa hỗ trợ lọc" nếu không còn cần. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
+
 ## Đối chiếu ngày 2026-11-13
 
 Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.

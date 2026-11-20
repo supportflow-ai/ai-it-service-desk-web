@@ -1,7 +1,7 @@
 import { http, HttpResponse } from 'msw';
 import { expect, it } from 'vitest';
 import { server } from '../../../../tests/mocks/server';
-import { ticketA } from '../../../../tests/fixtures';
+import { ticketA, ticketB } from '../../../../tests/fixtures';
 import contract from '../../../../tests/contracts/ticket-status.json';
 import { ticketApi } from './ticketApi';
 import { TicketStatus } from '../model/ticket.types';
@@ -169,4 +169,40 @@ it('updates a ticket with its three fields and the revision on screen', async ()
   const payload = { title: 'Tiêu đề mới', categoryId: 'NET' as const, description: ticketA.description };
   expect((await ticketApi.updateTicket(ticketA.id, payload, ticketA.revision)).title).toBe('Tiêu đề mới');
   expect(sent).toEqual([{ ...payload, expectedRevision: ticketA.revision }]);
+});
+
+const slaClock = { targetMinutes: 240, elapsedMinutes: 200, remainingMinutes: 40, deadline: '2026-10-19T04:00:00Z', isBreached: false, state: 'RunningAtRisk' };
+const sla = { isApplicable: true, evaluatedAt: '2026-10-19T03:20:00Z', overallStatus: 'AtRisk', firstResponse: slaClock, resolution: slaClock };
+
+it('reads the SLA summary the backend evaluated, in the detail and in the queue', async () => {
+  server.use(
+    http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, sla })),
+    http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({ items: [{ ...ticketA, sla }, ticketB], page: 1, pageSize: 10, totalCount: 2 })),
+  );
+  expect((await ticketApi.getTicketById(ticketA.id)).sla).toEqual(sla);
+  const queue = await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, priority: null, sortByPriority: false, page: 1, pageSize: 10 });
+  expect(queue.items[0]?.sla?.overallStatus).toBe('AtRisk');
+  // No SLA from the backend stays absent: the client never invents one.
+  expect(queue.items[1]?.sla).toBeUndefined();
+});
+
+it('keeps nullable SLA clock values null when the backend leaves them out', async () => {
+  const paused = { targetMinutes: 480, elapsedMinutes: 100, state: 'PausedOnTrack', isBreached: false };
+  server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({
+    ...ticketA, sla: { isApplicable: true, evaluatedAt: '2026-10-19T03:20:00Z', overallStatus: 'OnTrack', resolution: paused },
+  })));
+  expect((await ticketApi.getTicketById(ticketA.id)).sla).toEqual({
+    isApplicable: true,
+    evaluatedAt: '2026-10-19T03:20:00Z',
+    overallStatus: 'OnTrack',
+    firstResponse: null,
+    resolution: { ...paused, remainingMinutes: null, deadline: null },
+  });
+});
+
+it('rejects a malformed SLA instead of showing a guess', async () => {
+  for (const bad of [{ ...sla, isApplicable: 'yes' }, { ...sla, overallStatus: 3 }, { ...sla, resolution: { ...slaClock, state: null } }, 'AtRisk']) {
+    server.use(http.get(`http://localhost/api/tickets/${ticketA.id}`, () => HttpResponse.json({ ...ticketA, sla: bad })));
+    await expect(ticketApi.getTicketById(ticketA.id)).rejects.toMatchObject({ kind: 'invalid-response' });
+  }
 });
