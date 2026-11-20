@@ -22,7 +22,7 @@ import {
   readUploadUrlResult,
 } from './ticketContract';
 
-function agentQueueParams({ scope, status, category, priority, sortByPriority, page, pageSize }: AgentQueueFilters) {
+function agentQueueParams({ scope, status, category, priority, slaStatus, sortByPriority, page, pageSize }: AgentQueueFilters) {
   return {
     page,
     pageSize,
@@ -30,6 +30,7 @@ function agentQueueParams({ scope, status, category, priority, sortByPriority, p
     ...(status === null ? {} : { status }),
     ...(category === null ? {} : { category }),
     ...(priority === null ? {} : { priority }),
+    ...(slaStatus === null ? {} : { slaStatus }),
     ...(sortByPriority ? { sortByPriority: true } : {}),
   };
 }

@@ -8,6 +8,8 @@ import { ticketCategoryLabels } from '../model/ticketCategories';
 import { useStaffDirectory } from '../hooks/useStaffDirectory';
 import { workspaceTicketPath } from '../lib/agentQueueSearch';
 import type { QueueReturnState } from '../lib/agentQueueSearch';
+import { SlaDeadline } from './SlaDeadline';
+import { SlaStatusBadge } from './SlaStatusBadge';
 import { TicketPriorityTag } from './TicketPriorityTag';
 import { TicketStatusTag } from './TicketStatusTag';
 
@@ -82,6 +84,16 @@ export function AgentQueueTable({ result, failed = false, loading, page, pageSiz
         { title: 'Danh mục', key: 'category', render: (_, ticket) => ticketCategoryLabels[ticket.categoryId] },
         { title: 'Trạng thái', key: 'status', render: (_, ticket) => <TicketStatusTag status={ticket.status} /> },
         { title: 'Ưu tiên', key: 'priority', render: (_, ticket) => <TicketPriorityTag priority={ticket.priority} /> },
+        {
+          title: 'SLA',
+          key: 'sla',
+          render: (_, ticket) => (
+            <>
+              <SlaStatusBadge sla={ticket.sla} />
+              <SlaDeadline sla={ticket.sla} />
+            </>
+          ),
+        },
         {
           title: 'Người xử lý',
           key: 'assignee',

@@ -4,13 +4,14 @@ import type { AgentQueueFilters } from '../model/ticket.types';
 import { agentQueueScopeDescription, agentQueueScopes, agentQueueStatusOptions } from '../model/agentQueue';
 import { ticketCategoryLabels } from '../model/ticketCategories';
 import { ticketPriorityLabels } from '../model/ticketPriority';
+import { slaQueueOptions } from '../model/sla';
 import { ticketStatusMeta } from '../model/ticketStatus';
 import { TicketCategory, TicketPriority } from '../model/ticket.types';
 
 interface AgentQueueToolbarProps {
   filters: AgentQueueFilters;
   totalCount: number | undefined;
-  onChange: (patch: Partial<Pick<AgentQueueFilters, 'scope' | 'status' | 'category' | 'priority' | 'sortByPriority'>>) => void;
+  onChange: (patch: Partial<Pick<AgentQueueFilters, 'scope' | 'status' | 'category' | 'priority' | 'slaStatus' | 'sortByPriority'>>) => void;
 }
 
 type QueueSort = 'newest' | 'priority';
@@ -93,6 +94,16 @@ export function AgentQueueToolbar({ filters, totalCount, onChange }: AgentQueueT
           value={filters.priority ?? undefined}
           options={priorityOptions}
           onChange={(value?: AgentQueueFilters['priority']) => onChange({ priority: value ?? null })}
+        />
+        <Select
+          aria-label="SLA"
+          allowClear
+          virtual={false}
+          placeholder="SLA: Tất cả"
+          style={{ width: 180 }}
+          value={filters.slaStatus ?? undefined}
+          options={[...slaQueueOptions]}
+          onChange={(value?: AgentQueueFilters['slaStatus']) => onChange({ slaStatus: value ?? null })}
         />
         <Select<QueueSort>
           aria-label="Sắp xếp"

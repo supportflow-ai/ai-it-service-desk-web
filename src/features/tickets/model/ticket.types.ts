@@ -61,6 +61,14 @@ export interface SlaSummaryDto {
   resolution: SlaClockDto | null;
 }
 
+/** The values GET /tickets/queue accepts as slaStatus (besides All, which is sent as no filter). */
+export const SlaQueueStatus = {
+  OnTrack: 'OnTrack',
+  AtRisk: 'AtRisk',
+  Breached: 'Breached',
+} as const;
+export type SlaQueueStatus = (typeof SlaQueueStatus)[keyof typeof SlaQueueStatus];
+
 export interface CreateTicketPayload {
   title: string;
   categoryId: TicketCategory;
@@ -107,6 +115,8 @@ export interface AgentQueueFilters {
   status: TicketStatus | null;
   category: TicketCategory | null;
   priority: TicketPriority | null;
+  /** Null shows every ticket; otherwise the backend filters on its own SLA evaluation. */
+  slaStatus: SlaQueueStatus | null;
   /** Highest priority first (P1 → P4), then newest; otherwise newest first. */
   sortByPriority: boolean;
   page: number;

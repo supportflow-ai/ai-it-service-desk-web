@@ -1,4 +1,5 @@
-import type { SlaClockDto, SlaSummaryDto } from './ticket.types';
+import { SlaQueueStatus } from './ticket.types';
+import type { SlaClockDto, SlaSummaryDto, TicketDto } from './ticket.types';
 
 export type SlaTone = 'ok' | 'wn' | 'er' | 'neutral';
 
@@ -83,4 +84,19 @@ export function nextSlaDeadline(sla: SlaSummaryDto | null | undefined) {
     .filter((deadline) => !Number.isNaN(new Date(deadline).getTime()))
     .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
   return deadlines[0] ?? null;
+}
+
+export const slaQueueOptions: readonly { value: SlaQueueStatus; label: string }[] = [
+  { value: SlaQueueStatus.OnTrack, label: slaOverallMeta.OnTrack?.label ?? SlaQueueStatus.OnTrack },
+  { value: SlaQueueStatus.AtRisk, label: slaOverallMeta.AtRisk?.label ?? SlaQueueStatus.AtRisk },
+  { value: SlaQueueStatus.Breached, label: slaOverallMeta.Breached?.label ?? SlaQueueStatus.Breached },
+];
+
+/**
+ * An SLA filter is on, tickets came back, and some carry no `sla` at all: the backend does not know
+ * the SLA contract yet and ignored the filter, so the list is not filtered. A null `sla` is a
+ * deliberate "no data" and does not count.
+ */
+export function slaFilterIgnored(slaStatus: SlaQueueStatus | null, items: readonly TicketDto[]) {
+  return slaStatus !== null && items.some((ticket) => ticket.sla === undefined);
 }

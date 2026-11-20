@@ -42,10 +42,10 @@ it('sends agent queue filters and omits the ones that are not set', async () => 
     seen.push(Object.fromEntries(new URL(request.url).searchParams));
     return HttpResponse.json({ items: [ticketA], page: 1, pageSize: 10, totalCount: 1 });
   }));
-  await ticketApi.getAgentQueue({ scope: 'unassigned', status: TicketStatus.Submitted, category: 'NET', priority: 'P1', sortByPriority: true, page: 2, pageSize: 20 });
-  await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, priority: null, sortByPriority: false, page: 1, pageSize: 10 });
+  await ticketApi.getAgentQueue({ scope: 'unassigned', status: TicketStatus.Submitted, category: 'NET', priority: 'P1', slaStatus: 'Breached', sortByPriority: true, page: 2, pageSize: 20 });
+  await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, priority: null, slaStatus: null, sortByPriority: false, page: 1, pageSize: 10 });
   expect(seen).toEqual([
-    { page: '2', pageSize: '20', scope: 'unassigned', status: '1', category: 'NET', priority: 'P1', sortByPriority: 'true' },
+    { page: '2', pageSize: '20', scope: 'unassigned', status: '1', category: 'NET', priority: 'P1', slaStatus: 'Breached', sortByPriority: 'true' },
     { page: '1', pageSize: '10' },
   ]);
 });
@@ -180,7 +180,7 @@ it('reads the SLA summary the backend evaluated, in the detail and in the queue'
     http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({ items: [{ ...ticketA, sla }, ticketB], page: 1, pageSize: 10, totalCount: 2 })),
   );
   expect((await ticketApi.getTicketById(ticketA.id)).sla).toEqual(sla);
-  const queue = await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, priority: null, sortByPriority: false, page: 1, pageSize: 10 });
+  const queue = await ticketApi.getAgentQueue({ scope: 'all', status: null, category: null, priority: null, slaStatus: null, sortByPriority: false, page: 1, pageSize: 10 });
   expect(queue.items[0]?.sla?.overallStatus).toBe('AtRisk');
   // No SLA from the backend stays absent: the client never invents one.
   expect(queue.items[1]?.sla).toBeUndefined();
