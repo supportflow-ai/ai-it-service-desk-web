@@ -54,6 +54,15 @@
   color-scheme: dark;
 }
 
+/*
+ * Ant Design's dark algorithm dims its seed colours (the link blue #60A5FA becomes #558FD8 and the danger red
+ * #F87171 becomes #D66363), which leaves text on the slate surfaces just under 4.5:1. These two use the palette
+ * above instead: plain links (also the ticket-number links), and default (outlined) danger buttons such as "Đăng xuất".
+ */
+:root[data-theme="dark"] a:not([class]),
+:root[data-theme="dark"] a.mono { color: var(--pr); }
+:root[data-theme="dark"] .ant-btn-default.ant-btn-dangerous:not(:disabled) { color: var(--er); border-color: var(--er); }
+
 body {
   margin: 0;
   background-color: var(--bg);
@@ -533,3 +542,15 @@ body {
 }
 
 .lp [id] { scroll-margin-top: 80px; }
+
+/*
+ * Responsive polish for the demo viewports (laptop 1366 and tablet 1024 and 768).
+ * The greeting is cut with an ellipsis instead of wrapping over the header, the search box and then the
+ * greeting give way as the width shrinks, and a card header wraps its action under the title instead of
+ * clipping the title.
+ */
+.app-greeting { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 1100px) { .app-header-search { display: none; } }
+@media (max-width: 860px) { .app-greeting { display: none; } }
+.ant-card-head-wrapper { flex-wrap: wrap; row-gap: 4px; }
+.ant-card-head-title { flex: 1 1 auto; }

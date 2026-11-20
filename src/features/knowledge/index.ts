@@ -5,3 +5,5 @@ export { ArticleDetailPage } from './pages/ArticleDetailPage';
 export { KnowledgeSearchPage } from './pages/KnowledgeSearchPage';
 export { PublishedArticlePage } from './pages/PublishedArticlePage';
 export { KnowledgeDashboardCard } from './components/KnowledgeDashboardCard';
+export { publishedSectionLink } from './lib/knowledgePaths';
+export { articleExcerpt } from './model/articleExcerpt';
