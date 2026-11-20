@@ -9,7 +9,8 @@ export function TicketTable({ result, loading, page, pageSize, onPageChange }: {
   onPageChange: (page: number, pageSize: number) => void;
 }) {
   return <Table rowKey="id" dataSource={result?.items ?? []} loading={loading}
-    locale={{ emptyText: 'Bạn chưa có ticket nào' }}
+    // Only a loaded, empty result says there is nothing yet; while it loads the spinner shows over a blank body.
+    locale={{ emptyText: result ? 'Bạn chưa có ticket nào' : <div style={{ minHeight: 96 }} /> }}
     columns={[
       { title: 'Mã Ticket', key: 'number', render: (_, ticket) => <Link to={`/requester-dashboard/tickets/${ticket.id}`}>{ticket.ticketNumber}</Link> },
       { title: 'Tiêu đề', dataIndex: 'title' },

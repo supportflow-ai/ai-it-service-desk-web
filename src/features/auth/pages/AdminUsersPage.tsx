@@ -5,6 +5,7 @@ import { useUsers } from '../hooks/useUsers';
 import { useAssignRoles } from '../hooks/useAssignRoles';
 import type { Role } from '../model/auth.types';
 import { normalizeError } from '@/shared/api/httpError';
+import { ErrorState } from '@/shared/ui/ErrorState';
 
 interface UserTableRow {
   key: string;
@@ -149,13 +150,12 @@ export function AdminUsersPage() {
       </Typography.Title>
 
       {error && (
-        <Alert
-          type="error"
-          showIcon
-          message="Không thể tải danh sách người dùng"
-          description={normalizeError(error).message}
-          style={{ marginBottom: 16 }}
-        />
+        <div style={{ marginBottom: 16 }}>
+          <ErrorState
+            error={error}
+            onRetry={() => { void Promise.all([agentsQuery.refetch(), adminsQuery.refetch()]); }}
+          />
+        </div>
       )}
 
       <Card
@@ -178,7 +178,8 @@ export function AdminUsersPage() {
           dataSource={users}
           loading={loading}
           pagination={{ pageSize: 10 }}
-          locale={{ emptyText: 'Không tìm thấy người dùng phù hợp' }}
+          // A failed load is not an empty list: the error above says what failed and offers a retry.
+          locale={{ emptyText: error ? 'Chưa tải được danh sách người dùng.' : 'Không tìm thấy người dùng phù hợp' }}
         />
       </Card>
 
