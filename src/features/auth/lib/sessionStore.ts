@@ -1,28 +1,33 @@
-/** `signedOut` is true only after an explicit sign-out, here or in another tab, not after an expiry. */
+/**
+ * `signedOut` is true only after an explicit sign-out, here or in another tab, not after an expiry.
+ * `expired` is true only after the server rejected the session (and a refresh could not renew it), so
+ * the sign-in page can say why the person is back there instead of leaving them to guess.
+ */
 export interface SessionSnapshot {
   token: string | null;
   refreshToken: string | null;
   version: number;
   signedOut: boolean;
+  expired: boolean;
 }
 
-let snapshot: SessionSnapshot = { token: null, refreshToken: null, version: 0, signedOut: false };
+let snapshot: SessionSnapshot = { token: null, refreshToken: null, version: 0, signedOut: false, expired: false };
 let followingOtherTabs = false;
 const listeners = new Set<() => void>();
 
-function publish(token: string | null, refreshToken: string | null, signedOut = false) {
-  snapshot = { token, refreshToken, version: snapshot.version + 1, signedOut };
+function publish(token: string | null, refreshToken: string | null, signedOut = false, expired = false) {
+  snapshot = { token, refreshToken, version: snapshot.version + 1, signedOut, expired };
   listeners.forEach((listener) => listener());
 }
 
-function replace(token: string | null, refreshToken: string | null = null, signedOut = false) {
+function replace(token: string | null, refreshToken: string | null = null, signedOut = false, expired = false) {
   if (token) localStorage.setItem('token', token);
   else localStorage.removeItem('token');
 
   if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
   else localStorage.removeItem('refreshToken');
 
-  publish(token, refreshToken, signedOut);
+  publish(token, refreshToken, signedOut, expired);
 }
 
 /**
@@ -58,6 +63,6 @@ export const sessionStore = {
   setToken: (token: string) => replace(token, snapshot.refreshToken),
   clear: () => replace(null, null, true),
   expire(token: string, version: number) {
-    if (snapshot.token === token && snapshot.version === version) replace(null, null);
+    if (snapshot.token === token && snapshot.version === version) replace(null, null, false, true);
   },
 };

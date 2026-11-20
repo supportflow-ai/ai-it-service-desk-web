@@ -56,6 +56,9 @@ const lightTheme: ThemeConfig = {
     colorBgLayout: '#F8FAFC',
     colorTextBase: '#0F172A',
     colorTextSecondary: '#475569',
+    // Secondary text (Typography type="secondary") and placeholders must reach 4.5:1 (WCAG 1.4.3); the defaults are lighter.
+    colorTextDescription: '#475569',
+    colorTextPlaceholder: '#64748B',
     colorBorder: '#CBD5E1',
     colorBorderSecondary: '#E2E8F0',
     borderRadius: 6,
@@ -89,6 +92,8 @@ const darkTheme: ThemeConfig = {
     colorBgElevated: '#1E293B',
     colorTextBase: '#E2E8F0',
     colorTextSecondary: '#94A3B8',
+    colorTextDescription: '#94A3B8',
+    colorTextPlaceholder: '#94A3B8',
     colorTextLightSolid: '#0F172A',
     colorBorder: '#475569',
     colorBorderSecondary: '#334155',
@@ -102,6 +107,16 @@ const darkTheme: ThemeConfig = {
       headerColor: '#94A3B8',
       rowHoverBg: '#1E3352',
       borderRadius: 8,
+    },
+    // The selected item's primary blue on its tinted fill is only about 4:1; a lighter blue reaches 4.5:1.
+    Menu: {
+      itemSelectedColor: '#BFDBFE',
+      itemSelectedBg: '#1E3A5F',
+    },
+    Tabs: {
+      itemSelectedColor: '#93C5FD',
+      itemHoverColor: '#BFDBFE',
+      inkBarColor: '#93C5FD',
     },
   },
 };

@@ -39,6 +39,7 @@ export function AgentQueuePage() {
       <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 8, borderColor: 'var(--bd)', overflow: 'hidden' }}>
         <AgentQueueTable
           result={result}
+          failed={queue.isError}
           loading={queue.isFetching}
           page={filters.page}
           pageSize={filters.pageSize}

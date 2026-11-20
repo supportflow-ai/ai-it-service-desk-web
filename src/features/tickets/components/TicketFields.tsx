@@ -25,7 +25,7 @@ export function TicketFields() {
         style={{ marginBottom: 16 }}
       >
         {/* Eleven options: a plain list keeps every one reachable without scrolling a virtual list. */}
-        <Select virtual={false} options={categoryOptions} />
+        <Select virtual={false} options={categoryOptions} placeholder="Chọn danh mục" />
       </Form.Item>
 
       <Form.Item

@@ -64,6 +64,7 @@ function TicketEditForm({ ticket, onClose, onReload }: Omit<TicketEditDialogProp
       <Form<UpdateTicketPayload>
         form={form}
         layout="vertical"
+        scrollToFirstError={{ focus: true }}
         disabled={update.isPending}
         initialValues={{ title: ticket.title, categoryId: ticket.categoryId, description: ticket.description }}
         onFinish={save}

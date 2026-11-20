@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Button, Card, Col, Empty, Row, Skeleton, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { ErrorState } from '@/shared/ui/ErrorState';
 import { useTickets } from '../hooks/useTickets';
@@ -133,6 +133,7 @@ export function RequesterDashboard({ knowledgePanel }: RequesterDashboardProps) 
             )}
 
             {recent.length > 0 && (
+              <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'var(--sf2)', borderBottom: '1px solid var(--bd2)' }}>
@@ -150,7 +151,10 @@ export function RequesterDashboard({ knowledgePanel }: RequesterDashboardProps) 
                       style={{ borderBottom: '1px solid var(--bd)', cursor: 'pointer', transition: 'background 0.2s' }}
                     >
                       <td style={{ padding: '12px 14px' }} className="mono">
-                        {t.ticketNumber}
+                        {/* The row also opens on click; this link is what keyboard and screen-reader users reach. */}
+                        <Link to={`/requester-dashboard/tickets/${t.id}`} onClick={(event) => event.stopPropagation()} aria-label={`Mở ticket ${t.ticketNumber}`}>
+                          {t.ticketNumber}
+                        </Link>
                       </td>
                       <td style={{ padding: '12px 14px', fontWeight: 500, color: 'var(--tx)' }}>
                         {t.title}
@@ -165,6 +169,7 @@ export function RequesterDashboard({ knowledgePanel }: RequesterDashboardProps) 
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </Card>
         </Col>

@@ -23,6 +23,7 @@ it('follows a sign-in, account switch and sign-out made in another tab', () => {
     refreshToken: 'agent-refresh',
     version: restored.version + 1,
     signedOut: false,
+    expired: false,
   });
 
   changeInOtherTab(null, null);
@@ -31,6 +32,7 @@ it('follows a sign-in, account switch and sign-out made in another tab', () => {
     refreshToken: null,
     version: restored.version + 2,
     signedOut: true,
+    expired: false,
   });
 });
 
@@ -44,7 +46,11 @@ it('tells an explicit sign-out apart from an expired session', () => {
   const { token, version } = sessionStore.getSnapshot();
   if (!token) throw new Error('token missing');
   sessionStore.expire(token, version);
-  expect(sessionStore.getSnapshot()).toMatchObject({ token: null, refreshToken: null, signedOut: false });
+  expect(sessionStore.getSnapshot()).toMatchObject({ token: null, refreshToken: null, signedOut: false, expired: true });
+
+  // Signing in again clears the notice, so it never outlives the expiry it describes.
+  sessionStore.setTokens('third', 'third-refresh');
+  expect(sessionStore.getSnapshot().expired).toBe(false);
 });
 
 it('ignores storage changes that do not touch the session token', () => {
