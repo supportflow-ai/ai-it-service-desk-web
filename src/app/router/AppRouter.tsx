@@ -30,7 +30,7 @@ const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((fea
 
 export function AppRouter() {
   const { user } = useAuth();
-  // Only a Requester may raise a request, so staff are not offered the way to one.
+  // Every role may raise a request, so the knowledge pages offer the way to one whenever the route allows the viewer.
   const helpPath = hasAnyRole(user?.roles ?? [], routes.create.roles) ? routes.create.path : undefined;
   const protectedPages = [
     { ...routes.tickets, element: <TicketListPage /> },
