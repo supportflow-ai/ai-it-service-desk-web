@@ -1,5 +1,16 @@
 # Frontend API compatibility baseline
 
+## Khoảng lệch contract: SLA (TC-232, đối chiếu ngày 2026-11-20)
+
+Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này **chưa vào `dev`** và `contracts/backend/openapi-baseline.json` của nó **chưa có** schema SLA hay tham số `slaStatus`, nên snapshot ghim trong `tests/contracts/` **không đổi**; nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
+
+| Thành phần | Contract theo code backend | Cách web xử lý |
+| --- | --- | --- |
+| `TicketDto.sla` (`GET /tickets/queue`, `GET /tickets/{id}`) | `SlaSummaryDto`: `isApplicable`, `evaluatedAt`, `overallStatus` (`OnTrack`, `AtRisk`, `Breached`, `Completed`, `NotApplicable`), `firstResponse` và `resolution` (`targetMinutes`, `elapsedMinutes`, `remainingMinutes`, `deadline`, `isBreached`, `state`) | Trường tùy chọn; kiểm tra runtime ở `ticketContract.ts`; thiếu thì hiện "Chưa có thông tin SLA", không tự tính ở client |
+| `GET /tickets/queue?slaStatus=` | `All`, `OnTrack`, `AtRisk`, `Breached` (giá trị khác trả 400) | Chỉ gửi khi chọn bộ lọc; backend chưa hỗ trợ sẽ bỏ qua tham số, nên nếu có ticket không kèm `sla` thì trang hàng đợi cảnh báo danh sách chưa được lọc |
+
+Việc cần làm khi backend merge: lấy `openapi-baseline.json` từ đúng SHA backend, cập nhật snapshot và checksum, chạy `contract:generate` và `contract:check` (mục 22 của [AGENTS.md](../../AGENTS.md)), rồi bỏ cảnh báo "chưa hỗ trợ lọc" nếu không còn cần. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
+
 ## Đối chiếu ngày 2026-11-13
 
 Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
@@ -336,6 +347,37 @@ records one (`ReviewedAt`; Expired has none, `MarkExpired`). `ReviewedBy` is a u
 so it is not shown. A requester sees only the band and, when it is Low or missing, that a technician
 will check the category; never a score. Blocked by AISD-S3-09-T03 (TC-365, held-out evaluation): if
 it moves the band thresholds, only the backend policy changes.
+
+## RAG evidence panel (TC-229: TC-384, TC-385, TC-386)
+
+Not enabled, like triage. The backend OpenAPI baseline has no suggestion, RAG or citation
+endpoint, and ai-service lists "RAG chưa đưa vào MVP" and the "RAG/generation contract" as not
+done; the upstream package AISD-S4-02 has not landed. `WorkspaceRagPanel` (injected by the App,
+Agent/Admin only, checked against the `workspaceTicket` role list) therefore shows the
+not-enabled state and sends no request. `rag.types.ts` is a presentation model, not an HTTP
+contract: when AISD-S4-02 defines one, map it to these types at the API boundary and review the
+types against it first (answer, citations with article id, section, snippet, version, date and
+score, model, confidence band, outcome).
+
+What the panel already renders (`RagEvidencePanel`, covered by tests):
+
+- Suggestion (TC-384): the suggested reply as plain text, the model name, the confidence band
+  (the raw score only in a tooltip, never a percentage; Spec §11.3) and the same review hint as
+  triage. It only shows: the agent writes and sends the reply (auto-send is out of scope).
+- Evidence (TC-385): every citation with article title, section ("Phần mở đầu" when none),
+  passage, version, publication date and model score. The title opens the Published article at
+  that section through the existing `{ section }` router state (`publishedSectionLink`), so the
+  reader marks and scrolls to the heading. A citation whose id is not an article id has no link
+  and says so. Passages are plain text; the App supplies the link and excerpt helpers because
+  ai-assistance must not depend on knowledge.
+- States (TC-386), worded apart: not enabled; request running (status with skeleton);
+  AI unavailable or timed out (warning, fixed text, the provider's message is never shown, retry
+  only when the host passes a handler); no evidence (info, "không phải lỗi hệ thống", link to the
+  knowledge search). An answer that arrives without a citation is treated as no evidence and its
+  text is not shown, so nothing unsourced reads as an answer.
+
+Known gap: the article page's "back" link still goes to the knowledge base, not the ticket, because
+a citation carries no `resultsSearch`; the browser's back button returns to the ticket.
 
 The existing create endpoint supports optional Idempotency-Key, but this refactor preserves
 the existing request behavior and disables automatic write retries. Create is not advertised
