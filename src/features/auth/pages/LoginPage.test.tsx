@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
@@ -49,4 +49,17 @@ it('keeps the generic message for a server failure', async () => {
   renderLogin();
   await signIn();
   expect(await screen.findByText('Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại.')).toBeInTheDocument();
+});
+
+it('moves focus to the first field that failed validation, so a keyboard user can fix it at once', async () => {
+  renderLogin();
+  await userEvent.click(screen.getByRole('button', { name: 'Đăng nhập' }));
+  expect(await screen.findByText('Vui lòng nhập Email.')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Email')).toHaveFocus());
+});
+
+it('labels the sign-in fields for password managers: username and current-password', () => {
+  renderLogin();
+  expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'username');
+  expect(screen.getByLabelText('Mật khẩu')).toHaveAttribute('autocomplete', 'current-password');
 });

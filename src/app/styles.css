@@ -54,6 +54,15 @@
   color-scheme: dark;
 }
 
+/*
+ * Ant Design's dark algorithm dims its seed colours (the link blue #60A5FA becomes #558FD8 and the danger red
+ * #F87171 becomes #D66363), which leaves text on the slate surfaces just under 4.5:1. These two use the palette
+ * above instead: plain links (also the ticket-number links), and default (outlined) danger buttons such as "Đăng xuất".
+ */
+:root[data-theme="dark"] a:not([class]),
+:root[data-theme="dark"] a.mono { color: var(--pr); }
+:root[data-theme="dark"] .ant-btn-default.ant-btn-dangerous:not(:disabled) { color: var(--er); border-color: var(--er); }
+
 body {
   margin: 0;
   background-color: var(--bg);
