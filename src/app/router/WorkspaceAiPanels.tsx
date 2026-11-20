@@ -1,10 +1,18 @@
 import { lazy, Suspense } from 'react';
 import { Space } from 'antd';
 import { hasAnyRole, useAuth } from '@/features/auth';
+import { articleExcerpt, publishedSectionLink } from '@/features/knowledge';
+import type { RagSourceAdapter } from '@/features/ai-assistance';
 import { routeConfig as routes } from './routeConfig';
 
 const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceTriagePanel })));
 const WorkspaceRagPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceRagPanel })));
+
+/** ai-assistance does not depend on knowledge, so the App hands it the two things it needs from it. */
+const ragSources: RagSourceAdapter = {
+  link: (citation) => publishedSectionLink(citation.articleId, citation.section),
+  excerpt: articleExcerpt,
+};
 
 interface WorkspaceAiPanelsProps {
   ticketId: string;
@@ -24,7 +32,7 @@ export function WorkspaceAiPanels({ ticketId, onTicketChanged }: WorkspaceAiPane
     <Suspense fallback={null}>
       <Space direction="vertical" style={{ width: '100%' }} size={16}>
         <WorkspaceTriagePanel ticketId={ticketId} onTicketChanged={onTicketChanged} />
-        {showEvidence && <WorkspaceRagPanel ticketId={ticketId} />}
+        {showEvidence && <WorkspaceRagPanel ticketId={ticketId} sources={ragSources} />}
       </Space>
     </Suspense>
   );

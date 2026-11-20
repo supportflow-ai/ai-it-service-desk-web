@@ -49,3 +49,20 @@ export interface RagSuggestionView {
   score: number | null;
   generatedAt: string | null;
 }
+
+/** Where a citation opens: a router destination. */
+export interface RagSourceLink {
+  to: string;
+  state?: unknown;
+}
+
+/**
+ * What the evidence UI needs from the knowledge feature. The App supplies it, because
+ * ai-assistance must not depend on knowledge.
+ */
+export interface RagSourceAdapter {
+  /** The article at the cited section, or null when the citation cannot be opened (for example an invalid id). */
+  link: (citation: RagCitation) => RagSourceLink | null;
+  /** A passage as one tidy line of plain text, cut to `maxLength`. */
+  excerpt: (markdown: string, maxLength: number) => string;
+}

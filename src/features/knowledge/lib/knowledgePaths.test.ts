@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   articlePath, editArticlePath, knowledgeListPath, knowledgeResultsPath, knowledgeTagPath, listStateFrom, publishedArticlePath,
-  sourceSectionFrom,
+  publishedSectionLink, sourceSectionFrom,
 } from './knowledgePaths';
 
 describe('knowledge paths', () => {
@@ -52,5 +52,14 @@ describe('knowledge paths', () => {
     expect(sourceSectionFrom({ section: 'x'.repeat(201) })).toBeUndefined();
     expect(sourceSectionFrom({ section: 42 })).toBeUndefined();
     expect(sourceSectionFrom(null)).toBeUndefined();
+  });
+
+  it('links a citation to the article at its section, and refuses an id that is not an article id', () => {
+    const id = '40000000-0000-0000-0000-000000000001';
+    expect(publishedSectionLink(id, 'Cài đặt')).toEqual({ to: `/knowledge/${id}`, state: { section: 'Cài đặt' } });
+    expect(sourceSectionFrom(publishedSectionLink(id, 'Cài đặt')?.state)).toBe('Cài đặt');
+    expect(sourceSectionFrom(publishedSectionLink(id, null)?.state)).toBeNull();
+    expect(publishedSectionLink('../manage', null)).toBeNull();
+    expect(publishedSectionLink('', 'x')).toBeNull();
   });
 });
