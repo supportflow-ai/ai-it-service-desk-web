@@ -5,11 +5,32 @@ import type {
   AgentDirectoryEntry,
   DownloadUrlResult,
   PagedTicketResult,
+  SlaClockDto,
+  SlaSummaryDto,
   TicketAttachmentDto,
   TicketDto,
   TimelineItemDto,
   UploadUrlResult,
 } from '../model/ticket.types';
+
+const isNullableNumber = (value: unknown) => value === undefined || value === null || (typeof value === 'number' && Number.isFinite(value));
+
+function isSlaClock(value: unknown): value is SlaClockDto {
+  return isRecord(value)
+    && isNullableNumber(value.targetMinutes) && isNullableNumber(value.elapsedMinutes) && isNullableNumber(value.remainingMinutes)
+    && (value.deadline === undefined || value.deadline === null || typeof value.deadline === 'string')
+    && typeof value.isBreached === 'boolean'
+    && typeof value.state === 'string';
+}
+
+function isSla(value: unknown): value is SlaSummaryDto {
+  return isRecord(value)
+    && typeof value.isApplicable === 'boolean'
+    && typeof value.evaluatedAt === 'string'
+    && typeof value.overallStatus === 'string'
+    && (value.firstResponse === undefined || value.firstResponse === null || isSlaClock(value.firstResponse))
+    && (value.resolution === undefined || value.resolution === null || isSlaClock(value.resolution));
+}
 
 function isTicket(value: unknown): value is TicketDto {
   return isRecord(value) && typeof value.id === 'string' && typeof value.ticketNumber === 'string'
@@ -22,12 +43,33 @@ function isTicket(value: unknown): value is TicketDto {
     && (value.assignedToId === null || typeof value.assignedToId === 'string')
     && typeof value.revision === 'number' && Number.isInteger(value.revision) && value.revision >= 0
     && (value.priority === undefined || value.priority === null
-      || Object.values(TicketPriority).some((priority) => priority === value.priority));
+      || Object.values(TicketPriority).some((priority) => priority === value.priority))
+    && (value.sla === undefined || value.sla === null || isSla(value.sla));
+}
+
+/** Optional clock numbers and dates arrive as undefined when the backend omits null properties; the model keeps them null. */
+function normalizeClock(clock: SlaClockDto | null | undefined): SlaClockDto | null {
+  if (!clock) return null;
+  return {
+    targetMinutes: clock.targetMinutes ?? null,
+    elapsedMinutes: clock.elapsedMinutes ?? null,
+    remainingMinutes: clock.remainingMinutes ?? null,
+    deadline: clock.deadline ?? null,
+    isBreached: clock.isBreached,
+    state: clock.state,
+  };
+}
+
+/** Keeps `sla` undefined when the backend sent none, so "no data" and "not applicable" stay different. */
+function normalizeTicket(ticket: TicketDto): TicketDto {
+  if (!ticket.sla) return ticket;
+  const { isApplicable, evaluatedAt, overallStatus, firstResponse, resolution } = ticket.sla;
+  return { ...ticket, sla: { isApplicable, evaluatedAt, overallStatus, firstResponse: normalizeClock(firstResponse), resolution: normalizeClock(resolution) } };
 }
 
 export function readTicket(value: unknown): TicketDto {
   if (!isTicket(value)) throw new AppError('Phản hồi ticket không hợp lệ.', 'invalid-response');
-  return value;
+  return normalizeTicket(value);
 }
 
 export function readTicketPage(value: unknown): PagedTicketResult {
@@ -37,7 +79,7 @@ export function readTicketPage(value: unknown): PagedTicketResult {
     || typeof value.totalCount !== 'number' || !Number.isInteger(value.totalCount) || value.totalCount < 0) {
     throw new AppError('Phản hồi danh sách ticket không hợp lệ.', 'invalid-response');
   }
-  return { items: value.items, page: value.page, pageSize: value.pageSize, totalCount: value.totalCount };
+  return { items: value.items.map(normalizeTicket), page: value.page, pageSize: value.pageSize, totalCount: value.totalCount };
 }
 
 function isTimelineItem(value: unknown): value is TimelineItemDto {

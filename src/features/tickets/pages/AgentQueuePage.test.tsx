@@ -207,3 +207,47 @@ it('returns from the workspace to the same filtered queue', async () => {
   await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/agent-workspace?scope=all&category=NET'));
   await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', category: 'NET' }));
 });
+
+const slaClock = { targetMinutes: 240, elapsedMinutes: 200, remainingMinutes: 40, deadline: '2026-10-19T04:00:00Z', isBreached: false, state: 'RunningAtRisk' };
+const atRisk = { isApplicable: true, evaluatedAt: '2026-10-19T03:20:00Z', overallStatus: 'AtRisk', firstResponse: slaClock, resolution: slaClock };
+
+it('shows the SLA state and deadline of each ticket, and says so when the backend sent none', async () => {
+  server.use(http.get('http://localhost/api/tickets/queue', () => HttpResponse.json({
+    items: [{ ...ticketA, sla: atRisk }, ticketB], page: 1, pageSize: 10, totalCount: 2,
+  })));
+  renderQueue();
+  const withSla = (await screen.findByText(ticketA.ticketNumber)).closest('tr');
+  const withoutSla = (await screen.findByText(ticketB.ticketNumber)).closest('tr');
+  if (!withSla || !withoutSla) throw new Error('Queue rows are missing');
+  expect(screen.getByRole('columnheader', { name: 'SLA' })).toBeInTheDocument();
+  expect(within(withSla).getByText('Sắp vi phạm')).toBeInTheDocument();
+  expect(within(withSla).getByText(/^Hạn /)).toBeInTheDocument();
+  expect(within(withoutSla).getByText('Chưa có thông tin SLA')).toBeInTheDocument();
+});
+
+it('filters the queue by SLA status through the backend and keeps it in the URL', async () => {
+  server.use(http.get('http://localhost/api/tickets/queue', ({ request }) => {
+    requests.push(Object.fromEntries(new URL(request.url).searchParams));
+    return HttpResponse.json({ items: [{ ...ticketA, sla: atRisk }], page: 1, pageSize: 10, totalCount: 1 });
+  }));
+  renderQueue('/agent-workspace?page=2');
+  await screen.findByText(ticketA.ticketNumber);
+
+  await userEvent.click(screen.getByRole('combobox', { name: 'SLA' }));
+  await userEvent.click(await screen.findByTitle('Sắp vi phạm'));
+  await waitFor(() => expect(requests.at(-1)).toEqual({ page: '1', pageSize: '10', scope: 'unassigned', slaStatus: 'AtRisk' }));
+  expect(screen.getByTestId('location')).toHaveTextContent('/agent-workspace?sla=AtRisk');
+  expect(screen.queryByText('Backend chưa hỗ trợ lọc theo SLA')).not.toBeInTheDocument();
+});
+
+it('restores the SLA filter from the URL', async () => {
+  renderQueue('/agent-workspace?sla=Breached');
+  await screen.findByText(ticketA.ticketNumber);
+  expect(requests[0]).toEqual({ page: '1', pageSize: '10', scope: 'unassigned', slaStatus: 'Breached' });
+});
+
+it('warns that the list is not filtered when the backend ignores the SLA filter', async () => {
+  // The default mock returns tickets with no `sla` at all, like a backend without the SLA contract.
+  renderQueue('/agent-workspace?sla=AtRisk');
+  expect(await screen.findByText('Backend chưa hỗ trợ lọc theo SLA')).toBeInTheDocument();
+});

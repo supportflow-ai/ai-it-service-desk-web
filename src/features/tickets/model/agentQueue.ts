@@ -8,6 +8,7 @@ export const defaultAgentQueueFilters: AgentQueueFilters = {
   status: null,
   category: null,
   priority: null,
+  slaStatus: null,
   sortByPriority: false,
   page: 1,
   pageSize: 10,
