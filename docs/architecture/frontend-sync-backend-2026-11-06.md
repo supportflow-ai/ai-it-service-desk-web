@@ -1,5 +1,7 @@
 # Kế hoạch công việc Frontend đồng bộ Backend (06/11/2026)
 
+> Hồ sơ lịch sử ngày 06/11/2026. Để tích hợp ở mốc đang dùng, xem [đối chiếu API và quyền hiện hành](api-baseline.md#quyền-hiện-hành).
+
 Tài liệu này tổng hợp toàn bộ các thay đổi backend do **Tuannll** thực hiện và merge vào nhánh `dev` trong ngày 06/11/2026 (PR #46, PR #47, PR #48), kèm danh sách chi tiết các công việc phía frontend cần thực hiện để đồng bộ dữ liệu và tính năng theo đúng kiến trúc `AGENTS.md`.
 
 ---

@@ -2,7 +2,15 @@
 
 Frontend React 19, TypeScript 5.7, Vite 6 và Ant Design 5 của AI IT Service Desk.
 
-Phạm vi MVP đã chốt gồm Identity và Ticketing. Xem [đối chiếu API của Frontend](docs/architecture/api-baseline.md) để chọn đúng bản Backend khi nghiệm thu và [tài liệu dự án](https://github.com/supportflow-ai/supportflow-ai-infra/blob/main/README.md) để theo dõi phạm vi chung.
+Web cung cấp giao diện Identity và Ticketing. Theo `AI-02`, nghiệm thu phân loại AI có người duyệt cùng hai luồng nền tảng trên một cấu hình ứng viên. Giao diện duyệt AI hiện mới có khung, còn chờ nối với Backend. Bộ checkout liên kho có phạm vi và tiêu chí nghiệm thu trong `supportflow-ai-infra/docs/project/mvp.md`.
+
+## Tài liệu tích hợp
+
+Rà ngày 21/11/2026 tại Web `dev@89eabc4` và Backend `dev@3640c33`.
+
+- Đối chiếu [quyền hiện hành](docs/architecture/api-baseline.md#quyền-hiện-hành), [snapshot đã ghim](tests/contracts/backend-source.json) và [điểm cần sửa trên giao diện](docs/product-contract-ui-notes.md).
+- Khi chuẩn bị ứng viên R2, dùng [đối chiếu tải tệp](docs/architecture/r2-upload-plan.md) để kiểm phương thức, thông tin grant và bước xác nhận cùng bản Backend.
+- Truy vết qua [bản đồng bộ Backend ngày 06/11](docs/architecture/frontend-sync-backend-2026-11-06.md) và [bản đối chiếu Knowledge UI tại Backend `1506a5b`](docs/architecture/knowledge-ui-access-map.md). Hai bảng lưu kết quả tại mốc ghi trong từng hồ sơ.
 
 ## Phát triển
 
