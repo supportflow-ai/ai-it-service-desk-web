@@ -1,6 +1,35 @@
 # Frontend API compatibility baseline
 
+> Mục “Quyền hiện hành” và phần đối chiếu ngày 13/11 ghi lại các mốc được nêu trong từng mục. Web `dev` đã mở `/tickets/new` cho Agent và Admin tại `5492618`. Xem phần cập nhật snapshot bên dưới để biết phiên bản đang ghim.
+
+## Quyền hiện hành
+
+Đối chiếu ngày 21/11/2026 tại Web `dev@89eabc4` và Backend `dev@3640c33`. Route Web kiểm vai trò để vào màn hình. Backend kiểm quyền theo từng thao tác và tài nguyên.
+
+| Luồng | Có route trên Web | Được gọi API |
+| --- | --- | --- |
+| Tạo phiếu | `/tickets/new` chỉ có Requester | `POST /api/tickets` nhận Requester, Agent và Admin |
+| Chi tiết và trao đổi công khai | `/requester-dashboard/tickets/:id` nhận cả ba vai trò | Chủ phiếu đọc phần công khai của phiếu mình tạo. Agent có thêm quyền theo nhóm đang hoạt động hoặc phân công trực tiếp. Admin đọc mọi phiếu |
+| Hàng đợi và ghi chú nội bộ | `/agent-workspace` và `/agent-workspace/tickets/:id` dành cho Agent và Admin | Agent xử lý phiếu của nhóm đang hoạt động mà mình là thành viên hoặc phiếu được gán trực tiếp. Admin có phạm vi toàn hệ thống. Nếu chỉ có quyền chủ phiếu thì timeline chỉ có nội dung công khai |
+| Phân công | Danh bạ chọn người mặc định lọc Agent. Admin có thể tự gán nếu điều kiện của Web cho phép | API kiểm người gọi Agent trong phạm vi xử lý hoặc Admin và nhận người được gán có vai trò Agent hoặc Admin. Kiểm membership đội đích thuộc thiết kế chuyển đội |
+| Đọc Kho tri thức | `/knowledge` và `/knowledge/:id` cho cả ba vai trò xem bài đã xuất bản | Requester chỉ đọc bài đã xuất bản. Agent đọc thêm bài của mình. Admin đọc mọi bài |
+| Biên soạn và xuất bản Kho tri thức | `/knowledge/manage` và các route con dành cho Agent và Admin | Agent hoặc Admin tạo bản nháp. Agent là tác giả hoặc Admin được sửa bản nháp, xuất bản và lưu trữ theo trạng thái bài và revision |
+
+Phiếu ngoài phạm vi thao tác trả `404`. Luồng xác nhận đội nhận và chuyển đội còn chờ triển khai. [Route Web](../../src/app/router/routeConfig.ts)
+
+### Nhãn Category cần đối chiếu trong pilot
+
+`ACC` trong Domain bao gồm tài khoản và quyền số. `ACCESS` dùng cho truy cập vật lý, còn Web hiện hiển thị “Cấp quyền truy cập”. Kiểm ca quên mật khẩu, xin quyền thư mục số, cấp thẻ ra vào và lỗi hạ tầng trước khi chốt nhãn giao diện và ánh xạ đội tại `TEAM-03`. [Nhãn hiện hành trên Web](../../src/features/tickets/model/ticketCategories.ts) · [Danh mục Domain trong bộ checkout liên kho](https://github.com/supportflow-ai/ai-it-service-desk/blob/docs/dong-bo-tai-lieu-2026-11-21/src/backend/Modules/Ticketing/Domain/TicketCategories.cs)
+
+Trong bộ checkout liên kho, xem [ma trận quyền Backend](https://github.com/supportflow-ai/ai-it-service-desk/blob/docs/dong-bo-tai-lieu-2026-11-21/docs/architecture/rbac-permission-matrix.md) và [phương án SupportTeam](https://github.com/supportflow-ai/ai-it-service-desk/blob/docs/dong-bo-tai-lieu-2026-11-21/docs/adr/ADR-016-support-team-routing-and-agent-scope.md#phương-án-supportteam-đã-chốt). Các tài liệu trên GitHub theo mốc hợp nhất của [kho Backend](https://github.com/supportflow-ai/ai-it-service-desk/tree/main/docs).
+
+## Đối chiếu ngày 2026-11-13
+
+Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline Backend `dev@07ce07a` ở mốc 13/11 có hash `c60fa717…`, giữ nguyên tại `dev@3640c33` khi đối chiếu ngày 21/11/2026. Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
+
 ## Khoảng lệch contract: SLA (TC-232, đối chiếu ngày 2026-11-20)
+
+> Hồ sơ trước khi Backend hợp nhất PR #82. Backend `dev@b3cc19a` đã có SLA và bản OpenAPI cập nhật tại `9363928`.
 
 Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này **chưa vào `dev`** và `contracts/backend/openapi-baseline.json` của nó **chưa có** schema SLA hay tham số `slaStatus`, nên snapshot ghim trong `tests/contracts/` **không đổi**; nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
 
@@ -11,11 +40,11 @@ Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached 
 
 Việc cần làm khi backend merge: lấy `openapi-baseline.json` từ đúng SHA backend, cập nhật snapshot và checksum, chạy `contract:generate` và `contract:check` (mục 22 của [AGENTS.md](../../AGENTS.md)), rồi bỏ cảnh báo "chưa hỗ trợ lọc" nếu không còn cần. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
 
-## Đối chiếu ngày 2026-11-13
+## Cập nhật snapshot trên Web `dev` (`756502a`)
 
-Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
+**Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
 
-Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
+Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent dùng phạm vi nhóm đang hoạt động hoặc phân công trực tiếp cho thao tác của nhân viên. Chủ phiếu có quyền công khai trên phiếu mình tạo, kể cả khi có vai trò Agent. Admin đọc toàn hệ thống. Phiếu ngoài phạm vi của thao tác trả `404`. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
 
 ## Việc cần sửa: Agent và Admin cũng tạo được phiếu (quyết định 2026-11-13)
 
@@ -33,6 +62,8 @@ Chủ dự án xác nhận Agent và Admin cũng phải tạo được phiếu. 
 Chưa kiểm: nhân viên tạo phiếu thì phiếu thuộc về chính họ (`requesterId` là người đăng nhập) và vẫn đi vào hàng đợi phân loại thủ công; cần xác nhận hiển thị trong giao diện hàng đợi và phạm vi đọc theo nhóm hỗ trợ (ADR-016) cho phiếu do Agent tự tạo.
 
 ## Đối chiếu tích hợp MVP ngày 05/11/2026
+
+Bảng này giữ kết quả của bản chụp. Bộ checkout liên kho có phạm vi nghiệm thu theo `AI-02` trong `supportflow-ai-infra/docs/project/mvp.md`.
 
 Đối chiếu [Web `main@ade7af4`](https://github.com/supportflow-ai/ai-it-service-desk-web/commit/ade7af4e1b88e7834c8d9b225f68eb7ebd75f9fe) với [Backend `main@bf38ef9`](https://github.com/supportflow-ai/ai-it-service-desk/commit/bf38ef903f46f6ea21f80da44c11d437391a9efb). Snapshot Web ghim Backend `dev@febb4d7` và khớp từng byte với OpenAPI trên Backend `main@bf38ef9`. [Mốc nguồn và checksum](../../tests/contracts/backend-source.json)
 

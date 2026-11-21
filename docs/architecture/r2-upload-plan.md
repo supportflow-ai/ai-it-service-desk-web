@@ -1,10 +1,10 @@
 # Kế hoạch chuyển tải tệp sang Cloudflare R2 (giao diện web)
 
-Trạng thái: kế hoạch đề xuất, đã duyệt cùng ADR-017 (chấp nhận 2026-11-16, toàn phạm vi: không dùng MinIO ở mọi môi trường, kể cả kiểm thử và CI); chưa triển khai, bắt đầu bằng giai đoạn 0. Cập nhật 2026-11-13, đối chiếu `dev` tại `386d709`. Quyết định và thiết kế nằm ở ADR-017 của kho backend (`docs/adr/ADR-017-cloudflare-r2-object-storage.md`). Kế hoạch các kho khác: backend (`docs/architecture/r2-storage-plan.md`), infra (`docs/infra/r2-storage-plan.md`), ai-service (`docs/r2-impact.md`).
+Trạng thái: **Đã chốt · chờ triển khai**. ADR-017 của Backend được chấp nhận ngày 16/11/2026, áp dụng R2 cho local, kiểm thử, CI, staging và production. Đợt D5 đối chiếu `dev@89eabc4` ngày 21/11/2026. Kế hoạch phối hợp nằm ở Backend (`docs/architecture/r2-storage-plan.md`), Infra (`docs/infra/r2-storage-plan.md`) và AI Service (`docs/r2-impact.md`).
 
 ## 1. Tóm tắt
 
-Web đã gửi tệp thẳng tới URL ký sẵn và **đã có sẵn nhánh PUT thô**: khi `formData` trống thì `uploadToPresignedUrl` gọi `PUT` với `Content-Type`. R2 chỉ hỗ trợ presigned PUT (không có presigned POST), nên về chức năng web gần như không phải đổi gì để hoạt động với backend dùng R2. Phần việc của web là: dọn nhánh POST không còn dùng, gửi đúng tiêu đề đã ký, xử lý lỗi của R2 cho rõ ràng, cập nhật kiểm thử, snapshot hợp đồng và tài liệu, và phối hợp CORS với hạ tầng.
+Web hiện có hai nhánh tải tệp thẳng tới URL ký. Backend MinIO hiện trả `formData` để client gửi multipart POST. Nhánh PUT thô hoạt động khi phản hồi là URL ký cho PUT. Chuyển R2 cần đồng bộ cặp Backend/Web, quyền tải, header đã ký, snapshot hợp đồng và CORS trước khi gỡ POST. Các cấu hình ghim MinIO tiếp tục dùng hướng dẫn hiện có đến khi được chuyển. [URL ký của R2](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)
 
 Web **không giữ khóa hay endpoint R2 nào**. Không có biến môi trường mới cho web; `VITE_*` vẫn không được chứa bí mật.
 
@@ -23,16 +23,16 @@ Web **không giữ khóa hay endpoint R2 nào**. Không có biến môi trườn
 ### 3.1 Mã
 
 1. **`uploadClient.ts`:** bỏ tùy chọn `formData` và nhánh `POST/FormData`; luôn `PUT`. Tiêu đề gửi đi lấy từ `requiredHeaders` do backend trả (gồm `Content-Type`); nếu backend chưa trả thì dùng `Content-Type` hiện tại. Giữ client axios riêng không có `Authorization`. Giữ báo tiến trình và hủy bằng `AbortSignal`.
-2. **`ticket.types.ts`, `ticketContract.ts`:** `UploadUrlResult` bỏ `formData`, thêm `requiredHeaders?: Record<string, string>`. Bộ đọc kiểm tra mọi giá trị là chuỗi và `uploadUrl` là http(s). Trong giai đoạn chuyển tiếp vẫn chấp nhận và **bỏ qua** `formData` để không vỡ khi gặp backend cũ; gỡ hẳn ở giai đoạn 4.
+2. **`ticket.types.ts`, `ticketContract.ts`:** phản hồi R2 dự kiến bỏ `formData`, thêm `requiredHeaders?: Record<string, string>`. Bộ đọc kiểm tra hợp đồng và URL do Backend cấp. Chuyển luồng tệp theo cặp SHA/digest tương thích. Giữ nhánh POST ở phiên bản phục vụ backend MinIO. Ứng viên chỉ hỗ trợ PUT từ chối phản hồi chứa POST policy để tránh gửi sai phương thức.
 3. **`uploadAttachment.ts`:** truyền `requiredHeaders` cho bước tải lên; không đổi thứ tự cấp URL, tải lên, xác nhận và cơ chế xác nhận lại không gửi lại tệp.
-4. **Thông báo lỗi tải lên:** URL hết hạn trả 403 `ExpiredRequest` **không kèm tiêu đề CORS**, và thiếu CORS cũng khiến trình duyệt chỉ báo lỗi mạng. Hai tình huống không phân biệt được ở phía trình duyệt, nên thông báo nêu cả khả năng "liên kết đã hết hạn" và hướng dẫn chọn lại tệp để tạo liên kết mới. Không tự thử lại (giữ quy tắc không tự lặp thao tác ghi).
-5. **Tải xuống:** URL xin ngay khi bấm nên hạn ngắn (đề xuất 300 giây) không ảnh hưởng. Tên tệp tải về: khóa cuối `tickets/{id}/attachments/{guid}` không có tên và đuôi tệp gốc, và thuộc tính `download` của liên kết bị bỏ qua với URL khác origin, nên tên tệp phải đến từ tiêu đề `Content-Disposition` của R2. Backend cần kiểm chứng khả năng đặt `response-content-disposition` khi ký URL tải xuống (mục kiểm chứng của ADR-017); web chỉ mở URL, không tự dựng tên.
+4. **Thông báo lỗi tải lên:** Cloudflare ghi URL hết hạn trả `403 ExpiredRequest` và thiếu header CORS, nên browser JavaScript có thể chỉ thấy lỗi mạng như khi CORS cấu hình sai. Thông báo nêu khả năng hết hạn và cách xin liên kết mới, giữ việc thử lại do người dùng chủ động. Confirm bị gián đoạn sau PUT dùng lại grant còn hợp lệ, không mặc định gửi lại tệp. [CORS của R2](https://developers.cloudflare.com/r2/buckets/cors/)
+5. **Tải xuống:** xin URL mới khi bấm. Hạn 300 giây là đề xuất cần đo. Khóa cuối chỉ có ID. Việc giữ tên gốc phụ thuộc phản hồi `Content-Disposition` của ứng viên. Kiểm trên trình duyệt thật với tên Unicode, gồm cả tham số `response-content-disposition` nếu Backend dùng cách đó.
 6. Không đọc, lưu hay hiển thị URL ký ngoài lúc dùng; không ghi vào log, fixture thật hay ảnh chụp.
 
 ### 3.2 Kiểm thử
 
 - `uploadClient.test.ts`: cập nhật; xóa `uploadPolicyBody.test.ts`.
-- `ticketApi.test.ts`: thay ba dạng `formData` bằng các dạng `requiredHeaders` hợp lệ, thiếu và sai kiểu; kiểm bộ đọc bỏ qua `formData` cũ.
+- `ticketApi.test.ts`: kiểm `requiredHeaders` hợp lệ, thiếu và sai kiểu. Kiểm rằng client chỉ hỗ trợ PUT từ chối phản hồi POST policy.
 - `TicketAttachmentSection.test.tsx`, `CreateTicketPage.test.tsx`: sửa chú thích nhắc POST; thêm ca tiêu đề đã ký được gửi nguyên.
 - `e2e/attachments.spec.ts`, `e2e/fixtures.ts`: chuyển giả lập kho lưu trữ từ POST policy sang PUT (phản hồi 200 và 403 không kèm CORS), giữ ca "tải lên xong nhưng xác nhận lỗi thì xác nhận lại không gửi lại tệp".
 - Chạy `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, và `npm run test:e2e` (đổi luồng người dùng). E2E dùng API giả nên **không chứng minh** R2 thật; kiểm chứng với R2 thật là bước tay ở môi trường dev (mục 5).
@@ -49,25 +49,31 @@ Trình duyệt `PUT` thẳng tới R2 nên bucket phải cho phép origin của 
 | --- | --- |
 | Máy lập trình viên | `http://localhost:5173` |
 | Staging, production | Origin triển khai của web (một giá trị chính xác mỗi môi trường) |
-| Bản xem trước (preview) của Vercel | Có địa chỉ tên miền phụ thay đổi theo từng bản triển khai; chỉ dùng được nếu bucket `dev` cho phép rộng hơn. Để chủ dự án quyết định (mục 7) |
+| Bản xem trước (preview) của Vercel | Chờ quyết định có đưa preview vào phạm vi thử tệp và origin nào được phép (mục 7) |
 
-Yêu cầu tối thiểu: `AllowedMethods: PUT`, `AllowedHeaders: Content-Type`, `ExposeHeaders: ETag`. Web không đọc `ETag` hiện nay, nhưng giữ để dùng sau. Cấu hình do hạ tầng áp dụng; web chỉ báo khi đổi origin triển khai. Web không đặt CSP ở `index.html`, `vercel.json` hay NGINX của kho này, nên không có `connect-src` nào cần sửa (đã kiểm tra); nếu sau này thêm CSP phải cho phép `https://*.r2.cloudflarestorage.com`.
+Luồng PUT cần origin đúng `scheme://host[:port]`, phương thức PUT và danh sách header khớp hợp đồng. `Content-Type` có trong phương án đã ký. `ExposeHeaders: ETag` có thể giữ theo mẫu Infra. Web hiện chưa đọc ETag. Nếu ingress áp CSP, kiểm `connect-src` cho host S3 đúng môi trường. Tải xuống bằng điều hướng chưa cần mở GET cho `fetch`. [CORS của R2](https://developers.cloudflare.com/r2/buckets/cors/)
 
 ## 5. Kiểm chứng với R2 thật (tay, môi trường dev)
 
-Sau khi backend và bucket `dev` sẵn sàng: tải lên tệp nhỏ, tệp sát 10 MiB và tệp loại không có `type` (`application/octet-stream`); thử tệp tải lên thành công nhưng xác nhận lỗi rồi xác nhận lại; để liên kết hết hạn rồi tải lên; bấm tải xuống và kiểm tên tệp lưu về; kiểm tab Network trình duyệt chỉ thấy `PUT` tới R2 không kèm `Authorization`. Ghi kết quả (SHA web, SHA backend, thời điểm) vào bàn giao.
+Sau khi Backend và bucket `dev` sẵn sàng, kiểm từ origin Web thực tế trên ứng viên. Dùng tệp giả lập, ghi thời điểm, SHA/digest Web và Backend, trình duyệt và mã trạng thái đã che dữ liệu nhạy cảm.
+
+| Ca cần đo | Kỳ vọng |
+| --- | --- |
+| Cấp grant → PUT → confirm → tải xuống | Tệp nhỏ, sát 10 MiB và tệp thiếu MIME từ trình duyệt đi đúng metadata đã ký. PUT dùng đúng header và client lưu trữ không gửi JWT. GET cần đổi URL sau khi hết hạn và lưu đúng tên. |
+| Hết hạn hoặc gián đoạn | URL hoặc grant hết hạn hiện lỗi phù hợp với bước. Nếu PUT đã thành công và confirm bị gián đoạn, thử lại confirm với grant còn hiệu lực. Sau commit chỉ có một attachment. |
+| Quyền đọc và CORS | Origin Web hợp lệ qua preflight. Origin ngoài danh sách không qua CORS. Backend vẫn kiểm quyền cấp link tải xuống. Kết quả E2E mô phỏng giữ riêng với kết quả bucket thật. |
 
 ## 6. Lộ trình (phần web)
 
 | Giai đoạn | Việc của web | Điều kiện xong |
 | --- | --- | --- |
 | 0–1 | Không đổi mã; theo dõi kết quả kiểm chứng ở backend | – |
-| 2 | Chuẩn bị nhánh: `requiredHeaders`, bỏ qua `formData`, cập nhật kiểm thử và snapshot khi backend xuất baseline mới | Lint, typecheck, test, build, E2E đạt |
+| 2 | Chuẩn bị ứng viên PUT và `requiredHeaders`, cập nhật kiểm thử và snapshot khi Backend xuất baseline mới | Lint, typecheck, test, build, E2E đạt |
 | 3 | Kiểm chứng tay với R2 thật; đồng bộ CORS với hạ tầng | Mục 5 đạt |
-| 4 | Gỡ hẳn xử lý `formData`; cập nhật README, AGENTS, [api-baseline.md](api-baseline.md) và cẩm nang chung (bốn kho cùng lúc) | Tài liệu khớp mã |
+| 4 | Khi phiên bản đã ghim chuyển sang R2, gỡ hỗ trợ POST ở nguồn đang phát hành R2 và chuyển chỉ dẫn cũ sang lịch sử. Cập nhật README, AGENTS, [api-baseline.md](api-baseline.md) và cẩm nang chung | Tài liệu khớp phiên bản đang chạy |
 | 5 | Cập nhật origin cho staging, production | Chủ dự án duyệt |
 
-Web không cần chờ hạ tầng gỡ MinIO để hoạt động, nhưng phải đi cùng backend (giai đoạn 2) vì nhánh PUT thô chỉ đúng khi backend ký PUT.
+Thử trước cặp ứng viên Web/Backend dùng R2 trên bucket thử. Chuyển chỉ dẫn multipart POST khỏi phần hiện hành khi cả hai image/SHA đã chuyển và kiểm thật đạt trên cấu hình đó. Khi cần lùi, quay về cặp phiên bản tương thích với storage và dữ liệu còn đọc được. Quyết định giữ dữ liệu và phương án phục hồi do Backend/Infra đối soát trước khi kích hoạt lại ghi.
 
 ## 7. Rủi ro và quyết định còn mở
 
@@ -76,5 +82,5 @@ Web không cần chờ hạ tầng gỡ MinIO để hoạt động, nhưng phả
 | Tiêu đề không khớp chữ ký | Chữ ký có `Content-Type`; gửi khác thì R2 từ chối. Giảm thiểu: dùng `requiredHeaders` từ backend, một nguồn duy nhất |
 | Lỗi hết hạn không đọc được | Không có CORS trên phản hồi lỗi hết hạn; chỉ phân biệt được bằng thông báo chung (mục 3.1.4) |
 | Tên tệp khi tải xuống | Phụ thuộc kết quả kiểm chứng `response-content-disposition` ở backend |
-| Origin của bản xem trước Vercel | Quyết định: mở rộng origin cho bucket `dev` (rủi ro thấp vì mọi PUT cần URL ký) hay chỉ cho phép `localhost` và không thử tải tệp trên bản xem trước |
+| Origin của bản xem trước Vercel | Nếu đưa preview vào phạm vi, duyệt origin cụ thể trên bucket `dev` và kiểm lại preflight. Bucket staging và production giữ danh sách origin riêng. |
 | Snapshot hợp đồng lệch | Đồng bộ chung với thay đổi `upload-url` (mục 3.3) |

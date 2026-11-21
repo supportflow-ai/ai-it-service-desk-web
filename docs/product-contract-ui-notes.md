@@ -1,11 +1,26 @@
 # Ghi chú giao diện cho hợp đồng sản phẩm P0
 
 **Phiên bản:** 0.2.0 · **Cập nhật:** 05/11/2026 · **Đặt tại:** repo `ai-it-service-desk-web`, thư mục `docs/`
-**Trạng thái:** đề xuất chờ duyệt, đi kèm bộ hợp đồng sản phẩm ở repo backend: [`docs/product-contract/`](https://github.com/supportflow-ai/ai-it-service-desk/tree/main/docs/product-contract).
+Ghi chú đề xuất từ bộ hợp đồng sản phẩm P0. Đối chiếu các route đang dùng theo [API baseline hiện hành](architecture/api-baseline.md#quyền-hiện-hành) và xử lý quyết định chung theo `supportflow-ai-infra/docs/project/mvp.md` trong bộ checkout liên kho.
 
 Tài liệu này chỉ chứa phần riêng của giao diện. Phạm vi, quyền và API thuộc bộ hợp đồng ở repo backend; khi khác nhau, bộ hợp đồng thắng. Quy tắc kiến trúc giao diện vẫn theo `AGENTS.md` của repo này.
 
+## Các route và quyền đã đối chiếu
+
+Đối chiếu ngày 21/11/2026 tại Web `dev@89eabc4` và Backend `dev@3640c33`.
+
+| Luồng | Có route trên Web | Được gọi API |
+| --- | --- | --- |
+| Tạo phiếu | `/tickets/new` chỉ có Requester | `POST /api/tickets` nhận Requester, Agent và Admin |
+| Xử lý phiếu | `/agent-workspace` và trang chi tiết xử lý dành cho Agent và Admin | Agent theo đội đang hoạt động mà mình là thành viên hoặc theo phân công trực tiếp. Admin có phạm vi toàn hệ thống. Nếu chỉ có quyền chủ phiếu thì timeline chỉ có nội dung công khai |
+| Đọc Kho tri thức | `/knowledge` và `/knowledge/:id` hiển thị bài đã xuất bản cho người đăng nhập | API đọc bài đã xuất bản cho cả ba vai trò. Agent đọc thêm bài của mình. Admin đọc mọi bài |
+| Soạn và xuất bản bài | Nhánh `/knowledge/manage` dành cho Agent và Admin | Agent hoặc Admin tạo bản nháp. Agent là tác giả hoặc Admin sửa, xuất bản và lưu trữ theo trạng thái và revision |
+
+Phiếu ngoài phạm vi thao tác trả `404`. Quyền ghi chú nội bộ được kiểm trên từng phiếu. Chuyển đội và điều phối Lead còn chờ triển khai. [Đối chiếu API và nguồn quyền Backend](architecture/api-baseline.md#quyền-hiện-hành)
+
 ## 1. Route và vai trò
+
+Bảng sau giữ yêu cầu từ bản đề xuất v0.2.0 ngày 05/11/2026. Đối chiếu với bảng hiện hành ở trên khi kiểm tra ứng viên.
 
 | Màn hình | Route | Vai trò | API chính |
 | --- | --- | --- | --- |

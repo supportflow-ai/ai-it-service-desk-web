@@ -1,5 +1,7 @@
 # Knowledge Base UI access map (TC-332)
 
+> Hồ sơ đối chiếu TC-332 tại Backend `1506a5b`. Quyền và đường dẫn đang dùng nằm trong [bảng đối chiếu hiện hành](api-baseline.md#quyền-hiện-hành).
+
 Bản đồ màn hình (route) và thao tác của UI Kho tri thức, đối chiếu với quyền mà backend thực
 sự kiểm tra. Đây là đầu vào cho phần cài đặt UI Kho tri thức và cho ma trận test lifecycle/visibility
 (TC-333). Thuộc TC-216 "Chốt Knowledge Article lifecycle, versioning và permissions".
