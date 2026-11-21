@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user: session.token ? currentUser.data ?? null : null,
     status,
     signedOut: !session.token && session.signedOut,
+    sessionExpired: !session.token && session.expired,
     sessionVersion: session.version,
     error: currentUser.error ? normalizeError(currentUser.error) : null,
     loginPending: loginMutation.isPending,

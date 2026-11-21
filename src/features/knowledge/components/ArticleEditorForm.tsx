@@ -31,6 +31,7 @@ export function ArticleEditorForm({ form, initialValues, pending, onSubmit, onCa
     <Form<ArticleDraftPayload>
       form={form}
       layout="vertical"
+      scrollToFirstError={{ focus: true }}
       initialValues={initialValues}
       disabled={pending}
       onFinish={(values) => onSubmit({ title: values.title.trim(), content: values.content.trim(), tags: normalizeTags(values.tags) })}

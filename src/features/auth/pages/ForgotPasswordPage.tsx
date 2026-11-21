@@ -40,12 +40,12 @@ export function ForgotPasswordPage() {
   };
 
   return (
-    <Card style={{ width: 400, margin: '48px auto' }}>
+    <Card style={{ width: 400, maxWidth: 'calc(100% - 32px)', margin: '48px auto' }}>
       <Typography.Title level={2}>Quên mật khẩu</Typography.Title>
       {errorMessage && <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 16 }} />}
 
       {step === 'request' && (
-        <Form onFinish={handleRequestOtp} layout="vertical">
+        <Form onFinish={handleRequestOtp} layout="vertical" scrollToFirstError={{ focus: true }}>
           <Typography.Paragraph type="secondary">
             Nhập email tài khoản của bạn để nhận mã OTP đặt lại mật khẩu.
           </Typography.Paragraph>
@@ -57,7 +57,7 @@ export function ForgotPasswordPage() {
               { type: 'email', message: 'Email không đúng định dạng.' },
             ]}
           >
-            <Input placeholder="example@domain.com" />
+            <Input placeholder="example@domain.com" autoComplete="email" inputMode="email" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={forgotPasswordMutation.isPending} block style={{ marginBottom: 16 }}>
             Gửi mã OTP
@@ -66,7 +66,7 @@ export function ForgotPasswordPage() {
       )}
 
       {step === 'reset' && (
-        <Form onFinish={handleResetPassword} layout="vertical">
+        <Form onFinish={handleResetPassword} layout="vertical" scrollToFirstError={{ focus: true }}>
           <Typography.Paragraph type="secondary">
             Mã OTP đã được gửi đến <b>{email}</b>. Vui lòng nhập mã OTP và mật khẩu mới.
           </Typography.Paragraph>
@@ -75,7 +75,7 @@ export function ForgotPasswordPage() {
             label="Mã OTP"
             rules={[{ required: true, message: 'Vui lòng nhập mã OTP.' }]}
           >
-            <Input placeholder="Nhập mã OTP gồm 6 chữ số" />
+            <Input placeholder="Nhập mã OTP gồm 6 chữ số" autoComplete="one-time-code" inputMode="numeric" />
           </Form.Item>
           <Form.Item
             name="newPassword"
@@ -85,14 +85,14 @@ export function ForgotPasswordPage() {
               { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự.' },
             ]}
           >
-            <Input.Password placeholder="Tối thiểu 8 ký tự" />
+            <Input.Password placeholder="Tối thiểu 8 ký tự" autoComplete="new-password" />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
             label="Xác nhận mật khẩu mới"
             rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu mới.' }]}
           >
-            <Input.Password placeholder="Nhập lại mật khẩu mới" />
+            <Input.Password placeholder="Nhập lại mật khẩu mới" autoComplete="new-password" />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={resetPasswordMutation.isPending} block style={{ marginBottom: 16 }}>
             Đặt lại mật khẩu

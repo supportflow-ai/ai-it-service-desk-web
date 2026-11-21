@@ -40,6 +40,8 @@ export function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [openPasswordModal, setOpenPasswordModal] = useState(false);
+  // Below the `lg` breakpoint (tablet) the sidebar folds to icons so the page keeps its width.
+  const [collapsed, setCollapsed] = useState(false);
 
   const roleText = roleOrder.filter((role) => user?.roles.includes(role)).map((role) => roleLabels[role]).join(' · ');
   // The menu, and its order, come from the role-based navigation: nothing is added per screen here.
@@ -57,6 +59,10 @@ export function MainLayout() {
     <Layout style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Sider
         width={220}
+        collapsedWidth={72}
+        breakpoint="lg"
+        collapsed={collapsed}
+        onBreakpoint={setCollapsed}
         theme="light"
         style={{
           borderRight: '1px solid var(--bd)',
@@ -67,7 +73,7 @@ export function MainLayout() {
           height: '100vh',
         }}
       >
-        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid var(--bd2)' }}>
+        <div style={{ padding: collapsed ? '18px 8px 12px' : '18px 20px 12px', borderBottom: '1px solid var(--bd2)', textAlign: collapsed ? 'center' : undefined }}>
           <div
             onClick={() => navigate('/')}
             style={{
@@ -80,11 +86,13 @@ export function MainLayout() {
               color: 'var(--pr)',
             }}
           >
-            <span style={{ fontSize: 20 }}>SupportFlow</span>
+            <span style={{ fontSize: 20, margin: collapsed ? '0 auto' : undefined }} aria-label="SupportFlow" title="SupportFlow">{collapsed ? 'SF' : 'SupportFlow'}</span>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
-            Hệ thống hỗ trợ IT nội bộ
-          </div>
+          {!collapsed && (
+            <div style={{ fontSize: 11, color: 'var(--tx3)', marginTop: 2 }}>
+              Hệ thống hỗ trợ IT nội bộ
+            </div>
+          )}
         </div>
 
         <div style={{ flex: 1, padding: '12px 0', overflowY: 'auto' }}>
@@ -92,12 +100,13 @@ export function MainLayout() {
             mode="inline"
             selectedKeys={[selectedKey]}
             items={menuItems}
+            inlineCollapsed={collapsed}
             onClick={({ key }) => navigate(key)}
             style={{ borderRight: 0 }}
           />
         </div>
 
-        {user && (
+        {user && !collapsed && (
           <div
             style={{
               padding: '12px 16px',
@@ -122,6 +131,7 @@ export function MainLayout() {
             background: 'var(--sf)',
             borderBottom: '1px solid var(--bd)',
             padding: '0 24px',
+            gap: 16,
             height: 60,
             display: 'flex',
             alignItems: 'center',
@@ -132,7 +142,7 @@ export function MainLayout() {
           }}
         >
           {/* No search or notification endpoint exists yet, so both stay locked and say so. */}
-          <div style={{ flex: 1, maxWidth: 420 }} title="Chưa hỗ trợ tìm kiếm">
+          <div className="app-header-search" style={{ flex: 1, maxWidth: 420 }} title="Chưa hỗ trợ tìm kiếm">
             <Input
               disabled
               aria-label="Tìm kiếm (chưa hỗ trợ)"
@@ -152,7 +162,7 @@ export function MainLayout() {
               title="Thông báo: chưa hỗ trợ"
               aria-label="Thông báo (chưa hỗ trợ)"
             />
-            <Text style={{ fontSize: '13px', color: 'var(--tx2)' }}>
+            <Text className="app-greeting" style={{ fontSize: '13px', color: 'var(--tx2)' }}>
               Xin chào, <b>{user?.fullName ?? user?.email}</b>
             </Text>
             <Button

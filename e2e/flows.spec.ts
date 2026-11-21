@@ -42,6 +42,31 @@ test('server paging uses page=2 and displays the returned page', async ({ page, 
   expect(api.requests.some((request) => request.includes('tickets/me?page=2&pageSize=10'))).toBe(true);
 });
 
+test('an expired session explains itself on the sign-in page, then returns to the page after signing in', async ({ page, api }) => {
+  api.meStatus = 401;
+  await page.addInitScript(() => localStorage.setItem('token', 'expired'));
+  await page.goto('/requester-dashboard/tickets');
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByText('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để tiếp tục.')).toBeVisible();
+  api.meStatus = 200;
+  await page.getByLabel('Email', { exact: true }).fill('synthetic@example.invalid');
+  await page.getByLabel('Mật khẩu', { exact: true }).fill('synthetic-password');
+  await page.getByRole('button', { name: 'Đăng nhập', exact: true }).click();
+  await expect(page).toHaveURL(/\/requester-dashboard\/tickets$/);
+  await expect(page.getByText('Phiên đăng nhập đã hết hạn')).toHaveCount(0);
+});
+
+test('a session that cannot be checked can still be left: sign out from the error screen', async ({ page, api }) => {
+  api.meStatus = 500;
+  await page.addInitScript(() => localStorage.setItem('token', 'restored'));
+  await page.goto('/requester-dashboard/tickets');
+  await expect(page.getByRole('button', { name: 'Thử lại' })).toBeVisible();
+  await page.getByRole('button', { name: 'Đăng xuất' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect(await page.evaluate(() => localStorage.getItem('token'))).toBeNull();
+  await expect(page.getByText('Phiên đăng nhập đã hết hạn')).toHaveCount(0);
+});
+
 test('restore error preserves the session and allows retry', async ({ page, api }) => {
   api.meStatus = 500;
   await page.addInitScript(() => localStorage.setItem('token', 'restored'));
@@ -65,8 +90,8 @@ test('resource 403 preserves the session', async ({ page, api }) => {
 for (const [role, path, allowed] of [
   ['Requester', '/agent-workspace', false],
   ['Requester', '/tickets/new', true],
-  ['Agent', '/tickets/new', false],
-  ['Admin', '/tickets/new', false],
+  ['Agent', '/tickets/new', true],
+  ['Admin', '/tickets/new', true],
   ['Agent', '/agent-workspace', true],
   ['Agent', '/admin-panel', false],
   ['Admin', '/agent-workspace', true],

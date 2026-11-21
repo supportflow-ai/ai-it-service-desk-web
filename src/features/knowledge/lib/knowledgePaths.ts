@@ -1,4 +1,5 @@
 import { isRecord } from '@/shared/lib/guards';
+import { isArticleId } from '../model/articleId';
 import { defaultArticleListFilters } from '../model/articleList';
 import { toPublishedSearch } from './knowledgeSearch';
 
@@ -68,4 +69,13 @@ export function sourceSectionFrom(state: unknown): string | null | undefined {
 /** The search URL to go back to. */
 export function knowledgeResultsPath(state: unknown) {
   return backTo(KNOWLEDGE_PATH, isRecord(state) ? state.resultsSearch : undefined);
+}
+
+/**
+ * A link to a Published article at one of its sections, for a reader who did not come from search
+ * results (for example an agent following a citation). Null for an id that is not an article id,
+ * so a malformed citation is not turned into an address.
+ */
+export function publishedSectionLink(articleId: string, section: string | null) {
+  return isArticleId(articleId) ? { to: publishedArticlePath(articleId), state: { section } } : null;
 }

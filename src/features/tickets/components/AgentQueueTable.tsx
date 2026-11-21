@@ -8,11 +8,15 @@ import { ticketCategoryLabels } from '../model/ticketCategories';
 import { useStaffDirectory } from '../hooks/useStaffDirectory';
 import { workspaceTicketPath } from '../lib/agentQueueSearch';
 import type { QueueReturnState } from '../lib/agentQueueSearch';
+import { SlaDeadline } from './SlaDeadline';
+import { SlaStatusBadge } from './SlaStatusBadge';
 import { TicketPriorityTag } from './TicketPriorityTag';
 import { TicketStatusTag } from './TicketStatusTag';
 
 interface AgentQueueTableProps {
   result: PagedTicketResult | undefined;
+  /** The load failed with nothing to show: the error above says so, so the table must not claim there are no tickets. */
+  failed?: boolean;
   loading: boolean;
   page: number;
   pageSize: number;
@@ -28,17 +32,24 @@ function formatCreatedAt(iso: string) {
   });
 }
 
-export function AgentQueueTable({ result, loading, page, pageSize, returnState, onPageChange, onOpen }: AgentQueueTableProps) {
+export function AgentQueueTable({ result, failed = false, loading, page, pageSize, returnState, onPageChange, onOpen }: AgentQueueTableProps) {
   const { user } = useAuth();
   // The ticket carries only the assignee's id; the name comes from the staff-only directory.
   const staff = useStaffDirectory();
+  // Without a result the table is either still loading (its spinner shows over a blank body) or
+  // failed: only a loaded, empty result may say there is nothing to show.
+  const emptyText = result !== undefined
+    ? agentQueueEmptyText(hasAnyRole(user?.roles ?? [], ['Admin']))
+    : failed ? 'Chưa tải được hàng đợi.' : <div style={{ minHeight: 96 }} />;
   return (
     <Table<TicketDto>
       rowKey="id"
       size="middle"
+      // The columns keep their width; a narrow screen scrolls the table sideways instead of cutting the last ones off.
+      scroll={{ x: 'max-content' }}
       dataSource={result?.items ?? []}
       loading={loading}
-      locale={{ emptyText: agentQueueEmptyText(hasAnyRole(user?.roles ?? [], ['Admin'])) }}
+      locale={{ emptyText }}
       onRow={(ticket) => ({
         // The ticket link handles its own clicks (including opening in a new tab).
         onClick: (event) => {
@@ -73,6 +84,16 @@ export function AgentQueueTable({ result, loading, page, pageSize, returnState, 
         { title: 'Danh mục', key: 'category', render: (_, ticket) => ticketCategoryLabels[ticket.categoryId] },
         { title: 'Trạng thái', key: 'status', render: (_, ticket) => <TicketStatusTag status={ticket.status} /> },
         { title: 'Ưu tiên', key: 'priority', render: (_, ticket) => <TicketPriorityTag priority={ticket.priority} /> },
+        {
+          title: 'SLA',
+          key: 'sla',
+          render: (_, ticket) => (
+            <>
+              <SlaStatusBadge sla={ticket.sla} />
+              <SlaDeadline sla={ticket.sla} />
+            </>
+          ),
+        },
         {
           title: 'Người xử lý',
           key: 'assignee',
