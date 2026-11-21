@@ -1,5 +1,6 @@
-import { Alert, Card, Tag, Typography, Space, Empty } from 'antd';
-import { WarningOutlined, RobotOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Empty, Space, Tag, Typography } from 'antd';
+import { CheckCircleOutlined, RobotOutlined, WarningOutlined } from '@ant-design/icons';
+import type { TicketCategory } from '@/features/tickets';
 import { ticketCategoryLabels } from '@/features/tickets';
 import type { RequesterTriageView } from '../model/ai.types';
 import { TriageOutcome } from '../model/ai.types';
@@ -11,6 +12,8 @@ const { Text } = Typography;
 interface Props {
   result: RequesterTriageView | null;
   loading?: boolean;
+  selectedCategory?: string;
+  onApplyCategory?: (category: TicketCategory) => void;
 }
 
 const title = <Space size={6}><RobotOutlined style={{ color: 'var(--pr)' }} />Gợi ý AI</Space>;
@@ -22,7 +25,7 @@ const title = <Space size={6}><RobotOutlined style={{ color: 'var(--pr)' }} />G�
  *
  * Submit is NEVER disabled by AI unavailability (PRD UX-06).
  */
-export function RequesterAIPanel({ result, loading }: Props) {
+export function RequesterAIPanel({ result, loading, selectedCategory, onApplyCategory }: Props) {
   if (loading) {
     return <Card size="small" title={title} loading />;
   }
@@ -61,12 +64,34 @@ export function RequesterAIPanel({ result, loading }: Props) {
 
         {result.suggestedCategory && (
           <div>
-            <Text type="secondary">Danh mục gợi ý: </Text>
-            <Tag color="processing">{ticketCategoryLabels[result.suggestedCategory]}</Tag>
-            <ConfidenceTag band={result.categoryConfidence} />
+            <div style={{ marginBottom: 4 }}>
+              <Text type="secondary">Danh mục gợi ý: </Text>
+              <Tag color="processing">{ticketCategoryLabels[result.suggestedCategory]}</Tag>
+              <ConfidenceTag band={result.categoryConfidence} />
+            </div>
             {/* Requester-safe: a band, never the score (TriageViewProjections). */}
             {needsReview(result.categoryConfidence) && (
-              <div><Text type="secondary" style={{ fontSize: 12 }}>AI chưa chắc chắn về danh mục này; kỹ thuật viên sẽ kiểm tra lại.</Text></div>
+              <div style={{ marginBottom: 4 }}>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                  AI chưa chắc chắn về danh mục này; kỹ thuật viên sẽ kiểm tra lại.
+                </Text>
+              </div>
+            )}
+            {onApplyCategory && (
+              <div style={{ marginTop: 8 }}>
+                {selectedCategory === result.suggestedCategory ? (
+                  <Tag color="success" icon={<CheckCircleOutlined />}>Đã chọn danh mục này</Tag>
+                ) : (
+                  <Button
+                    size="small"
+                    type="primary"
+                    ghost
+                    onClick={() => onApplyCategory(result.suggestedCategory!)}
+                  >
+                    Áp dụng danh mục này
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         )}

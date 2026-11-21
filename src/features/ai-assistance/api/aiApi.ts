@@ -1,8 +1,21 @@
 import { apiClient } from '@/shared/api/apiClient';
 import { normalizeError } from '@/shared/api/httpError';
-import type { SuggestionDecisionRequest, TicketAIAnalysisResponse } from '../model/ai.types';
+import type { RequesterTriageView, SuggestionDecisionRequest, TicketAIAnalysisResponse } from '../model/ai.types';
 
 export const aiApi = {
+  async classifyDraft(payload: { title: string; description: string }, signal?: AbortSignal): Promise<RequesterTriageView | null> {
+    try {
+      const response = await apiClient.post<RequesterTriageView>('/ai/classify-draft', payload, { signal });
+      return response.data;
+    } catch (error) {
+      const normalized = normalizeError(error);
+      if (normalized.status === 404 || normalized.status === 501) {
+        return null;
+      }
+      throw normalized;
+    }
+  },
+
   async getTicketAIAnalysis(ticketId: string, signal?: AbortSignal): Promise<TicketAIAnalysisResponse | null> {
     try {
       const response = await apiClient.get<TicketAIAnalysisResponse>(`/tickets/${ticketId}/ai-analysis`, { signal });
