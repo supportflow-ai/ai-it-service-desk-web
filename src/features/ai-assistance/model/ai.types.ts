@@ -93,3 +93,10 @@ export interface SuggestionDecisionRequest {
   reason?: string;
   ticketRevision: number;
 }
+
+export interface TicketAIAnalysisResponse {
+  result: AgentTriageView;
+  suggestions: SuggestionDto[];
+  ticketRevision: number;
+  stale: boolean;
+}
