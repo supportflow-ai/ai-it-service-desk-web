@@ -7,8 +7,8 @@ export const routeConfig = {
   // Staff may open a ticket from here, but the list is the requests a Requester raised: only they see it in the menu.
   tickets: { path: '/requester-dashboard/tickets', roles: ['Requester', 'Agent', 'Admin'], label: 'Yêu cầu của tôi', menuRoles: ['Requester'] },
   ticket: { path: '/requester-dashboard/tickets/:id', roles: ['Requester', 'Agent', 'Admin'] },
-  // Only a Requester raises requests (PRD J-01, Spec UC-02/UC-05); staff work them from the queue.
-  create: { path: '/tickets/new', roles: ['Requester'], label: 'Tạo yêu cầu' },
+  // Every role may raise a request (project owner's decision, 2026-11-13). PRD J-01 and Spec UC-02/UC-05 name only the Requester, so they are out of date here.
+  create: { path: '/tickets/new', roles: ['Requester', 'Agent', 'Admin'], label: 'Tạo yêu cầu' },
   workspace: { path: '/agent-workspace', roles: ['Agent', 'Admin'], label: 'Hàng đợi xử lý' },
   workspaceTicket: { path: '/agent-workspace/tickets/:id', roles: ['Agent', 'Admin'] },
   // Published articles are read by everyone signed in (RequireRequester admits Requester, Agent, Admin).

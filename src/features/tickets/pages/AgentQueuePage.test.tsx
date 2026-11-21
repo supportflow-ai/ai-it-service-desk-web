@@ -156,6 +156,31 @@ it('shows a permission error without any rows', async () => {
   expect(screen.queryByText(ticketA.ticketNumber)).not.toBeInTheDocument();
 });
 
+it('does not say the queue is empty when it failed to load, and retries on request', async () => {
+  queueStatus = 500;
+  renderQueue();
+  expect(await screen.findByText('Chưa tải được hàng đợi.')).toBeInTheDocument();
+  expect(screen.queryByText(/Không có ticket nào phù hợp với bộ lọc/)).not.toBeInTheDocument();
+  queueStatus = 200;
+  await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+  expect(await screen.findByText(ticketA.ticketNumber)).toBeInTheDocument();
+  expect(screen.queryByText('Chưa tải được hàng đợi.')).not.toBeInTheDocument();
+});
+
+it('shows no empty-queue wording while the first page is still loading', async () => {
+  let release = () => {};
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  server.use(http.get('http://localhost/api/tickets/queue', async () => {
+    await gate;
+    return HttpResponse.json({ items: [ticketA], page: 1, pageSize: 10, totalCount: 1 });
+  }));
+  renderQueue();
+  await screen.findByRole('heading', { name: 'Hàng đợi xử lý' });
+  expect(screen.queryByText(/Không có ticket nào phù hợp với bộ lọc/)).not.toBeInTheDocument();
+  release();
+  expect(await screen.findByText(ticketA.ticketNumber)).toBeInTheDocument();
+});
+
 it('restores filters from the URL and writes filter changes back to it', async () => {
   renderQueue('/agent-workspace?scope=all&status=2&page=2');
   await screen.findByText(ticketA.ticketNumber);

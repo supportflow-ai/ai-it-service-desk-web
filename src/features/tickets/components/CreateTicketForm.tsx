@@ -18,6 +18,7 @@ export function CreateTicketForm({ form, pending, files, onFilesChange, onSubmit
     <Form<CreateTicketPayload>
       form={form}
       layout="vertical"
+      scrollToFirstError={{ focus: true }}
       onFinish={onSubmit}
       disabled={pending}
     >

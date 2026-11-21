@@ -8,12 +8,12 @@ export function AuthForm({ register = false, pending, onSubmit }: {
   pending: boolean;
   onSubmit: (values: AuthFormValues) => Promise<void>;
 }) {
-  return <Form<AuthFormValues> layout="vertical" onFinish={onSubmit} disabled={pending}>
+  return <Form<AuthFormValues> layout="vertical" onFinish={onSubmit} disabled={pending} scrollToFirstError={{ focus: true }}>
     {register && <Form.Item name="fullName" label="Họ và tên" rules={[{ required: true, whitespace: true, message: 'Vui lòng nhập họ và tên.' }]}>
       <Input autoComplete="name" />
     </Form.Item>}
     <Form.Item name="email" label="Email" rules={[{ required: true, message: 'Vui lòng nhập Email.' }, { type: 'email', message: 'Email không hợp lệ.' }]}>
-      <Input autoComplete="username" />
+      <Input autoComplete={register ? 'email' : 'username'} inputMode="email" />
     </Form.Item>
     <Form.Item name="password" label="Mật khẩu" rules={[
       { required: true, message: 'Vui lòng nhập mật khẩu.' },

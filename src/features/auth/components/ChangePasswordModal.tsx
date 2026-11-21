@@ -48,13 +48,13 @@ export function ChangePasswordModal({ open, onClose }: ChangePasswordModalProps)
       destroyOnHidden
     >
       {errorMessage && <Alert type="error" showIcon message={errorMessage} style={{ marginBottom: 16 }} />}
-      <Form form={form} layout="vertical" onFinish={handleSubmit}>
+      <Form form={form} layout="vertical" onFinish={handleSubmit} scrollToFirstError={{ focus: true }}>
         <Form.Item
           name="currentPassword"
           label="Mật khẩu hiện tại"
           rules={[{ required: true, message: 'Vui lòng nhập mật khẩu hiện tại.' }]}
         >
-          <Input.Password placeholder="Nhập mật khẩu hiện tại" />
+          <Input.Password placeholder="Nhập mật khẩu hiện tại" autoComplete="current-password" />
         </Form.Item>
         <Form.Item
           name="newPassword"
@@ -64,14 +64,14 @@ export function ChangePasswordModal({ open, onClose }: ChangePasswordModalProps)
             { min: 8, message: 'Mật khẩu phải có ít nhất 8 ký tự.' },
           ]}
         >
-          <Input.Password placeholder="Tối thiểu 8 ký tự" />
+          <Input.Password placeholder="Tối thiểu 8 ký tự" autoComplete="new-password" />
         </Form.Item>
         <Form.Item
           name="confirmPassword"
           label="Xác nhận mật khẩu mới"
           rules={[{ required: true, message: 'Vui lòng xác nhận mật khẩu mới.' }]}
         >
-          <Input.Password placeholder="Nhập lại mật khẩu mới" />
+          <Input.Password placeholder="Nhập lại mật khẩu mới" autoComplete="new-password" />
         </Form.Item>
       </Form>
     </Modal>

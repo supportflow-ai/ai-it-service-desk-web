@@ -1,8 +1,19 @@
 # Frontend API compatibility baseline
 
+## Khoảng lệch contract: SLA (TC-232, đối chiếu ngày 2026-11-20)
+
+Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này **chưa vào `dev`** và `contracts/backend/openapi-baseline.json` của nó **chưa có** schema SLA hay tham số `slaStatus`, nên snapshot ghim trong `tests/contracts/` **không đổi**; nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
+
+| Thành phần | Contract theo code backend | Cách web xử lý |
+| --- | --- | --- |
+| `TicketDto.sla` (`GET /tickets/queue`, `GET /tickets/{id}`) | `SlaSummaryDto`: `isApplicable`, `evaluatedAt`, `overallStatus` (`OnTrack`, `AtRisk`, `Breached`, `Completed`, `NotApplicable`), `firstResponse` và `resolution` (`targetMinutes`, `elapsedMinutes`, `remainingMinutes`, `deadline`, `isBreached`, `state`) | Trường tùy chọn; kiểm tra runtime ở `ticketContract.ts`; thiếu thì hiện "Chưa có thông tin SLA", không tự tính ở client |
+| `GET /tickets/queue?slaStatus=` | `All`, `OnTrack`, `AtRisk`, `Breached` (giá trị khác trả 400) | Chỉ gửi khi chọn bộ lọc; backend chưa hỗ trợ sẽ bỏ qua tham số, nên nếu có ticket không kèm `sla` thì trang hàng đợi cảnh báo danh sách chưa được lọc |
+
+Việc cần làm khi backend merge: lấy `openapi-baseline.json` từ đúng SHA backend, cập nhật snapshot và checksum, chạy `contract:generate` và `contract:check` (mục 22 của [AGENTS.md](../../AGENTS.md)), rồi bỏ cảnh báo "chưa hỗ trợ lọc" nếu không còn cần. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
+
 ## Đối chiếu ngày 2026-11-13
 
-Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
+Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
 
 Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
 
@@ -205,13 +216,13 @@ what backend `007a258` implements. Every screen shows one perspective, whatever 
 | Screen | Who | What it offers |
 | --- | --- | --- |
 | `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
-| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role (Agent and Admin may raise a request too, owner's decision 2026-11-13) | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
 | `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (edit/cancel while Submitted, close/reopen when Resolved, when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
 | `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
 | `/admin-panel` | Admin | Not supported yet: no admin endpoints |
 
-The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi; staff: Hàng
-đợi xử lý, Yêu cầu của tôi, Tạo yêu cầu, plus Quản trị hệ thống for Admin) and the sidebar names the
+The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi, Kho tri thức; staff: Hàng
+đợi xử lý, Kho tri thức, Tạo yêu cầu, plus Quản trị hệ thống for Admin; "Yêu cầu của tôi" is shown to Requesters only) and the sidebar names the
 real roles. Signing out returns to a clean login page, so the next account never lands on the
 previous one's page; only an expired session returns to where it was. Every tab follows a sign-in,
 account switch or sign-out made in another tab.
@@ -336,6 +347,37 @@ records one (`ReviewedAt`; Expired has none, `MarkExpired`). `ReviewedBy` is a u
 so it is not shown. A requester sees only the band and, when it is Low or missing, that a technician
 will check the category; never a score. Blocked by AISD-S3-09-T03 (TC-365, held-out evaluation): if
 it moves the band thresholds, only the backend policy changes.
+
+## RAG evidence panel (TC-229: TC-384, TC-385, TC-386)
+
+Not enabled, like triage. The backend OpenAPI baseline has no suggestion, RAG or citation
+endpoint, and ai-service lists "RAG chưa đưa vào MVP" and the "RAG/generation contract" as not
+done; the upstream package AISD-S4-02 has not landed. `WorkspaceRagPanel` (injected by the App,
+Agent/Admin only, checked against the `workspaceTicket` role list) therefore shows the
+not-enabled state and sends no request. `rag.types.ts` is a presentation model, not an HTTP
+contract: when AISD-S4-02 defines one, map it to these types at the API boundary and review the
+types against it first (answer, citations with article id, section, snippet, version, date and
+score, model, confidence band, outcome).
+
+What the panel already renders (`RagEvidencePanel`, covered by tests):
+
+- Suggestion (TC-384): the suggested reply as plain text, the model name, the confidence band
+  (the raw score only in a tooltip, never a percentage; Spec §11.3) and the same review hint as
+  triage. It only shows: the agent writes and sends the reply (auto-send is out of scope).
+- Evidence (TC-385): every citation with article title, section ("Phần mở đầu" when none),
+  passage, version, publication date and model score. The title opens the Published article at
+  that section through the existing `{ section }` router state (`publishedSectionLink`), so the
+  reader marks and scrolls to the heading. A citation whose id is not an article id has no link
+  and says so. Passages are plain text; the App supplies the link and excerpt helpers because
+  ai-assistance must not depend on knowledge.
+- States (TC-386), worded apart: not enabled; request running (status with skeleton);
+  AI unavailable or timed out (warning, fixed text, the provider's message is never shown, retry
+  only when the host passes a handler); no evidence (info, "không phải lỗi hệ thống", link to the
+  knowledge search). An answer that arrives without a citation is treated as no evidence and its
+  text is not shown, so nothing unsourced reads as an answer.
+
+Known gap: the article page's "back" link still goes to the knowledge base, not the ticket, because
+a citation carries no `resultsSearch`; the browser's back button returns to the ticket.
 
 The existing create endpoint supports optional Idempotency-Key, but this refactor preserves
 the existing request behavior and disables automatic write retries. Create is not advertised
