@@ -1,6 +1,6 @@
 import { isRecord } from '@/shared/lib/guards';
 import { AGENT_QUEUE_PAGE_SIZES, agentQueueScopes, agentQueueStatusOptions, defaultAgentQueueFilters } from '../model/agentQueue';
-import { TicketCategory, TicketPriority } from '../model/ticket.types';
+import { SlaQueueStatus, TicketCategory, TicketPriority } from '../model/ticket.types';
 import type { AgentQueueFilters } from '../model/ticket.types';
 
 export const AGENT_QUEUE_PATH = '/agent-workspace';
@@ -22,12 +22,14 @@ export function parseAgentQueueSearch(params: URLSearchParams): AgentQueueFilter
   const status = agentQueueStatusOptions.find((option) => option === statusNumber);
   const category = Object.values(TicketCategory).find((value) => value === params.get('category'));
   const priority = Object.values(TicketPriority).find((value) => value === params.get('priority'));
+  const slaStatus = Object.values(SlaQueueStatus).find((value) => value === params.get('sla'));
   const pageSize = AGENT_QUEUE_PAGE_SIZES.find((size) => size === positiveInt(params.get('pageSize')));
   return {
     scope: scope ?? defaultAgentQueueFilters.scope,
     status: status ?? null,
     category: category ?? null,
     priority: priority ?? null,
+    slaStatus: slaStatus ?? null,
     sortByPriority: params.get('sort') === 'priority',
     page: positiveInt(params.get('page')) ?? 1,
     pageSize: pageSize ?? defaultAgentQueueFilters.pageSize,
@@ -41,6 +43,7 @@ export function toAgentQueueSearch(filters: AgentQueueFilters): URLSearchParams 
   if (filters.status !== null) params.set('status', String(filters.status));
   if (filters.category !== null) params.set('category', filters.category);
   if (filters.priority !== null) params.set('priority', filters.priority);
+  if (filters.slaStatus !== null) params.set('sla', filters.slaStatus);
   if (filters.sortByPriority) params.set('sort', 'priority');
   if (filters.page !== 1) params.set('page', String(filters.page));
   if (filters.pageSize !== defaultAgentQueueFilters.pageSize) params.set('pageSize', String(filters.pageSize));

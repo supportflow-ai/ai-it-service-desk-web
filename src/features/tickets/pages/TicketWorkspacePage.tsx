@@ -12,6 +12,7 @@ import { isTerminalStatus } from '../model/ticketStatus';
 import type { TicketDto } from '../model/ticket.types';
 import { TicketWorkspaceHeader } from '../components/TicketWorkspaceHeader';
 import { TicketWorkspaceSidebar } from '../components/TicketWorkspaceSidebar';
+import { TicketSlaSection } from '../components/TicketSlaSection';
 import { TicketErrorState } from '../components/TicketErrorState';
 import { TicketAssignmentPanel } from '../components/TicketAssignmentPanel';
 import { TicketTimeline } from '../components/TicketTimeline';
@@ -66,6 +67,7 @@ export function TicketWorkspacePage({ aiPanel }: TicketWorkspacePageProps = {}) 
         <Col xs={24} md={8} lg={6} xl={5}>
           <Space direction="vertical" style={{ width: '100%' }} size={16}>
             <TicketWorkspaceSidebar ticket={ticket.data} />
+            <TicketSlaSection sla={ticket.data.sla} />
             <TicketAssignmentPanel ticket={ticket.data} onReload={reload} />
           </Space>
         </Col>

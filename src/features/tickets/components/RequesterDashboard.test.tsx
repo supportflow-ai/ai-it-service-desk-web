@@ -84,3 +84,10 @@ it('hosts the knowledge base card it is given, and invents no articles of its ow
   expect(screen.getByRole('heading', { name: 'Kho tri thức' })).toBeInTheDocument();
   expect(screen.queryByText(/VPN trên Windows 11/)).not.toBeInTheDocument();
 });
+
+it('lets a keyboard user open a recent ticket through its number, not only by clicking the row', async () => {
+  serveMine([ticketA]);
+  renderDashboard();
+  const link = await screen.findByRole('link', { name: `Mở ticket ${ticketA.ticketNumber}` });
+  expect(link).toHaveAttribute('href', `/requester-dashboard/tickets/${ticketA.id}`);
+});

@@ -1,4 +1,4 @@
-import { Card, Typography } from 'antd';
+import { Alert, Card, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { normalizeError } from '@/shared/api/httpError';
 import { ErrorState } from '@/shared/ui/ErrorState';
@@ -6,6 +6,7 @@ import { useAgentQueue } from '../hooks/useAgentQueue';
 import { useAgentQueueFilters } from '../hooks/useAgentQueueFilters';
 import { AgentQueueToolbar } from '../components/AgentQueueToolbar';
 import { AgentQueueTable } from '../components/AgentQueueTable';
+import { slaFilterIgnored } from '../model/sla';
 import { workspaceTicketPath } from '../lib/agentQueueSearch';
 import type { QueueReturnState } from '../lib/agentQueueSearch';
 import type { AgentQueueFilters } from '../model/ticket.types';
@@ -36,9 +37,20 @@ export function AgentQueuePage() {
         </div>
       )}
 
+      {slaFilterIgnored(filters.slaStatus, result?.items ?? []) && (
+        <Alert
+          type="warning"
+          showIcon
+          style={{ marginBottom: 12 }}
+          message="Backend chưa hỗ trợ lọc theo SLA"
+          description="Một số ticket không có thông tin SLA, nên danh sách bên dưới chưa được lọc theo SLA."
+        />
+      )}
+
       <Card styles={{ body: { padding: 0 } }} style={{ borderRadius: 8, borderColor: 'var(--bd)', overflow: 'hidden' }}>
         <AgentQueueTable
           result={result}
+          failed={queue.isError}
           loading={queue.isFetching}
           page={filters.page}
           pageSize={filters.pageSize}

@@ -8,6 +8,7 @@ import { NotFoundPage } from '../pages/NotFoundPage';
 import { ForbiddenPage } from '../pages/ForbiddenPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { RootRoute } from './RootRoute';
+import { WorkspaceAiPanels } from './WorkspaceAiPanels';
 import { routeConfig as routes } from './routeConfig';
 
 const LoginPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.LoginPage })));
@@ -25,12 +26,11 @@ const KnowledgeAdminPage = lazy(() => import('@/features/knowledge').then((featu
 const NewArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.NewArticlePage })));
 const EditArticlePage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.EditArticlePage })));
 const ArticleDetailPage = lazy(() => import('@/features/knowledge').then((feature) => ({ default: feature.ArticleDetailPage })));
-const WorkspaceTriagePanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.WorkspaceTriagePanel })));
 const RequesterAIPanel = lazy(() => import('@/features/ai-assistance').then((feature) => ({ default: feature.RequesterAIPanel })));
 
 export function AppRouter() {
   const { user } = useAuth();
-  // Only a Requester may raise a request, so staff are not offered the way to one.
+  // Every role may raise a request, so the knowledge pages offer the way to one whenever the route allows the viewer.
   const helpPath = hasAnyRole(user?.roles ?? [], routes.create.roles) ? routes.create.path : undefined;
   const protectedPages = [
     { ...routes.tickets, element: <TicketListPage /> },
@@ -45,7 +45,7 @@ export function AppRouter() {
       ...routes.workspaceTicket,
       // The workspace hosts the AI panel without depending on the ai-assistance feature.
       element: <TicketWorkspacePage aiPanel={({ ticket, reload }) => (
-        <Suspense fallback={null}><WorkspaceTriagePanel ticketId={ticket.id} onTicketChanged={reload} /></Suspense>
+        <WorkspaceAiPanels ticketId={ticket.id} onTicketChanged={reload} />
       )} />,
     },
     // A reader who found no answer goes on to a request (PRD J-03).

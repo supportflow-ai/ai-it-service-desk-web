@@ -156,3 +156,12 @@ it('does not pull the person back once they left the screen while files were upl
   expect(screen.getByText('another screen')).toBeInTheDocument();
   expect(screen.queryByTestId('opened')).not.toBeInTheDocument();
 });
+
+it('names the category choice and focuses the first invalid field on a failed submit', async () => {
+  renderCreate();
+  const category = await screen.findByRole('combobox', { name: 'Danh mục sự cố' });
+  expect(category).toBeRequired();
+  expect(screen.getByText('Chọn danh mục')).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: /Gửi yêu cầu/ }));
+  await waitFor(() => expect(screen.getByLabelText(/Tiêu đề yêu cầu/)).toHaveFocus());
+});

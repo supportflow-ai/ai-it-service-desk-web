@@ -73,3 +73,18 @@ it('displays users list and opens role assignment modal', async () => {
     expect(screen.queryByText('Chọn các vai trò áp dụng:')).not.toBeInTheDocument(),
   );
 });
+
+it('does not call a failed load an empty list, and reloads both lists on retry', async () => {
+  let failing = true;
+  server.use(http.get('http://localhost/api/users', ({ request }) => {
+    if (failing) return new HttpResponse(null, { status: 500 });
+    return HttpResponse.json(new URL(request.url).searchParams.get('role') === 'Agent' ? mockAgents : mockAdmins);
+  }));
+  renderAdminUsersPage();
+  expect(await screen.findByText('Chưa tải được danh sách người dùng.')).toBeInTheDocument();
+  expect(screen.queryByText('Không tìm thấy người dùng phù hợp')).not.toBeInTheDocument();
+  failing = false;
+  await userEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+  expect(await screen.findByText('Agent One')).toBeInTheDocument();
+  expect(screen.queryByText('Chưa tải được danh sách người dùng.')).not.toBeInTheDocument();
+});

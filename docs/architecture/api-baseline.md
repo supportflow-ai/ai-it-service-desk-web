@@ -1,12 +1,69 @@
 # Frontend API compatibility baseline
 
+> Mục “Quyền hiện hành” và phần đối chiếu ngày 13/11 ghi lại các mốc được nêu trong từng mục. Web `dev` đã mở `/tickets/new` cho Agent và Admin tại `5492618`. Xem phần cập nhật snapshot bên dưới để biết phiên bản đang ghim.
+
+## Quyền hiện hành
+
+Đối chiếu ngày 21/11/2026 tại Web `dev@89eabc4` và Backend `dev@3640c33`. Route Web kiểm vai trò để vào màn hình. Backend kiểm quyền theo từng thao tác và tài nguyên.
+
+| Luồng | Có route trên Web | Được gọi API |
+| --- | --- | --- |
+| Tạo phiếu | `/tickets/new` chỉ có Requester | `POST /api/tickets` nhận Requester, Agent và Admin |
+| Chi tiết và trao đổi công khai | `/requester-dashboard/tickets/:id` nhận cả ba vai trò | Chủ phiếu đọc phần công khai của phiếu mình tạo. Agent có thêm quyền theo nhóm đang hoạt động hoặc phân công trực tiếp. Admin đọc mọi phiếu |
+| Hàng đợi và ghi chú nội bộ | `/agent-workspace` và `/agent-workspace/tickets/:id` dành cho Agent và Admin | Agent xử lý phiếu của nhóm đang hoạt động mà mình là thành viên hoặc phiếu được gán trực tiếp. Admin có phạm vi toàn hệ thống. Nếu chỉ có quyền chủ phiếu thì timeline chỉ có nội dung công khai |
+| Phân công | Danh bạ chọn người mặc định lọc Agent. Admin có thể tự gán nếu điều kiện của Web cho phép | API kiểm người gọi Agent trong phạm vi xử lý hoặc Admin và nhận người được gán có vai trò Agent hoặc Admin. Kiểm membership đội đích thuộc thiết kế chuyển đội |
+| Đọc Kho tri thức | `/knowledge` và `/knowledge/:id` cho cả ba vai trò xem bài đã xuất bản | Requester chỉ đọc bài đã xuất bản. Agent đọc thêm bài của mình. Admin đọc mọi bài |
+| Biên soạn và xuất bản Kho tri thức | `/knowledge/manage` và các route con dành cho Agent và Admin | Agent hoặc Admin tạo bản nháp. Agent là tác giả hoặc Admin được sửa bản nháp, xuất bản và lưu trữ theo trạng thái bài và revision |
+
+Phiếu ngoài phạm vi thao tác trả `404`. Luồng xác nhận đội nhận và chuyển đội còn chờ triển khai. [Route Web](../../src/app/router/routeConfig.ts)
+
+### Nhãn Category cần đối chiếu trong pilot
+
+`ACC` trong Domain bao gồm tài khoản và quyền số. `ACCESS` dùng cho truy cập vật lý, còn Web hiện hiển thị “Cấp quyền truy cập”. Kiểm ca quên mật khẩu, xin quyền thư mục số, cấp thẻ ra vào và lỗi hạ tầng trước khi chốt nhãn giao diện và ánh xạ đội tại `TEAM-03`. [Nhãn hiện hành trên Web](../../src/features/tickets/model/ticketCategories.ts) · [Danh mục Domain trong bộ checkout liên kho](https://github.com/supportflow-ai/ai-it-service-desk/blob/docs/dong-bo-tai-lieu-2026-11-21/src/backend/Modules/Ticketing/Domain/TicketCategories.cs)
+
+Trong bộ checkout liên kho, xem [ma trận quyền Backend](https://github.com/supportflow-ai/ai-it-service-desk/blob/docs/dong-bo-tai-lieu-2026-11-21/docs/architecture/rbac-permission-matrix.md) và [phương án SupportTeam](https://github.com/supportflow-ai/ai-it-service-desk/blob/docs/dong-bo-tai-lieu-2026-11-21/docs/adr/ADR-016-support-team-routing-and-agent-scope.md#phương-án-supportteam-đã-chốt). Các tài liệu trên GitHub theo mốc hợp nhất của [kho Backend](https://github.com/supportflow-ai/ai-it-service-desk/tree/main/docs).
+
 ## Đối chiếu ngày 2026-11-13
 
-Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline của backend `dev` tại `07ce07a` có hash khác (`c60fa717…`). Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
+Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8cf50ce330e6f13e0380c64` (sha256 `3884d37d…`, khớp với tệp `backend-openapi.json`). Baseline Backend `dev@07ce07a` ở mốc 13/11 có hash `c60fa717…`, giữ nguyên tại `dev@3640c33` khi đối chiếu ngày 21/11/2026. Không có đường dẫn hay schema mới, nhưng sáu thao tác đã đổi chi tiết phản hồi hoặc ràng buộc: `POST /api/auth/register`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/auth/reset-password` và `POST /api/tickets/{id}/attachments/confirm`. Các thay đổi đến từ hai commit backend chạm baseline sau mốc ghim: `bb1577c` (Identity) và `dcd104e` (PR #65, hạn mức tệp đính kèm và lock timeout). **Chưa đồng bộ vào snapshot**; cần cập nhật có phối hợp theo mục 22 của [AGENTS.md](../../AGENTS.md) trước khi nghiệm thu với backend `dev`.
 
-Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent chỉ đọc phiếu thuộc nhóm hỗ trợ đang hoạt động mà mình là thành viên hoặc phiếu được phân công trực tiếp; Admin đọc toàn hệ thống; phiếu ngoài phạm vi trả 404. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
+## Khoảng lệch contract: SLA (TC-232, đối chiếu ngày 2026-11-20)
+
+> Hồ sơ trước khi Backend hợp nhất PR #82. Backend `dev@b3cc19a` đã có SLA và bản OpenAPI cập nhật tại `9363928`.
+
+Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này **chưa vào `dev`** và `contracts/backend/openapi-baseline.json` của nó **chưa có** schema SLA hay tham số `slaStatus`, nên snapshot ghim trong `tests/contracts/` **không đổi**; nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
+
+| Thành phần | Contract theo code backend | Cách web xử lý |
+| --- | --- | --- |
+| `TicketDto.sla` (`GET /tickets/queue`, `GET /tickets/{id}`) | `SlaSummaryDto`: `isApplicable`, `evaluatedAt`, `overallStatus` (`OnTrack`, `AtRisk`, `Breached`, `Completed`, `NotApplicable`), `firstResponse` và `resolution` (`targetMinutes`, `elapsedMinutes`, `remainingMinutes`, `deadline`, `isBreached`, `state`) | Trường tùy chọn; kiểm tra runtime ở `ticketContract.ts`; thiếu thì hiện "Chưa có thông tin SLA", không tự tính ở client |
+| `GET /tickets/queue?slaStatus=` | `All`, `OnTrack`, `AtRisk`, `Breached` (giá trị khác trả 400) | Chỉ gửi khi chọn bộ lọc; backend chưa hỗ trợ sẽ bỏ qua tham số, nên nếu có ticket không kèm `sla` thì trang hàng đợi cảnh báo danh sách chưa được lọc |
+
+Việc cần làm khi backend merge: lấy `openapi-baseline.json` từ đúng SHA backend, cập nhật snapshot và checksum, chạy `contract:generate` và `contract:check` (mục 22 của [AGENTS.md](../../AGENTS.md)), rồi bỏ cảnh báo "chưa hỗ trợ lọc" nếu không còn cần. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
+
+## Cập nhật snapshot trên Web `dev` (`756502a`)
+
+**Đã đồng bộ vào snapshot** theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot nay ghim backend `ef4390d116038dc12cf1efef3a60ef35aba6916c` (sha256 `c60fa717…`, tệp baseline không đổi từ `dcd104e`). Khác biệt so với mốc `0f189b5` chỉ là mã phản hồi: thêm `429 Too Many Requests` cho 5 thao tác auth và `503 Service Unavailable` cho `attachments/confirm`; kiểu sinh `backend.generated.ts` không đổi. Giao diện đã báo 429 (commit `ac04b20`), còn 503 rơi vào thông báo chung "Máy chủ chưa thể xử lý yêu cầu. Vui lòng thử lại."; tải lên xong mà xác nhận lỗi thì cho xác nhận lại mà không gửi lại tệp.
+
+Từ backend PR #64 (B1-PR3, [ADR-016](https://github.com/supportflow-ai/ai-it-service-desk/blob/main/docs/adr/ADR-016-support-team-routing-and-agent-scope.md)), Agent dùng phạm vi nhóm đang hoạt động hoặc phân công trực tiếp cho thao tác của nhân viên. Chủ phiếu có quyền công khai trên phiếu mình tạo, kể cả khi có vai trò Agent. Admin đọc toàn hệ thống. Phiếu ngoài phạm vi của thao tác trả `404`. Các đoạn bên dưới nói hàng đợi trả mọi phiếu cho mọi nhân viên, hoặc Lead và phạm vi nhóm chưa có, mô tả mốc backend cũ hơn. Giao diện hàng đợi đã có lời giải thích theo quyền đọc mới (commit `eb7d0e5`); chưa kiểm lại từng màn hình với backend thật.
+
+## Việc cần sửa: Agent và Admin cũng tạo được phiếu (quyết định 2026-11-13)
+
+Chủ dự án xác nhận Agent và Admin cũng phải tạo được phiếu. Hiện giao diện chỉ cho Requester (commit `6c8981d`), trong khi API cho phép cả ba vai trò (`RequireRequester` gồm Requester, Agent, Admin) và bảng "Screens and roles" bên dưới vẫn ghi `/tickets/new` cho "Every role". Mã còn ghi chú rằng chỉ Requester tạo yêu cầu theo PRD J-01 và Spec UC-02/UC-05; người sửa cần đối chiếu với quyết định mới và cập nhật ghi chú đó.
+
+| Vị trí | Việc cần sửa |
+| --- | --- |
+| `src/app/router/routeConfig.ts` | `create.roles` thêm `Agent` và `Admin`; sửa chú thích |
+| `src/app/navigation/navigationConfig.ts` | Đưa mục "Tạo yêu cầu" vào `staffMenu` (hiện chỉ `requesterMenu` có) |
+| `src/app/router/AppRouter.tsx` | `helpPath` dùng `routes.create.roles` nên tự theo thay đổi; kiểm lại luồng điều hướng sau đăng nhập của nhân viên |
+| `src/features/tickets/pages/TicketListPage.tsx`, `src/features/tickets/components/RequesterDashboard.tsx` | Kiểm tra liên kết "Tạo yêu cầu" hiển thị đúng cho vai trò nhân viên |
+| Kiểm thử | `navigationConfig.test.ts` (thứ tự menu Agent, Admin), `MainLayout.test.tsx`, `HomePage.test.tsx`, `e2e/flows.spec.ts` |
+| Tài liệu | Bảng "Screens and roles" ở dưới; `docs/project` của kho infra |
+
+Chưa kiểm: nhân viên tạo phiếu thì phiếu thuộc về chính họ (`requesterId` là người đăng nhập) và vẫn đi vào hàng đợi phân loại thủ công; cần xác nhận hiển thị trong giao diện hàng đợi và phạm vi đọc theo nhóm hỗ trợ (ADR-016) cho phiếu do Agent tự tạo.
 
 ## Đối chiếu tích hợp MVP ngày 05/11/2026
+
+Bảng này giữ kết quả của bản chụp. Bộ checkout liên kho có phạm vi nghiệm thu theo `AI-02` trong `supportflow-ai-infra/docs/project/mvp.md`.
 
 Đối chiếu [Web `main@ade7af4`](https://github.com/supportflow-ai/ai-it-service-desk-web/commit/ade7af4e1b88e7834c8d9b225f68eb7ebd75f9fe) với [Backend `main@bf38ef9`](https://github.com/supportflow-ai/ai-it-service-desk/commit/bf38ef903f46f6ea21f80da44c11d437391a9efb). Snapshot Web ghim Backend `dev@febb4d7` và khớp từng byte với OpenAPI trên Backend `main@bf38ef9`. [Mốc nguồn và checksum](../../tests/contracts/backend-source.json)
 
@@ -190,13 +247,13 @@ what backend `007a258` implements. Every screen shows one perspective, whatever 
 | Screen | Who | What it offers |
 | --- | --- | --- |
 | `/` Tổng quan | Requester-only accounts (Agent/Admin are sent to `/agent-workspace`, PRD J-02) | Own tickets from `GET /tickets/me` (up to 100, counted by status); empty/loading/error states, never sample data; knowledge base locked |
-| `/tickets/new`, `/requester-dashboard/tickets` | Every role | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
+| `/tickets/new`, `/requester-dashboard/tickets` | Every role (Agent and Admin may raise a request too, owner's decision 2026-11-13) | Create (with files, attached once the ticket exists) and list own tickets (PR-01, US-062) |
 | `/requester-dashboard/tickets/:id` | Every role, as the ticket's requester (US-021) | Owner commands only (edit/cancel while Submitted, close/reopen when Resolved, when `requesterId` is the viewer), public timeline and public comments, attachments. No internal notes, internal composer, claim or resolve, even for staff viewing their own request. Staff opening someone else's ticket here are sent to `/agent-workspace/tickets/:id` |
 | `/agent-workspace`, `/agent-workspace/tickets/:id` | Agent, Admin | Queue, assignment, claim, resolve, public comment and internal note (UX-05); Admin may also close/reopen/cancel, as the backend allows |
 | `/admin-panel` | Admin | Not supported yet: no admin endpoints |
 
-The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi; staff: Hàng
-đợi xử lý, Yêu cầu của tôi, Tạo yêu cầu, plus Quản trị hệ thống for Admin) and the sidebar names the
+The menu follows the same split (Requester: Tổng quan, Tạo yêu cầu, Yêu cầu của tôi, Kho tri thức; staff: Hàng
+đợi xử lý, Kho tri thức, Tạo yêu cầu, plus Quản trị hệ thống for Admin; "Yêu cầu của tôi" is shown to Requesters only) and the sidebar names the
 real roles. Signing out returns to a clean login page, so the next account never lands on the
 previous one's page; only an expired session returns to where it was. Every tab follows a sign-in,
 account switch or sign-out made in another tab.
@@ -321,6 +378,37 @@ records one (`ReviewedAt`; Expired has none, `MarkExpired`). `ReviewedBy` is a u
 so it is not shown. A requester sees only the band and, when it is Low or missing, that a technician
 will check the category; never a score. Blocked by AISD-S3-09-T03 (TC-365, held-out evaluation): if
 it moves the band thresholds, only the backend policy changes.
+
+## RAG evidence panel (TC-229: TC-384, TC-385, TC-386)
+
+Not enabled, like triage. The backend OpenAPI baseline has no suggestion, RAG or citation
+endpoint, and ai-service lists "RAG chưa đưa vào MVP" and the "RAG/generation contract" as not
+done; the upstream package AISD-S4-02 has not landed. `WorkspaceRagPanel` (injected by the App,
+Agent/Admin only, checked against the `workspaceTicket` role list) therefore shows the
+not-enabled state and sends no request. `rag.types.ts` is a presentation model, not an HTTP
+contract: when AISD-S4-02 defines one, map it to these types at the API boundary and review the
+types against it first (answer, citations with article id, section, snippet, version, date and
+score, model, confidence band, outcome).
+
+What the panel already renders (`RagEvidencePanel`, covered by tests):
+
+- Suggestion (TC-384): the suggested reply as plain text, the model name, the confidence band
+  (the raw score only in a tooltip, never a percentage; Spec §11.3) and the same review hint as
+  triage. It only shows: the agent writes and sends the reply (auto-send is out of scope).
+- Evidence (TC-385): every citation with article title, section ("Phần mở đầu" when none),
+  passage, version, publication date and model score. The title opens the Published article at
+  that section through the existing `{ section }` router state (`publishedSectionLink`), so the
+  reader marks and scrolls to the heading. A citation whose id is not an article id has no link
+  and says so. Passages are plain text; the App supplies the link and excerpt helpers because
+  ai-assistance must not depend on knowledge.
+- States (TC-386), worded apart: not enabled; request running (status with skeleton);
+  AI unavailable or timed out (warning, fixed text, the provider's message is never shown, retry
+  only when the host passes a handler); no evidence (info, "không phải lỗi hệ thống", link to the
+  knowledge search). An answer that arrives without a citation is treated as no evidence and its
+  text is not shown, so nothing unsourced reads as an answer.
+
+Known gap: the article page's "back" link still goes to the knowledge base, not the ticket, because
+a citation carries no `resultsSearch`; the browser's back button returns to the ticket.
 
 The existing create endpoint supports optional Idempotency-Key, but this refactor preserves
 the existing request behavior and disables automatic write retries. Create is not advertised
