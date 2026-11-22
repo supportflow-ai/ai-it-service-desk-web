@@ -20,6 +20,7 @@ export const routeConfig = {
   knowledgeNew: { path: '/knowledge/manage/new', roles: ['Agent', 'Admin'] },
   knowledgeRead: { path: '/knowledge/manage/:id', roles: ['Agent', 'Admin'] },
   knowledgeEdit: { path: '/knowledge/manage/:id/edit', roles: ['Agent', 'Admin'] },
+  supportTeams: { path: '/admin/support-teams', roles: ['Agent', 'Admin'], label: 'Đội nhóm hỗ trợ' },
   admin: { path: '/admin-panel', roles: ['Admin'], label: 'Quản trị hệ thống' },
   forgotPassword: { path: '/forgot-password', roles: [] },
 } as const satisfies Record<string, RouteDefinition>;

@@ -3,7 +3,14 @@ import path from 'node:path';
 import fs from 'node:fs';
 
 // knowledge → auth: the signed-in user's roles and session version, as for tickets.
-export const featureDependencies = { auth: [], tickets: ['auth'], 'ai-assistance': ['tickets'], knowledge: ['auth'] };
+// support-teams → auth (session, roles, users), tickets (TicketCategory, category labels).
+export const featureDependencies = {
+  auth: [],
+  tickets: ['auth'],
+  'ai-assistance': ['tickets'],
+  knowledge: ['auth'],
+  'support-teams': ['auth', 'tickets'],
+};
 const slash = (value) => value.replaceAll('\\', '/');
 const isTest = (file) => /(?:^|\/)(?:tests|e2e)\//.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file);
 
