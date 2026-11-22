@@ -35,6 +35,40 @@ export const TicketPriority = {
 } as const;
 export type TicketPriority = (typeof TicketPriority)[keyof typeof TicketPriority];
 
+/**
+ * SLA as the backend evaluates it (SlaSummaryDto, backend branch feat/ticketing-hoan-thien-backend).
+ * The client only renders it; it never computes deadlines, remaining time or the state itself.
+ */
+export interface SlaClockDto {
+  targetMinutes: number | null;
+  elapsedMinutes: number | null;
+  /** Negative once the target has been passed. */
+  remainingMinutes: number | null;
+  /** UTC ISO time; null while the clock is paused or finished. */
+  deadline: string | null;
+  isBreached: boolean;
+  /** E.g. RunningAtRisk, PausedOnTrack, ResolvedBreached; see slaClockStateLabels. */
+  state: string;
+}
+
+export interface SlaSummaryDto {
+  /** False for a ticket the backend does not put under an SLA. */
+  isApplicable: boolean;
+  evaluatedAt: string;
+  /** OnTrack, AtRisk, Breached, Completed or NotApplicable; read leniently so a new value does not break the page. */
+  overallStatus: string;
+  firstResponse: SlaClockDto | null;
+  resolution: SlaClockDto | null;
+}
+
+/** The values GET /tickets/queue accepts as slaStatus (besides All, which is sent as no filter). */
+export const SlaQueueStatus = {
+  OnTrack: 'OnTrack',
+  AtRisk: 'AtRisk',
+  Breached: 'Breached',
+} as const;
+export type SlaQueueStatus = (typeof SlaQueueStatus)[keyof typeof SlaQueueStatus];
+
 export interface CreateTicketPayload {
   title: string;
   categoryId: TicketCategory;
@@ -62,6 +96,8 @@ export interface TicketDto {
   revision: number;
   /** Null (or absent) while the backend has not set one. */
   priority?: TicketPriority | null;
+  /** Absent (or null) while the backend does not send SLA data; never filled in by the client. */
+  sla?: SlaSummaryDto | null;
 }
 
 export interface PagedTicketResult {
@@ -79,6 +115,8 @@ export interface AgentQueueFilters {
   status: TicketStatus | null;
   category: TicketCategory | null;
   priority: TicketPriority | null;
+  /** Null shows every ticket; otherwise the backend filters on its own SLA evaluation. */
+  slaStatus: SlaQueueStatus | null;
   /** Highest priority first (P1 → P4), then newest; otherwise newest first. */
   sortByPriority: boolean;
   page: number;
