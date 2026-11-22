@@ -100,3 +100,11 @@ export function canSelfAssignTicket(user: User | null, ticket: TicketFacts) {
 export function canUnassignTicket(user: User | null, ticket: TicketFacts) {
   return isStaff(user) && ticket.status === TicketStatus.Assigned;
 }
+
+/**
+ * Dispatch/transfer ticket to another support team (ADR-016).
+ * Allowed to Agent or Admin on workspace for any active (non-terminal) ticket.
+ */
+export function canTransferTicketTeam(user: User | null, ticket: Pick<TicketDto, 'status'>, view: TicketView = 'workspace') {
+  return view === 'workspace' && isStaff(user) && !isTerminalStatus(ticket.status);
+}

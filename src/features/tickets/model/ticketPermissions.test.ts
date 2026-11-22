@@ -15,6 +15,7 @@ import {
   canResolveTicket,
   canSeeInternalNotes,
   canSelfAssignTicket,
+  canTransferTicketTeam,
   canUnassignTicket,
 } from './ticketPermissions';
 
@@ -137,6 +138,19 @@ describe('ticketPermissions', () => {
     expect(canUnassignTicket(admin, ticket(TicketStatus.Assigned))).toBe(true);
     expect(canUnassignTicket(agent, ticket(TicketStatus.InProgress))).toBe(false);
     expect(canUnassignTicket(requester, ticket(TicketStatus.Assigned))).toBe(false);
+  });
+
+  it('lets staff transfer ticket between support teams for active tickets on workspace', () => {
+    for (const user of [agent, admin]) {
+      expect(canTransferTicketTeam(user, ticket(TicketStatus.Submitted), 'workspace')).toBe(true);
+      expect(canTransferTicketTeam(user, ticket(TicketStatus.Assigned), 'workspace')).toBe(true);
+      expect(canTransferTicketTeam(user, ticket(TicketStatus.InProgress), 'workspace')).toBe(true);
+      expect(canTransferTicketTeam(user, ticket(TicketStatus.Closed), 'workspace')).toBe(false);
+      expect(canTransferTicketTeam(user, ticket(TicketStatus.Cancelled), 'workspace')).toBe(false);
+      expect(canTransferTicketTeam(user, ticket(TicketStatus.Submitted), 'requester')).toBe(false);
+    }
+    expect(canTransferTicketTeam(requester, ticket(TicketStatus.Submitted), 'workspace')).toBe(false);
+    expect(canTransferTicketTeam(null, ticket(TicketStatus.Submitted), 'workspace')).toBe(false);
   });
 
   it('grants nothing to unknown roles or anonymous users', () => {

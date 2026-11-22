@@ -8,6 +8,7 @@ import type {
   ConfirmAttachmentPayload,
   CreateTicketPayload,
   GenerateUploadUrlPayload,
+  TransferTicketTeamPayload,
   UpdateTicketPayload,
 } from '../model/ticket.types';
 import {
@@ -76,6 +77,11 @@ export const ticketApi = {
   },
   async unassignTicket(ticketId: string, expectedRevision: number) {
     const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/unassign`, undefined, { params: { expectedRevision } });
+    return readTicket(response.data);
+  },
+  /** Transfer ticket to another support team with mandatory reason and concurrency revision (ADR-016). */
+  async transferTeam(ticketId: string, payload: TransferTicketTeamPayload) {
+    const response = await apiClient.post<unknown>(`/tickets/${encodeURIComponent(ticketId)}/transfer-team`, payload);
     return readTicket(response.data);
   },
   async claimTicket(ticketId: string, expectedRevision: number) {
