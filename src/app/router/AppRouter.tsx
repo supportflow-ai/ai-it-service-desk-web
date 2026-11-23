@@ -18,6 +18,7 @@ const AdminUsersPage = lazy(() => import('@/features/auth').then((feature) => ({
 const SupportTeamsManagementPage = lazy(() => import('@/features/support-teams').then((feature) => ({ default: feature.SupportTeamsManagementPage })));
 const DepartmentsManagementPage = lazy(() => import('@/features/departments').then((feature) => ({ default: feature.DepartmentsManagementPage })));
 const ServiceCatalogManagementPage = lazy(() => import('@/features/service-catalog').then((feature) => ({ default: feature.ServiceCatalogManagementPage })));
+const SlaReportsPage = lazy(() => import('@/features/sla-reports').then((feature) => ({ default: feature.SlaReportsPage })));
 const TicketListPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketListPage })));
 const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketDetailPage })));
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
@@ -61,6 +62,7 @@ export function AppRouter() {
     { ...routes.supportTeams, element: <SupportTeamsManagementPage /> },
     { ...routes.departments, element: <DepartmentsManagementPage /> },
     { ...routes.serviceCatalog, element: <ServiceCatalogManagementPage /> },
+    { ...routes.slaReports, element: <SlaReportsPage /> },
     { ...routes.admin, element: <AdminUsersPage /> },
   ];
   return (

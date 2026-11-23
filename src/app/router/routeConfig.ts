@@ -23,6 +23,7 @@ export const routeConfig = {
   supportTeams: { path: '/admin/support-teams', roles: ['Agent', 'Admin'], label: 'Đội nhóm hỗ trợ' },
   departments: { path: '/admin/departments', roles: ['Admin'], label: 'Phòng ban' },
   serviceCatalog: { path: '/admin/service-catalog', roles: ['Admin'], label: 'Danh mục dịch vụ' },
+  slaReports: { path: '/admin/sla-reports', roles: ['Admin'], label: 'Báo cáo SLA' },
   admin: { path: '/admin-panel', roles: ['Admin'], label: 'Quản trị hệ thống' },
   forgotPassword: { path: '/forgot-password', roles: [] },
 } as const satisfies Record<string, RouteDefinition>;

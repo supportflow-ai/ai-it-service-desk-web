@@ -2,7 +2,7 @@ import { hasAnyRole } from '@/features/auth';
 import { routeConfig } from '../router/routeConfig';
 import type { RouteDefinition } from '../router/routeConfig';
 
-const staffMenu: readonly RouteDefinition[] = [routeConfig.workspace, routeConfig.supportTeams, routeConfig.departments, routeConfig.serviceCatalog, routeConfig.knowledgeAdmin, routeConfig.tickets, routeConfig.create, routeConfig.admin];
+const staffMenu: readonly RouteDefinition[] = [routeConfig.workspace, routeConfig.supportTeams, routeConfig.departments, routeConfig.serviceCatalog, routeConfig.slaReports, routeConfig.knowledgeAdmin, routeConfig.tickets, routeConfig.create, routeConfig.admin];
 const requesterMenu: readonly RouteDefinition[] = [routeConfig.home, routeConfig.create, routeConfig.tickets, routeConfig.knowledge];
 
 /** Staff start from the queue (PRD J-02); requesters from their own overview and new request (J-01). */
