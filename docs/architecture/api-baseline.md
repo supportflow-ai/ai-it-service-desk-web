@@ -29,16 +29,22 @@ Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8
 
 ## Khoảng lệch contract: SLA (TC-232, đối chiếu ngày 2026-11-20)
 
-> Hồ sơ trước khi Backend hợp nhất PR #82. Backend `dev@b3cc19a` đã có SLA và bản OpenAPI cập nhật tại `9363928`.
+> Đã đồng bộ. Backend hợp nhất PR #82 tại `dev@b3cc19a`, OpenAPI cập nhật tại `9363928`, và snapshot web đã ghim `b3cc19a` (xem mục "Đồng bộ snapshot SLA" bên dưới).
 
-Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này đã được hợp nhất vào backend `dev` (PR #82, `dev@b3cc19a`) và OpenAPI đã cập nhật tại `9363928`. Tuy nhiên snapshot ghim trong `tests/contracts/` **chưa đồng bộ** (chưa có schema SLA hay tham số `slaStatus`), nên kiểu sinh và kiểm tra contract của web vẫn chưa phản ánh SLA. Nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
+Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này đã được hợp nhất vào backend `dev` (PR #82, `dev@b3cc19a`) và OpenAPI đã cập nhật tại `9363928`. Nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
 
 | Thành phần | Contract theo code backend | Cách web xử lý |
 | --- | --- | --- |
 | `TicketDto.sla` (`GET /tickets/queue`, `GET /tickets/{id}`) | `SlaSummaryDto`: `isApplicable`, `evaluatedAt`, `overallStatus` (`OnTrack`, `AtRisk`, `Breached`, `Completed`, `NotApplicable`), `firstResponse` và `resolution` (`targetMinutes`, `elapsedMinutes`, `remainingMinutes`, `deadline`, `isBreached`, `state`) | Trường tùy chọn; kiểm tra runtime ở `ticketContract.ts`; thiếu thì hiện "Chưa có thông tin SLA", không tự tính ở client |
 | `GET /tickets/queue?slaStatus=` | `All`, `OnTrack`, `AtRisk`, `Breached` (giá trị khác trả 400) | Chỉ gửi khi chọn bộ lọc; backend chưa hỗ trợ sẽ bỏ qua tham số, nên nếu có ticket không kèm `sla` thì trang hàng đợi cảnh báo danh sách chưa được lọc |
 
-Việc cần làm khi backend merge: lấy `openapi-baseline.json` từ đúng SHA backend, cập nhật snapshot và checksum, chạy `contract:generate` và `contract:check` (mục 22 của [AGENTS.md](../../AGENTS.md)), rồi bỏ cảnh báo "chưa hỗ trợ lọc" nếu không còn cần. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
+Đã hoàn tất theo mục 22 của [AGENTS.md](../../AGENTS.md): snapshot lấy từ đúng SHA backend, cập nhật checksum, chạy `contract:generate` và `contract:check`. Cảnh báo "chưa hỗ trợ lọc" ở trang hàng đợi vẫn giữ: nó chỉ hiện khi danh sách trả về có ticket không kèm `sla`, nên tự tắt khi backend thật đã trả SLA. Chưa kiểm với backend thật; Playwright chỉ chạy với API giả.
+
+### Đồng bộ snapshot SLA (2026-11-25)
+
+Snapshot `tests/contracts/backend-openapi.json` nay ghim backend `b3cc19a80fa70fde0945a99b483050198de5c129` (sha256 `8c31b7d2…`), lấy từ `contracts/backend/openapi-baseline.json` của repo backend; `9363928` có cùng nội dung. Schema tăng từ 29 lên 33: thêm `SlaSummaryDto`, `SlaClockSummaryDto`, `PendingTicketRequest`, và `TicketDto` có thêm `sla`.
+
+**Khoảng lệch đã biết:** backend khai báo `SlaSummaryDto? Sla`, `SlaClockSummaryDto? FirstResponse` và `? Resolution` là nullable, và `TicketProjection` gán `null` rõ ràng cho hai đồng hồ khi chưa có. OpenAPI không biểu diễn được `null` cho tham chiếu object, nên kiểu sinh bỏ mất `null`. Để không che lỗi, `src/features/tickets/model/ticket.types.ts` giữ `null` đúng như backend, còn `tests/contracts/ticket-contracts.ts` nới đúng ba trường `sla`, `firstResponse`, `resolution` khi so với kiểu sinh; các trường còn lại vẫn so chặt. Khi OpenAPI biểu diễn được nullable cho object, bỏ phần nới này.
 
 ## Cập nhật snapshot trên Web `dev` (`756502a`)
 
