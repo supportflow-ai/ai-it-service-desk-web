@@ -31,7 +31,7 @@ Snapshot OpenAPI trong `tests/contracts/` đang ghim backend `0f189b5e2befd214f8
 
 > Hồ sơ trước khi Backend hợp nhất PR #82. Backend `dev@b3cc19a` đã có SLA và bản OpenAPI cập nhật tại `9363928`.
 
-Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này **chưa vào `dev`** và `contracts/backend/openapi-baseline.json` của nó **chưa có** schema SLA hay tham số `slaStatus`, nên snapshot ghim trong `tests/contracts/` **không đổi**; nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
+Hiển thị SLA (badge, mục SLA trong workspace, bộ lọc At Risk/Breached ở hàng đợi) bám code backend ở nhánh `feat/ticketing-hoan-thien-backend` (`562e332`, các commit `412203b`, `bc3d8e0`, `a221b35`, `9d36ada`). Nhánh này đã được hợp nhất vào backend `dev` (PR #82, `dev@b3cc19a`) và OpenAPI đã cập nhật tại `9363928`. Tuy nhiên snapshot ghim trong `tests/contracts/` **chưa đồng bộ** (chưa có schema SLA hay tham số `slaStatus`), nên kiểu sinh và kiểm tra contract của web vẫn chưa phản ánh SLA. Nhánh đó còn kéo theo thay đổi khác (vai trò Lead) chưa thuộc phạm vi web.
 
 | Thành phần | Contract theo code backend | Cách web xử lý |
 | --- | --- | --- |
