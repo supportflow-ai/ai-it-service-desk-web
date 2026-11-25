@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Input, Layout, Menu, Space, Typography } from 'antd';
+import { Button, Input, Layout, Menu, Space } from 'antd';
 import {
   AppstoreOutlined,
   BellOutlined,
@@ -11,6 +11,7 @@ import {
   SearchOutlined,
   SettingOutlined,
   UnorderedListOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import type { ReactNode } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
@@ -21,7 +22,6 @@ import { ThemeSwitch } from './ThemeSwitch';
 import { routeConfig } from '../router/routeConfig';
 
 const { Sider, Header, Content } = Layout;
-const { Text } = Typography;
 
 const roleLabels: Record<Role, string> = { Admin: 'Quản trị viên', Agent: 'Kỹ thuật viên', Requester: 'Người yêu cầu' };
 const roleOrder: readonly Role[] = ['Admin', 'Agent', 'Requester'];
@@ -162,9 +162,16 @@ export function MainLayout() {
               title="Thông báo: chưa hỗ trợ"
               aria-label="Thông báo (chưa hỗ trợ)"
             />
-            <Text className="app-greeting" style={{ fontSize: '13px', color: 'var(--tx2)' }}>
+            <Button
+              type="link"
+              icon={<UserOutlined />}
+              onClick={() => navigate(routeConfig.account.path)}
+              className="app-greeting"
+              style={{ fontSize: '13px', color: 'var(--tx2)' }}
+              aria-label="Hồ sơ cá nhân"
+            >
               Xin chào, <b>{user?.fullName ?? user?.email}</b>
-            </Text>
+            </Button>
             <Button
               icon={<KeyOutlined />}
               onClick={() => setOpenPasswordModal(true)}

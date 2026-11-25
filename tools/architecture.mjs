@@ -13,6 +13,7 @@ export const featureDependencies = {
   departments: ['auth'],
   'service-catalog': ['auth', 'support-teams', 'tickets'],
   'sla-reports': ['auth'],
+  account: ['auth'],
 };
 const slash = (value) => value.replaceAll('\\', '/');
 const isTest = (file) => /(?:^|\/)(?:tests|e2e)\//.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file);
