@@ -57,8 +57,9 @@ export interface SlaSummaryDto {
   evaluatedAt: string;
   /** OnTrack, AtRisk, Breached, Completed or NotApplicable; read leniently so a new value does not break the page. */
   overallStatus: string;
-  firstResponse: SlaClockDto | null;
-  resolution: SlaClockDto | null;
+  /** Absent when the backend sends no such clock (a null on the wire is read as absent). */
+  firstResponse?: SlaClockDto;
+  resolution?: SlaClockDto;
 }
 
 /** The values GET /tickets/queue accepts as slaStatus (besides All, which is sent as no filter). */
@@ -96,8 +97,8 @@ export interface TicketDto {
   revision: number;
   /** Null (or absent) while the backend has not set one. */
   priority?: TicketPriority | null;
-  /** Absent (or null) while the backend does not send SLA data; never filled in by the client. */
-  sla?: SlaSummaryDto | null;
+  /** Absent while the backend does not send SLA data (a null on the wire is read as absent); never filled in by the client. */
+  sla?: SlaSummaryDto;
 }
 
 export interface PagedTicketResult {

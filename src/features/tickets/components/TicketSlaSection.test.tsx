@@ -48,7 +48,7 @@ it('shows a finished clock as achieved, with no countdown', () => {
 });
 
 it('says so when the ticket is not under an SLA or a clock has no target', () => {
-  const { unmount } = render(<TicketSlaSection sla={{ ...sla, isApplicable: false, overallStatus: 'NotApplicable', firstResponse: null, resolution: null }} />);
+  const { unmount } = render(<TicketSlaSection sla={{ ...sla, isApplicable: false, overallStatus: 'NotApplicable', firstResponse: undefined, resolution: undefined }} />);
   expect(screen.getByText('Ticket này không thuộc cam kết SLA.')).toBeInTheDocument();
   expect(screen.getByText('Không áp dụng SLA')).toBeInTheDocument();
   unmount();

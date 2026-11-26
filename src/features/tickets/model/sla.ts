@@ -79,7 +79,7 @@ export function slaRemainingText(clock: SlaClockDto) {
 export function nextSlaDeadline(sla: SlaSummaryDto | null | undefined) {
   if (!sla || !sla.isApplicable) return null;
   const deadlines = [sla.firstResponse, sla.resolution]
-    .filter((clock): clock is SlaClockDto => clock !== null && clock.state.startsWith('Running') && clock.deadline !== null)
+    .filter((clock): clock is SlaClockDto => clock !== undefined && clock.state.startsWith('Running') && clock.deadline !== null)
     .map((clock) => clock.deadline as string)
     .filter((deadline) => !Number.isNaN(new Date(deadline).getTime()))
     .sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
@@ -94,8 +94,8 @@ export const slaQueueOptions: readonly { value: SlaQueueStatus; label: string }[
 
 /**
  * An SLA filter is on, tickets came back, and some carry no `sla` at all: the backend does not know
- * the SLA contract yet and ignored the filter, so the list is not filtered. A null `sla` is a
- * deliberate "no data" and does not count.
+ * the SLA contract yet and ignored the filter, so the list is not filtered. A null `sla` on the
+ * wire is read as absent, so it is treated the same way.
  */
 export function slaFilterIgnored(slaStatus: SlaQueueStatus | null, items: readonly TicketDto[]) {
   return slaStatus !== null && items.some((ticket) => ticket.sla === undefined);

@@ -43,16 +43,15 @@ describe('SLA display model', () => {
     expect(nextSlaDeadline(summary({ firstResponse: clock({ state: 'CompletedAchieved', deadline: early }), resolution: clock({ state: 'PausedOnTrack', deadline: null }) }))).toBeNull();
     expect(nextSlaDeadline(summary({ isApplicable: false }))).toBeNull();
     expect(nextSlaDeadline(undefined)).toBeNull();
-    expect(nextSlaDeadline(summary({ firstResponse: clock({ deadline: 'not a date' }), resolution: null }))).toBeNull();
+    expect(nextSlaDeadline(summary({ firstResponse: clock({ deadline: 'not a date' }), resolution: undefined }))).toBeNull();
   });
 
-  it('notices a backend that ignored the SLA filter, but not a filtered empty or no-data (null) result', () => {
+  it('notices a backend that ignored the SLA filter, but not a filtered empty result', () => {
     const withSla: TicketDto = { ...ticketA, status: 1, categoryId: 'NET', sla: summary() };
     const withoutSla: TicketDto = { ...ticketA, status: 1, categoryId: 'NET' };
     expect(slaFilterIgnored('AtRisk', [withSla, withoutSla])).toBe(true);
     expect(slaFilterIgnored('AtRisk', [withSla])).toBe(false);
     expect(slaFilterIgnored('AtRisk', [])).toBe(false);
-    expect(slaFilterIgnored('AtRisk', [{ ...withoutSla, sla: null }])).toBe(false);
     expect(slaFilterIgnored(null, [withoutSla])).toBe(false);
   });
 });
