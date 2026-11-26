@@ -100,6 +100,33 @@ it('assigns with the backend agentId payload and unassigns without a body', asyn
   expect((await ticketApi.unassignTicket(ticketA.id, 7)).status).toBe(TicketStatus.Submitted);
   expect(calls).toEqual([{ agentId: 'agent-guid', expectedRevision: 7 }, '']);
 });
+it('transfers ticket team with targetTeamId, reason, expectedRevision, and optional assignee', async () => {
+  const calls: unknown[] = [];
+  server.use(
+    http.post(`http://localhost/api/tickets/${ticketA.id}/transfer-team`, async ({ request }) => {
+      calls.push(await request.json());
+      return HttpResponse.json({
+        ...ticketA,
+        supportTeamId: 'team-network',
+        supportTeamName: 'Đội Mạng & Hạ tầng',
+      });
+    }),
+  );
+  const result = await ticketApi.transferTeam(ticketA.id, {
+    targetTeamId: 'team-network',
+    reason: 'Chuyển đội xử lý sự cố mạng',
+    newAssigneeId: 'agent-123',
+    expectedRevision: 5,
+  });
+  expect(result.supportTeamId).toBe('team-network');
+  expect(result.supportTeamName).toBe('Đội Mạng & Hạ tầng');
+  expect(calls).toEqual([{
+    targetTeamId: 'team-network',
+    reason: 'Chuyển đội xử lý sự cố mạng',
+    newAssigneeId: 'agent-123',
+    expectedRevision: 5,
+  }]);
+});
 it('sends the revision the user acted on with every status and assignment command', async () => {
   const seen: string[] = [];
   server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/:command`, async ({ request, params }) => {

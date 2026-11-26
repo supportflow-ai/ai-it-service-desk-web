@@ -88,6 +88,9 @@ export interface TicketDto {
   status: TicketStatus;
   createdAt: string;
   requesterDepartmentId?: string | null;
+  /** Support Team assigned to handle the ticket (ADR-016). Null/absent means default triage queue. */
+  supportTeamId?: string | null;
+  supportTeamName?: string | null;
   /** The owner: close, reopen and cancel are allowed to them and to Admin. */
   requesterId: string;
   /** Null while nobody is assigned. The backend sends no assignee name. */
@@ -148,6 +151,13 @@ export interface AddCommentPayload {
 export interface AddInternalNotePayload {
   ticketId: string;
   content: string;
+}
+
+export interface TransferTicketTeamPayload {
+  targetTeamId: string;
+  reason: string;
+  newAssigneeId?: string | null;
+  expectedRevision: number;
 }
 
 export interface GenerateUploadUrlPayload {

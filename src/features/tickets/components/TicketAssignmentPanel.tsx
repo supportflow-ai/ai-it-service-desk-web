@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { Alert, Button, Card, Popconfirm, Select, Space, Typography } from 'antd';
-import { UserAddOutlined, UserDeleteOutlined, UserSwitchOutlined } from '@ant-design/icons';
+import { Alert, Button, Card, Popconfirm, Select, Space, Tag, Typography } from 'antd';
+import { ApartmentOutlined, SwapOutlined, UserAddOutlined, UserDeleteOutlined, UserSwitchOutlined } from '@ant-design/icons';
 import { useAuth } from '@/features/auth';
 import type { TicketDto } from '../model/ticket.types';
 import { agentName, assignmentLabel } from '../model/assignment';
-import { canAssignTicket, canSelfAssignTicket, canUnassignTicket } from '../model/ticketPermissions';
+import { canAssignTicket, canSelfAssignTicket, canTransferTicketTeam, canUnassignTicket } from '../model/ticketPermissions';
+import { getSupportTeam } from '../model/supportTeams';
 import { useAgentDirectory } from '../hooks/useAgentDirectory';
 import { useStaffDirectory } from '../hooks/useStaffDirectory';
 import { useAssignTicket } from '../hooks/useAssignTicket';
 import { useUnassignTicket } from '../hooks/useUnassignTicket';
 import { useTicketStateWritePending } from '../hooks/useTicketStateWritePending';
 import { describeTicketError } from '../lib/ticketErrorMessage';
+import { TicketTransferDialog } from './TicketTransferDialog';
 
 interface TicketAssignmentPanelProps {
   ticket: TicketDto;
@@ -27,6 +29,7 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
   const agents = useAgentDirectory();
   const staff = useStaffDirectory();
   const [chosenAgentId, setChosenAgentId] = useState<string>();
+  const [transferOpen, setTransferOpen] = useState(false);
   const assignMutation = useAssignTicket(ticket.id);
   const unassignMutation = useUnassignTicket(ticket.id);
   // Also covers status writes from the other panel, so two state changes never overlap.
@@ -37,7 +40,12 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
   const allowSelfAssign = canSelfAssignTicket(user, ticket);
   const allowUnassign = canUnassignTicket(user, ticket);
   const allowAssign = canAssignTicket(user, ticket);
+  const allowTransfer = canTransferTicketTeam(user, ticket);
   const assigningTo = assignMutation.isPending ? assignMutation.variables?.agentId : undefined;
+  const currentTeam = ticket.supportTeamId
+    ? (getSupportTeam(ticket.supportTeamId) ?? { id: ticket.supportTeamId, name: ticket.supportTeamName ?? ticket.supportTeamId })
+    : null;
+  const currentTeamName = ticket.supportTeamName ?? (currentTeam ? currentTeam.name : 'Hàng đợi phân loại chung (Triage)');
   const agentOptions = (agents.data ?? []).map((entry) => ({
     value: entry.userId,
     label: agentName(entry),
@@ -81,11 +89,30 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
         />
       )}
 
+      <div style={{ marginBottom: 12 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+          Đội hỗ trợ:
+        </Typography.Text>
+        <Tag color="geekblue" icon={<ApartmentOutlined />} style={{ marginTop: 2, padding: '2px 8px', fontSize: 13 }}>
+          {currentTeamName}
+        </Tag>
+      </div>
+
       <Typography.Paragraph style={{ marginBottom: 12 }}>
         Phụ trách: <strong>{assignmentLabel(ticket, user?.userId, staff.data)}</strong>
       </Typography.Paragraph>
 
       <Space direction="vertical" style={{ width: '100%' }}>
+        {allowTransfer && (
+          <Button
+            block
+            icon={<SwapOutlined />}
+            disabled={isPending}
+            onClick={() => setTransferOpen(true)}
+          >
+            Điều phối / Chuyển đội
+          </Button>
+        )}
         {allowSelfAssign && (
           <Button type="primary" block icon={<UserAddOutlined />} loading={!!user && assigningTo === user.userId} disabled={isPending} onClick={selfAssign}>
             Nhận về tôi
@@ -137,12 +164,19 @@ export function TicketAssignmentPanel({ ticket, onReload }: TicketAssignmentPane
           </>
         )}
 
-        {!allowSelfAssign && !allowUnassign && !allowAssign && (
+        {!allowSelfAssign && !allowUnassign && !allowAssign && !allowTransfer && (
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             Không có thao tác phân công với trạng thái hiện tại và vai trò của bạn.
           </Typography.Text>
         )}
       </Space>
+
+      <TicketTransferDialog
+        open={transferOpen}
+        ticket={ticket}
+        onClose={() => setTransferOpen(false)}
+        onReload={reload}
+      />
     </Card>
   );
 }

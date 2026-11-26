@@ -10,4 +10,6 @@ export { useTicket } from './hooks/useTicket';
 export { useCreateTicket } from './hooks/useCreateTicket';
 export { TicketCategory } from './model/ticket.types';
 export { ticketCategoryLabels } from './model/ticketCategories';
-export type { TicketDto, CreateTicketPayload, TicketStatus } from './model/ticket.types';
+export { SUPPORT_TEAMS, getSupportTeam, suggestSupportTeamByCategory } from './model/supportTeams';
+export type { SupportTeam } from './model/supportTeams';
+export type { TicketDto, CreateTicketPayload, TicketStatus, TransferTicketTeamPayload } from './model/ticket.types';

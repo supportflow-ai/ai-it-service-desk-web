@@ -114,3 +114,13 @@ it('explains a rejected assignment and offers a reload', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
   expect(onReload).toHaveBeenCalledOnce();
 });
+
+it('shows current support team and opens transfer dialog when clicking Điều phối / Chuyển đội', async () => {
+  renderPanel(['Agent'], TicketStatus.Submitted);
+  expect(screen.getByText('Hàng đợi phân loại chung (Triage)')).toBeInTheDocument();
+  const transferBtn = await screen.findByRole('button', { name: /Điều phối \/ Chuyển đội/i });
+  expect(transferBtn).toBeEnabled();
+
+  await userEvent.click(transferBtn);
+  expect(await screen.findByText('Điều phối & Chuyển đội xử lý')).toBeInTheDocument();
+});
