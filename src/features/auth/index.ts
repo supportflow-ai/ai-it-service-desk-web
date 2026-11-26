@@ -1,6 +1,7 @@
 export { AuthProvider } from './hooks/AuthProvider';
 export { useAuth } from './hooks/useAuth';
 export { useDepartments } from './hooks/useDepartments';
+export { useUsers } from './hooks/useUsers';
 export { LoginPage } from './pages/LoginPage';
 export { RegisterPage } from './pages/RegisterPage';
 export { ForgotPasswordPage } from './pages/ForgotPasswordPage';

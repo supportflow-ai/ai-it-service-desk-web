@@ -15,6 +15,7 @@ const LoginPage = lazy(() => import('@/features/auth').then((feature) => ({ defa
 const RegisterPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.RegisterPage })));
 const ForgotPasswordPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.ForgotPasswordPage })));
 const AdminUsersPage = lazy(() => import('@/features/auth').then((feature) => ({ default: feature.AdminUsersPage })));
+const SupportTeamsManagementPage = lazy(() => import('@/features/support-teams').then((feature) => ({ default: feature.SupportTeamsManagementPage })));
 const TicketListPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketListPage })));
 const TicketDetailPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.TicketDetailPage })));
 const CreateTicketPage = lazy(() => import('@/features/tickets').then((feature) => ({ default: feature.CreateTicketPage })));
@@ -55,6 +56,7 @@ export function AppRouter() {
     { ...routes.knowledgeNew, element: <NewArticlePage /> },
     { ...routes.knowledgeRead, element: <ArticleDetailPage /> },
     { ...routes.knowledgeEdit, element: <EditArticlePage /> },
+    { ...routes.supportTeams, element: <SupportTeamsManagementPage /> },
     { ...routes.admin, element: <AdminUsersPage /> },
   ];
   return (
