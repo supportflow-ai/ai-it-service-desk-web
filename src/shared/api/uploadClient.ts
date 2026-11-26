@@ -9,6 +9,8 @@ export interface PresignedUploadOptions {
   contentType?: string;
   /** Fields of a presigned POST policy. Without them the file is sent as a raw PUT body. */
   formData?: Readonly<Record<string, string>> | null;
+  /** Headers the signed PUT URL requires. They win over the inferred Content-Type, because the signature covers them. */
+  requiredHeaders?: Readonly<Record<string, string>> | null;
   /** Called with 0–100 while the body is sent. */
   onProgress?: (percent: number) => void;
   signal?: AbortSignal;
@@ -16,7 +18,7 @@ export interface PresignedUploadOptions {
 
 /** Uploads a file to a presigned URL: a multipart POST for a POST policy, otherwise a raw PUT. */
 export async function uploadToPresignedUrl(uploadUrl: string, file: Blob, options: PresignedUploadOptions = {}): Promise<void> {
-  const { contentType, formData, onProgress, signal } = options;
+  const { contentType, formData, requiredHeaders, onProgress, signal } = options;
   const config = {
     onUploadProgress: (event: AxiosProgressEvent) => {
       if (onProgress && event.total) onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
@@ -31,10 +33,11 @@ export async function uploadToPresignedUrl(uploadUrl: string, file: Blob, option
       body.append('file', file);
       await storageClient.post(uploadUrl, body, config);
     } else {
-      await storageClient.put(uploadUrl, file, {
-        ...config,
-        headers: { 'Content-Type': contentType || file.type || 'application/octet-stream' },
-      });
+      const headers: Record<string, string> = { ...requiredHeaders };
+      if (!Object.keys(headers).some((name) => name.toLowerCase() === 'content-type')) {
+        headers['Content-Type'] = contentType || file.type || 'application/octet-stream';
+      }
+      await storageClient.put(uploadUrl, file, { ...config, headers });
     }
   } catch (error) {
     const normalized = normalizeError(error);

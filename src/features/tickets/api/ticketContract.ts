@@ -125,7 +125,9 @@ function isUploadUrlResult(value: unknown): value is UploadUrlResult {
     && typeof value.storageKey === 'string' && value.storageKey.length > 0
     && typeof value.expirySeconds === 'number'
     && (value.formData === undefined || value.formData === null
-      || (isRecord(value.formData) && Object.values(value.formData).every((field) => typeof field === 'string')));
+      || (isRecord(value.formData) && Object.values(value.formData).every((field) => typeof field === 'string')))
+    && (value.requiredHeaders === undefined || value.requiredHeaders === null
+      || (isRecord(value.requiredHeaders) && Object.values(value.requiredHeaders).every((field) => typeof field === 'string')));
 }
 
 export function readUploadUrlResult(value: unknown): UploadUrlResult {
