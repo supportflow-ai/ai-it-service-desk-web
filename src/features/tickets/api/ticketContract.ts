@@ -48,8 +48,8 @@ function isTicket(value: unknown): value is TicketDto {
 }
 
 /** Optional clock numbers and dates arrive as undefined when the backend omits null properties; the model keeps them null. */
-function normalizeClock(clock: SlaClockDto | null | undefined): SlaClockDto | null {
-  if (!clock) return null;
+function normalizeClock(clock: SlaClockDto | null | undefined): SlaClockDto | undefined {
+  if (!clock) return undefined;
   return {
     targetMinutes: clock.targetMinutes ?? null,
     elapsedMinutes: clock.elapsedMinutes ?? null,
@@ -62,7 +62,12 @@ function normalizeClock(clock: SlaClockDto | null | undefined): SlaClockDto | nu
 
 /** Keeps `sla` undefined when the backend sent none, so "no data" and "not applicable" stay different. */
 function normalizeTicket(ticket: TicketDto): TicketDto {
-  if (!ticket.sla) return ticket;
+  if (!ticket.sla) {
+    // A null on the wire means the same as absent.
+    const withoutSla = { ...ticket };
+    delete withoutSla.sla;
+    return withoutSla;
+  }
   const { isApplicable, evaluatedAt, overallStatus, firstResponse, resolution } = ticket.sla;
   return { ...ticket, sla: { isApplicable, evaluatedAt, overallStatus, firstResponse: normalizeClock(firstResponse), resolution: normalizeClock(resolution) } };
 }

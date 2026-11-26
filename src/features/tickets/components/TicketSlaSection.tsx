@@ -14,9 +14,9 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function SlaClock({ title, clock }: { title: string; clock: SlaClockDto | null }) {
-  // A clock the backend sends as null, or without a target, does not apply to this ticket.
-  if (clock === null || clock.targetMinutes === null) {
+function SlaClock({ title, clock }: { title: string; clock?: SlaClockDto }) {
+  // A clock the backend does not send, or sends without a target, does not apply to this ticket.
+  if (!clock || clock.targetMinutes === null) {
     return (
       <section aria-label={title} style={{ marginTop: 12 }}>
         <strong>{title}</strong>
