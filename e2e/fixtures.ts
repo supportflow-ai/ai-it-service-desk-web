@@ -11,7 +11,7 @@ interface ApiFixture {
   tickets: typeof ticketA[];
   requests: string[];
   createdPayload: unknown;
-  presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> } | null;
+  presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> | null; requiredHeaders?: Record<string, string> } | null;
   confirmedPayloads: unknown[];
   attachments: Record<string, unknown>[];
   articles: Article[];
