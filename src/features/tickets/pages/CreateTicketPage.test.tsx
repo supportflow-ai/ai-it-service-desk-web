@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
@@ -8,7 +7,7 @@ import { createTestWrapper } from '../../../../tests/render';
 import { server } from '../../../../tests/mocks/server';
 import { ticketA, user } from '../../../../tests/fixtures';
 import { sessionStore } from '@/features/auth';
-import { CreateTicketPage } from './CreateTicketPage';
+import { CreateTicketPage, type CreateTicketAiPanelProp } from './CreateTicketPage';
 
 const uploadUrl = 'https://storage.example.com/servicedesk';
 const created = { ...ticketA, requesterId: user.userId };
@@ -19,7 +18,7 @@ function NewTicketProbe() {
   return <output data-testid="opened">{`${location.pathname} ${JSON.stringify(location.state)}`}</output>;
 }
 
-function renderCreate(aiPanel?: ReactNode) {
+function renderCreate(aiPanel?: CreateTicketAiPanelProp) {
   const { Wrapper } = createTestWrapper();
   render(
     <MemoryRouter initialEntries={['/tickets/new']}>
@@ -89,6 +88,22 @@ it('shows no invented AI suggestion, confidence, article or department', async (
 it('hosts the AI panel the App injects beside the form', async () => {
   renderCreate(<p>AI side panel</p>);
   expect(await screen.findByText('AI side panel')).toBeInTheDocument();
+});
+
+it('supports aiPanel render function and applies suggested category to form', async () => {
+  renderCreate(({ onApplyCategory, selectedCategory }) => (
+    <div>
+      <span data-testid="selected-cat">{selectedCategory ?? 'none'}</span>
+      <button type="button" onClick={() => onApplyCategory('VPN')}>Áp dụng VPN</button>
+    </div>
+  ));
+
+  const applyBtn = await screen.findByRole('button', { name: 'Áp dụng VPN' });
+  expect(screen.getByTestId('selected-cat')).toHaveTextContent('none');
+  await userEvent.click(applyBtn);
+  await waitFor(() => {
+    expect(screen.getByTestId('selected-cat')).toHaveTextContent('VPN');
+  });
 });
 
 it('keeps only files the backend accepts, and lets one be removed', async () => {

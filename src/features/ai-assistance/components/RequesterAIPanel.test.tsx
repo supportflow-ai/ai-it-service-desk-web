@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { expect, it, vi } from 'vitest';
 import type { RequesterTriageView } from '../model/ai.types';
 import { RequesterAIPanel } from './RequesterAIPanel';
 
@@ -25,4 +26,19 @@ it('never blocks sending when AI is off or failed', () => {
   expect(screen.getByText(/Bạn vẫn có thể gửi yêu cầu bình thường/)).toBeInTheDocument();
   rerender(<RequesterAIPanel result={{ ...view, outcome: 'Timeout' }} />);
   expect(screen.getByText(/Bạn vẫn có thể tiếp tục gửi yêu cầu/)).toBeInTheDocument();
+});
+
+it('renders apply button and calls onApplyCategory when clicked', async () => {
+  const onApply = vi.fn();
+  render(<RequesterAIPanel result={view} onApplyCategory={onApply} selectedCategory="ACC" />);
+  const button = screen.getByRole('button', { name: 'Áp dụng danh mục này' });
+  expect(button).toBeInTheDocument();
+  await userEvent.click(button);
+  expect(onApply).toHaveBeenCalledWith('NET');
+});
+
+it('shows already selected tag when selectedCategory matches suggested category', () => {
+  render(<RequesterAIPanel result={view} onApplyCategory={vi.fn()} selectedCategory="NET" />);
+  expect(screen.getByText('Đã chọn danh mục này')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Áp dụng danh mục này' })).not.toBeInTheDocument();
 });

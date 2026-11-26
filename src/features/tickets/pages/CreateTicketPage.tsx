@@ -7,17 +7,29 @@ import { useCreateTicket } from '../hooks/useCreateTicket';
 import { useUploadNewTicketFiles } from '../hooks/useUploadNewTicketFiles';
 import { CreateTicketForm } from '../components/CreateTicketForm';
 import type { CreatedTicketState } from '../lib/createdTicketState';
-import type { CreateTicketPayload } from '../model/ticket.types';
+import type { CreateTicketPayload, TicketCategory } from '../model/ticket.types';
 
 const { Title } = Typography;
 
+export interface CreateTicketAiContext {
+  title?: string;
+  description?: string;
+  selectedCategory?: string;
+  onApplyCategory: (category: TicketCategory) => void;
+}
+
+export type CreateTicketAiPanelProp = ReactNode | ((context: CreateTicketAiContext) => ReactNode);
+
 interface CreateTicketPageProps {
   /** Composed by the App: tickets must not depend on ai-assistance, so the AI side panel is injected. */
-  aiPanel?: ReactNode;
+  aiPanel?: CreateTicketAiPanelProp;
 }
 
 export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
   const [form] = Form.useForm<CreateTicketPayload>();
+  const title = Form.useWatch('title', form);
+  const description = Form.useWatch('description', form);
+  const selectedCategory = Form.useWatch('categoryId', form);
   const create = useCreateTicket();
   const uploads = useUploadNewTicketFiles();
   const [files, setFiles] = useState<File[]>([]);
@@ -49,6 +61,15 @@ export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
     navigate(`/requester-dashboard/tickets/${ticketId}`, { state });
   };
 
+  const renderedAiPanel = typeof aiPanel === 'function'
+    ? aiPanel({
+        title,
+        description,
+        selectedCategory,
+        onApplyCategory: (category: TicketCategory) => form.setFieldValue('categoryId', category),
+      })
+    : aiPanel;
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       <Title level={2} style={{ margin: '0 0 20px', fontWeight: 700 }}>
@@ -58,7 +79,7 @@ export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
       {create.error && <ErrorState error={create.error} />}
 
       <Row gutter={[24, 24]} align="top">
-        <Col xs={24} lg={aiPanel ? 15 : 24}>
+        <Col xs={24} lg={renderedAiPanel ? 15 : 24}>
           <Card
             bordered
             style={{
@@ -87,7 +108,7 @@ export function CreateTicketPage({ aiPanel }: CreateTicketPageProps = {}) {
         </Col>
 
         {/* AI is side assistance (PRD UX-02): submitting never depends on it. */}
-        {aiPanel && <Col xs={24} lg={9}>{aiPanel}</Col>}
+        {renderedAiPanel && <Col xs={24} lg={9}>{renderedAiPanel}</Col>}
       </Row>
     </div>
   );
