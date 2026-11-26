@@ -222,7 +222,7 @@ it('keeps nullable SLA clock values null when the backend leaves them out', asyn
     isApplicable: true,
     evaluatedAt: '2026-10-19T03:20:00Z',
     overallStatus: 'OnTrack',
-    firstResponse: null,
+    firstResponse: undefined,
     resolution: { ...paused, remainingMinutes: null, deadline: null },
   });
 });
