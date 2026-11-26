@@ -11,6 +11,7 @@ export const featureDependencies = {
   knowledge: ['auth'],
   'support-teams': ['auth', 'tickets'],
   departments: ['auth'],
+  'service-catalog': ['auth', 'support-teams', 'tickets'],
 };
 const slash = (value) => value.replaceAll('\\', '/');
 const isTest = (file) => /(?:^|\/)(?:tests|e2e)\//.test(file) || /\.test\.[cm]?[jt]sx?$/.test(file);
