@@ -31,7 +31,7 @@ export async function uploadAttachment(ticketId: string, file: File, { onProgres
   const metadata = { fileName: file.name, fileSizeBytes: file.size, contentType: file.type || 'application/octet-stream' };
   const presigned = await ticketApi.generateAttachmentUploadUrl(ticketId, metadata);
   checkpoint?.();
-  await ticketApi.uploadFileToPresignedUrl(presigned.uploadUrl, file, { formData: presigned.formData, onProgress });
+  await ticketApi.uploadFileToPresignedUrl(presigned.uploadUrl, file, { formData: presigned.formData, requiredHeaders: presigned.requiredHeaders, onProgress });
   checkpoint?.();
   const uploaded = { metadata, storageKey: presigned.storageKey };
   onUploaded?.(uploaded);

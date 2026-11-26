@@ -162,6 +162,8 @@ export interface UploadUrlResult {
   expirySeconds: number;
   /** Fields of a presigned POST policy; absent or null means a raw PUT to uploadUrl. */
   formData?: Record<string, string> | null;
+  /** Headers the signed PUT URL requires; sent verbatim with a raw PUT. Absent or null means none. */
+  requiredHeaders?: Record<string, string> | null;
 }
 
 export interface ConfirmAttachmentPayload extends GenerateUploadUrlPayload {
