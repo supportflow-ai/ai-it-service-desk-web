@@ -22,6 +22,21 @@ describe('uploadToPresignedUrl', () => {
     expect(seen).toEqual({ method: 'PUT', authorization: null, contentType: 'text/plain' });
   });
 
+  it('sends the signed requiredHeaders instead of the content type derived from the file', async () => {
+    configureApiClient({ baseURL: 'http://localhost/api', getAccessToken: () => 'api-token', getSessionVersion: () => 1, onUnauthorized: () => {} });
+    let contentType: string | null | undefined;
+    server.use(http.put(target, ({ request }) => {
+      contentType = request.headers.get('content-type');
+      return new HttpResponse(null, { status: 200 });
+    }));
+
+    await uploadToPresignedUrl(target, new File(['hello'], 'test.bin', { type: 'application/octet-stream' }), {
+      requiredHeaders: { 'Content-Type': 'text/plain' },
+    });
+
+    expect(contentType).toBe('text/plain');
+  });
+
   // The presigned POST-policy branch is covered in e2e/attachments.spec.ts only: on Node 22 a jsdom
   // File inside FormData never completes through MSW's XMLHttpRequest interceptor.
   it('normalizes a storage rejection without exposing it as an API status', async () => {
