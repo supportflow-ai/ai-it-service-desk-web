@@ -11,7 +11,7 @@ interface ApiFixture {
   tickets: typeof ticketA[];
   requests: string[];
   createdPayload: unknown;
-  presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> } | null;
+  presign: { uploadUrl: string; storageKey: string; expirySeconds: number; formData?: Record<string, string> | null; requiredHeaders?: Record<string, string> } | null;
   confirmedPayloads: unknown[];
   attachments: Record<string, unknown>[];
   articles: Article[];
@@ -115,6 +115,8 @@ export const test = base.extend<{ api: ApiFixture }>({
         const pageSize = Number(url.searchParams.get('pageSize'));
         return route.fulfill({ json: { items: api.tickets.slice((pageNumber - 1) * pageSize, pageNumber * pageSize), page: pageNumber, pageSize, totalCount: api.tickets.length } });
       }
+      // AI triage is not enabled in the browser smoke run: 501 makes aiApi.classifyDraft return null ("AI chưa bật").
+      if (key === 'POST /api/ai/classify-draft') return route.fulfill({ status: 501 });
       if (key === 'POST /api/tickets') {
         api.createdPayload = request.postDataJSON();
         return route.fulfill({ status: 201, json: ticketA });
