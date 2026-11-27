@@ -122,6 +122,20 @@ it('explains a claim lost to another agent and offers a reload', async () => {
   expect(onReload).toHaveBeenCalledOnce();
 });
 
+it('explains a resolve rejected for lack of permission and offers a reload', async () => {
+  server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/resolve`, () => (
+    HttpResponse.json({ error: 'Forbidden' }, { status: 403 })
+  )));
+  const onReload = vi.fn();
+  renderPanel(['Agent'], TicketStatus.InProgress, { onReload });
+  await userEvent.click(await screen.findByRole('button', { name: /Giải quyết/ }));
+  await userEvent.click(await screen.findByRole('button', { name: 'Xác nhận giải quyết' }));
+  expect(await screen.findByText(/chỉ kỹ thuật viên được phân công, Trưởng nhóm phụ trách hoặc Quản trị viên/)).toBeInTheDocument();
+  expect(screen.queryByText(/Không thể nhận xử lý/)).not.toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Tải lại' }));
+  expect(onReload).toHaveBeenCalledOnce();
+});
+
 it('lets the requester edit their submitted ticket, prefilled, saving with the revision on screen', async () => {
   const sent: unknown[] = [];
   server.use(http.post(`http://localhost/api/tickets/${ticketA.id}/update`, async ({ request }) => {

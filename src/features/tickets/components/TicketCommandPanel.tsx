@@ -35,6 +35,11 @@ const transitionMessages = {
   // another agent (ClaimTicketUseCase), which a reload shows.
   403: 'Không thể nhận xử lý: ticket vừa được giao cho kỹ thuật viên khác. Hãy tải lại để xem người phụ trách mới.',
 };
+// ResolveTicketUseCase accepts only the assigned agent, the lead of the ticket's support team or an Admin (403 otherwise).
+const resolveMessages = {
+  ...transitionMessages,
+  403: 'Bạn không thể giải quyết ticket này: chỉ kỹ thuật viên được phân công, Trưởng nhóm phụ trách hoặc Quản trị viên mới có quyền. Hãy tải lại để xem người phụ trách hiện tại.',
+};
 const reloadableStatuses = [400, 403, 409] as const;
 
 export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPanelProps) {
@@ -52,7 +57,7 @@ export function TicketCommandPanel({ ticket, onReload, view }: TicketCommandPane
   // Also covers assignment writes from the other panel, so two state changes never overlap.
   const isPending = useTicketStateWritePending(ticket.id);
   const failed = mutations.find((mutation) => mutation.isError);
-  const failure = failed ? describeTicketError(failed.error, transitionMessages, reloadableStatuses) : null;
+  const failure = failed ? describeTicketError(failed.error, failed === resolveMutation ? resolveMessages : transitionMessages, reloadableStatuses) : null;
 
   // Only the latest command's outcome is shown, so earlier errors are cleared first. The command
   // carries the revision on screen, so a ticket changed by someone else meanwhile is rejected (409).
