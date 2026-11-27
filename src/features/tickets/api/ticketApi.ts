@@ -1,6 +1,7 @@
 import { apiClient } from '@/shared/api/apiClient';
 import { uploadToPresignedUrl } from '@/shared/api/uploadClient';
 import type { PresignedUploadOptions } from '@/shared/api/uploadClient';
+import { resolveAttachmentContentType } from '../validation/attachmentRules';
 import type {
   AddCommentPayload,
   AddInternalNotePayload,
@@ -140,6 +141,6 @@ export const ticketApi = {
     return readAttachments(response.data);
   },
   async uploadFileToPresignedUrl(uploadUrl: string, file: File, options: Omit<PresignedUploadOptions, 'contentType'> = {}) {
-    await uploadToPresignedUrl(uploadUrl, file, { ...options, contentType: file.type || 'application/octet-stream' });
+    await uploadToPresignedUrl(uploadUrl, file, { ...options, contentType: resolveAttachmentContentType(file) });
   },
 };

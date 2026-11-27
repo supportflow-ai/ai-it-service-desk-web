@@ -33,7 +33,10 @@ export async function uploadToPresignedUrl(uploadUrl: string, file: Blob, option
       body.append('file', file);
       await storageClient.post(uploadUrl, body, config);
     } else {
-      const headers: Record<string, string> = { ...requiredHeaders };
+      // Browsers set Content-Length themselves (from the body, so it matches the signature) and refuse a script-set one.
+      const headers: Record<string, string> = Object.fromEntries(
+        Object.entries(requiredHeaders ?? {}).filter(([name]) => name.toLowerCase() !== 'content-length'),
+      );
       if (!Object.keys(headers).some((name) => name.toLowerCase() === 'content-type')) {
         headers['Content-Type'] = contentType || file.type || 'application/octet-stream';
       }

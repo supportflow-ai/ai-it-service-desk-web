@@ -1,6 +1,7 @@
 import { normalizeError } from '@/shared/api/httpError';
 import { ticketApi } from '../api/ticketApi';
 import type { TicketAttachmentDto } from '../model/ticket.types';
+import { resolveAttachmentContentType } from '../validation/attachmentRules';
 
 export interface AttachmentMetadata {
   fileName: string;
@@ -28,7 +29,7 @@ interface UploadAttachmentOptions {
  * only once the backend confirms it.
  */
 export async function uploadAttachment(ticketId: string, file: File, { onProgress, checkpoint, onUploaded }: UploadAttachmentOptions = {}): Promise<TicketAttachmentDto> {
-  const metadata = { fileName: file.name, fileSizeBytes: file.size, contentType: file.type || 'application/octet-stream' };
+  const metadata = { fileName: file.name, fileSizeBytes: file.size, contentType: resolveAttachmentContentType(file) };
   const presigned = await ticketApi.generateAttachmentUploadUrl(ticketId, metadata);
   checkpoint?.();
   await ticketApi.uploadFileToPresignedUrl(presigned.uploadUrl, file, { formData: presigned.formData, requiredHeaders: presigned.requiredHeaders, onProgress });

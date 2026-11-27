@@ -11,6 +11,26 @@ function extensionOf(fileName: string) {
   return dot > 0 ? fileName.slice(dot).toLowerCase() : '';
 }
 
+// Mirrors AllowedContentTypesByExtension in GenerateAttachmentUploadUrlUseCase: the backend rejects a Content-Type that does not match the extension.
+const CONTENT_TYPE_BY_EXTENSION: Readonly<Record<string, string>> = {
+  '.pdf': 'application/pdf',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.txt': 'text/plain',
+  '.zip': 'application/zip',
+};
+
+/**
+ * The Content-Type to send for a file. Browsers leave `type` empty (or generic) when the OS has no
+ * mapping for the extension, so fall back to the type the backend expects for that extension.
+ */
+export function resolveAttachmentContentType(file: { name: string; type: string }): string {
+  if (file.type && file.type !== 'application/octet-stream') return file.type;
+  return CONTENT_TYPE_BY_EXTENSION[extensionOf(file.name)] ?? (file.type || 'application/octet-stream');
+}
+
 /** Returns a user-facing message, or null when the file may be uploaded. */
 export function validateAttachmentFile(file: { name: string; size: number }): string | null {
   const extension = extensionOf(file.name);

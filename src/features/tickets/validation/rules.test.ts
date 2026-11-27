@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ATTACHMENT_MAX_BYTES, validateAttachmentFile, validateTicketCapacity } from './attachmentRules';
+import { ATTACHMENT_MAX_BYTES, resolveAttachmentContentType, validateAttachmentFile, validateTicketCapacity } from './attachmentRules';
 import { COMMENT_MAX_LENGTH, canSendComment, validateCommentContent } from './commentRules';
 
 describe('comment rules', () => {
@@ -28,6 +28,21 @@ describe('attachment rules', () => {
   it('rejects empty and oversized files', () => {
     expect(validateAttachmentFile({ name: 'a.png', size: 0 })).toMatch(/tối đa 10 MB/);
     expect(validateAttachmentFile({ name: 'a.png', size: ATTACHMENT_MAX_BYTES + 1 })).toMatch(/tối đa 10 MB/);
+  });
+
+  it('keeps the browser content type when it is specific', () => {
+    expect(resolveAttachmentContentType({ name: 'a.txt', type: 'text/plain' })).toBe('text/plain');
+  });
+
+  it('falls back to the backend type for the extension when the browser type is empty or generic', () => {
+    const docx = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    expect(resolveAttachmentContentType({ name: 'Report.DOCX', type: '' })).toBe(docx);
+    expect(resolveAttachmentContentType({ name: 'a.zip', type: 'application/octet-stream' })).toBe('application/zip');
+    expect(resolveAttachmentContentType({ name: 'a.jpeg', type: '' })).toBe('image/jpeg');
+  });
+
+  it('keeps octet-stream for an unknown extension', () => {
+    expect(resolveAttachmentContentType({ name: 'a.exe', type: '' })).toBe('application/octet-stream');
   });
 });
 
